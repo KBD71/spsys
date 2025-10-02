@@ -19,11 +19,5 @@
       "src": "/(.*)",
       "dest": "/index.html"
     }
-  ],
-  "env": {
-    "GOOGLE_SERVICE_ACCOUNT_EMAIL": "@google_service_account_email",
-    "GOOGLE_PRIVATE_KEY": "@google_private_key",
-    "SPREADSHEET_ID": "@spreadsheet_id",
-    "SALT": "@salt"
-  }
+  ]
 }

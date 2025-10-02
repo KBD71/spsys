@@ -5,6 +5,25 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>학생 포트폴리오 시스템</title>
 
+  <!-- MathJax for LaTeX support -->
+  <script>
+    MathJax = {
+      tex: {
+        inlineMath: [['$', '$'], ['\\(', '\\)']],
+        displayMath: [['$$', '$$'], ['\\[', '\\]']]
+      },
+      options: {
+        menuOptions: {
+          settings: {
+            texHints: true
+          }
+        }
+      }
+    };
+  </script>
+  <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+  <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
   <style>
     * {
       margin: 0;
@@ -329,6 +348,55 @@
       color: #856404;
     }
 
+    .suggestion-box {
+      background: #e1f5fe;
+      border-left: 4px solid #0288d1;
+      padding: 15px;
+      border-radius: 8px;
+      margin-top: 15px;
+    }
+
+    .suggestion-box strong {
+      color: #01579b;
+    }
+
+    .suggestion-input {
+      width: 100%;
+      padding: 12px;
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+      font-size: 14px;
+      font-family: inherit;
+      resize: vertical;
+      transition: border-color 0.3s ease;
+      margin-bottom: 8px;
+    }
+
+    .suggestion-input:focus {
+      border-color: #0288d1;
+      outline: none;
+    }
+
+    .suggestion-save-btn {
+      background: #0288d1;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.3s ease;
+    }
+
+    .suggestion-save-btn:hover {
+      background: #0277bd;
+    }
+
+    .suggestion-save-btn:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+
     textarea {
       width: 100%;
       padding: 12px;
@@ -357,6 +425,291 @@
       height: 60px;
       margin-bottom: 15px;
       opacity: 0.3;
+    }
+
+    /* ==================== 평가 시스템 스타일 ==================== */
+    .teacher-info {
+      background: #e8f5e8;
+      border-left: 4px solid #28a745;
+      padding: 1rem;
+      margin-bottom: 2rem;
+      border-radius: 6px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .teacher-info p {
+      margin: 0;
+      color: #155724;
+      font-weight: 500;
+    }
+
+    .teacher-menu {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin: 2rem 0;
+    }
+
+    .teacher-menu button {
+      padding: 1.5rem;
+      font-size: 1.1rem;
+      border-radius: 12px;
+      transition: all 0.3s ease;
+    }
+
+    .manage-actions {
+      margin-bottom: 2rem;
+    }
+
+    .evaluation-card {
+      background: white;
+      border: 1px solid #e0e0e0;
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-bottom: 1rem;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      transition: all 0.3s ease;
+    }
+
+    .evaluation-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+
+    .evaluation-card h4 {
+      color: #667eea;
+      margin-bottom: 0.5rem;
+    }
+
+    .evaluation-meta {
+      font-size: 0.9rem;
+      color: #666;
+      margin-bottom: 1rem;
+    }
+
+    .evaluation-actions {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+
+    .eval-item {
+      display: grid;
+      grid-template-columns: 2fr 1fr 2fr auto;
+      gap: 0.5rem;
+      align-items: center;
+      margin-bottom: 0.5rem;
+      padding: 0.5rem;
+      background: #f8f9fa;
+      border-radius: 6px;
+    }
+
+    .eval-item input {
+      margin-bottom: 0;
+    }
+
+    .eval-item button {
+      background: #dc3545;
+      color: white;
+      border: none;
+      padding: 0.25rem 0.5rem;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.8rem;
+    }
+
+    .score-selector {
+      margin-bottom: 2rem;
+      padding: 1rem;
+      background: #f8f9fa;
+      border-radius: 8px;
+    }
+
+    .score-selector label {
+      display: inline-block;
+      margin-right: 1rem;
+      font-weight: 500;
+    }
+
+    .score-selector select {
+      min-width: 300px;
+    }
+
+    .evaluation-info {
+      background: #e3f2fd;
+      border-left: 4px solid #2196f3;
+      padding: 1rem;
+      margin-bottom: 2rem;
+      border-radius: 6px;
+    }
+
+    .evaluation-info h3 {
+      margin: 0 0 0.5rem 0;
+      color: #1976d2;
+    }
+
+    .evaluation-info p {
+      margin: 0;
+      color: #555;
+    }
+
+    .score-table-container {
+      overflow-x: auto;
+      margin-bottom: 2rem;
+    }
+
+    #scoreTable {
+      width: 100%;
+      border-collapse: collapse;
+      background: white;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    #scoreTable th {
+      background: #667eea;
+      color: white;
+      padding: 1rem;
+      text-align: left;
+      font-weight: 500;
+    }
+
+    #scoreTable td {
+      padding: 0.75rem;
+      border-bottom: 1px solid #eee;
+    }
+
+    #scoreTable tbody tr:hover {
+      background: #f8f9fa;
+    }
+
+    .score-input {
+      width: 80px;
+      padding: 0.25rem 0.5rem;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      text-align: center;
+    }
+
+    .score-input:focus {
+      border-color: #667eea;
+      outline: none;
+    }
+
+    .comment-input {
+      width: 100%;
+      min-width: 120px;
+      padding: 0.25rem 0.5rem;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 0.9rem;
+    }
+
+    .total-score {
+      font-weight: bold;
+      color: #667eea;
+    }
+
+    .score-actions {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      margin-top: 2rem;
+    }
+
+    .evaluation-result-card {
+      background: white;
+      border: 1px solid #e0e0e0;
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .evaluation-result-card h3 {
+      color: #667eea;
+      margin-bottom: 1rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .evaluation-score {
+      background: #e8f5e8;
+      color: #2e7d32;
+      padding: 0.5rem 1rem;
+      border-radius: 20px;
+      font-weight: bold;
+      font-size: 1.1rem;
+    }
+
+    .evaluation-items {
+      margin-top: 1rem;
+    }
+
+    .evaluation-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.5rem 0;
+      border-bottom: 1px solid #eee;
+    }
+
+    .evaluation-item:last-child {
+      border-bottom: none;
+    }
+
+    .item-name {
+      font-weight: 500;
+    }
+
+    .item-score {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .item-score-value {
+      font-weight: bold;
+      color: #667eea;
+    }
+
+    .item-comment {
+      font-size: 0.9rem;
+      color: #666;
+      font-style: italic;
+      margin-top: 0.5rem;
+    }
+
+    @media (max-width: 768px) {
+      .form-row {
+        grid-template-columns: 1fr;
+      }
+      
+      .eval-item {
+        grid-template-columns: 1fr;
+        gap: 0.25rem;
+      }
+      
+      .teacher-menu {
+        grid-template-columns: 1fr;
+      }
+      
+      .score-table-container {
+        font-size: 0.9rem;
+      }
+      
+      .evaluation-actions {
+        flex-direction: column;
+      }
     }
   </style>
 </head>
@@ -401,6 +754,8 @@
 
       <button id="viewAssignmentsBtn" class="btn-primary">📝 과제 목록</button>
       <button id="viewRecordsBtn" class="btn-primary">📊 내 기록 보기</button>
+      <button id="viewEvaluationsBtn" class="btn-primary">📝 내 평가 결과</button>
+      <button id="teacherModeBtn" class="btn-secondary">👨‍🏫 교사 모드</button>
       <button id="changePasswordBtn" class="btn-secondary">🔑 비밀번호 변경</button>
       <button id="logoutBtn" class="btn-danger">🚪 로그아웃</button>
     </main>
@@ -487,6 +842,202 @@
     </main>
   </div>
 
+  <!-- 학생 평가 결과 화면 -->
+  <div id="myEvaluationsScreen" class="container screen">
+    <header style="position: relative;">
+      <button id="evaluationsBackBtn" class="btn-back">← 뒤로</button>
+      <h1>📝 내 평가 결과</h1>
+    </header>
+    <main>
+      <div id="evaluationsList"></div>
+      <div id="evaluationsMessage" class="message"></div>
+    </main>
+  </div>
+
+  <!-- 교사 모드 화면 -->
+  <div id="teacherModeScreen" class="container screen">
+    <header style="position: relative;">
+      <button id="teacherBackBtn" class="btn-back">← 뒤로</button>
+      <h1>👨‍🏫 교사 모드</h1>
+    </header>
+    <main>
+      <div class="teacher-info">
+        <p>🔐 교사 모드로 로그인됨</p>
+        <button onclick="exitTeacherMode()" class="btn-danger">교사 모드 종료</button>
+      </div>
+      
+      <div class="teacher-menu">
+        <button id="manageEvaluationsBtn" class="btn-primary">📋 평가항목 관리</button>
+        <button id="inputScoresBtn" class="btn-primary">✏️ 점수 입력</button>
+        <button id="viewStatsBtn" class="btn-secondary">📊 통계 보기</button>
+      </div>
+    </main>
+  </div>
+
+  <!-- 평가항목 관리 화면 -->
+  <div id="evaluationManageScreen" class="container screen">
+    <header style="position: relative;">
+      <button id="manageBackBtn" class="btn-back">← 뒤로</button>
+      <h1>📋 평가항목 관리</h1>
+    </header>
+    <main>
+      <div class="manage-actions">
+        <button id="newEvaluationBtn" class="btn-primary">➕ 새 평가 생성</button>
+      </div>
+      
+      <div id="evaluationManageList"></div>
+      <div id="manageMessage" class="message"></div>
+
+      <!-- 새 평가 생성 모달 -->
+      <div id="newEvaluationModal" class="modal hidden">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h3>새 평가 생성</h3>
+            <button type="button" class="close-btn" onclick="hideNewEvaluationModal()">×</button>
+          </div>
+          
+          <div class="modal-body">
+            <form id="newEvaluationForm" onsubmit="createNewEvaluation(event)">
+              <div class="form-group">
+                <label for="evalName">평가명 *</label>
+                <input type="text" id="evalName" required>
+              </div>
+              
+              <div class="form-group">
+                <label for="evalDescription">설명</label>
+                <textarea id="evalDescription" rows="3"></textarea>
+              </div>
+              
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="evalType">평가유형 *</label>
+                  <select id="evalType" required>
+                    <option value="">선택하세요</option>
+                    <option value="지필평가">지필평가</option>
+                    <option value="수행평가">수행평가</option>
+                    <option value="프로젝트">프로젝트</option>
+                    <option value="발표">발표</option>
+                    <option value="기타">기타</option>
+                  </select>
+                </div>
+                
+                <div class="form-group">
+                  <label for="evalPoints">총배점 *</label>
+                  <input type="number" id="evalPoints" min="1" required>
+                </div>
+              </div>
+              
+              <div class="form-group">
+                <label for="evalTarget">대상반 *</label>
+                <select id="evalTarget" required>
+                  <option value="">선택하세요</option>
+                  <option value="전체">전체</option>
+                  <option value="1학년">1학년</option>
+                  <option value="2학년">2학년</option>
+                  <option value="3학년">3학년</option>
+                  <option value="1-1">1-1</option>
+                  <option value="1-2">1-2</option>
+                  <option value="2-1">2-1</option>
+                  <option value="2-2">2-2</option>
+                </select>
+              </div>
+              
+              <div class="form-group">
+                <label>세부 평가항목</label>
+                <div id="evalItems">
+                  <div class="eval-item">
+                    <input type="text" placeholder="항목명" class="item-name" required>
+                    <input type="number" placeholder="배점" class="item-points" min="1" required>
+                    <input type="text" placeholder="평가기준 (선택)" class="item-criteria">
+                    <button type="button" onclick="removeEvalItem(this)">삭제</button>
+                  </div>
+                </div>
+                <button type="button" onclick="addEvalItem()" class="btn-secondary">+ 항목 추가</button>
+              </div>
+              
+              <div class="form-actions">
+                <button type="submit" class="submit-btn">생성하기</button>
+                <button type="button" onclick="hideNewEvaluationModal()" class="cancel-btn">취소</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- 점수 입력 화면 -->
+  <div id="scoreInputScreen" class="container screen">
+    <header style="position: relative;">
+      <button id="scoreBackBtn" class="btn-back">← 뒤로</button>
+      <h1>✏️ 점수 입력</h1>
+    </header>
+    <main>
+      <div class="score-selector">
+        <label for="evaluationSelect">평가 선택:</label>
+        <select id="evaluationSelect" onchange="loadEvaluationForScoring()">
+          <option value="">평가를 선택하세요</option>
+        </select>
+      </div>
+      
+      <div id="scoreInputContent" class="hidden">
+        <div class="evaluation-info">
+          <h3 id="selectedEvalName"></h3>
+          <p id="selectedEvalDesc"></p>
+        </div>
+        
+        <div class="score-table-container">
+          <table id="scoreTable">
+            <thead>
+              <tr>
+                <th>학번</th>
+                <th>이름</th>
+                <th>반</th>
+                <!-- 동적으로 평가항목 헤더 추가 -->
+              </tr>
+            </thead>
+            <tbody>
+              <!-- 동적으로 학생 데이터 추가 -->
+            </tbody>
+          </table>
+        </div>
+        
+        <div class="score-actions">
+          <button id="saveScoresBtn" class="btn-primary" onclick="saveAllScores()">💾 저장하기</button>
+          <button id="previewStatsBtn" class="btn-secondary" onclick="previewStats()">📊 통계 미리보기</button>
+        </div>
+      </div>
+      
+      <div id="scoreMessage" class="message"></div>
+    </main>
+  </div>
+
+  <!-- 교사 로그인 모달 -->
+  <div id="teacherLoginModal" class="modal hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>👨‍🏫 교사 모드 로그인</h3>
+        <button type="button" class="close-btn" onclick="hideTeacherLoginModal()">×</button>
+      </div>
+      
+      <div class="modal-body">
+        <form id="teacherLoginForm" onsubmit="authenticateTeacher(event)">
+          <div class="form-group">
+            <label for="teacherPassword">교사 비밀번호</label>
+            <input type="password" id="teacherPassword" required placeholder="교사 전용 비밀번호를 입력하세요">
+            <small>교사만 알고 있는 비밀번호를 입력하세요</small>
+          </div>
+          
+          <div class="form-actions">
+            <button type="submit" class="submit-btn">로그인</button>
+            <button type="button" onclick="hideTeacherLoginModal()" class="cancel-btn">취소</button>
+          </div>
+        </form>
+        <div id="teacherLoginMessage" class="message"></div>
+      </div>
+    </div>
+  </div>
+
   <script>
     // API 엔드포인트 설정
     const API_BASE = '/api';  // Vercel 배포 시 자동으로 /api로 라우팅됨
@@ -495,6 +1046,10 @@
     let currentStudentId = '';
     let currentStudentName = '';
     let currentStudentClass = '';
+    let isTeacherMode = false;
+    
+    // 교사 비밀번호 (실제 운영시에는 서버에서 관리)
+    const TEACHER_PASSWORD = 'teacher2025!';
 
     // 화면 전환
     function showScreen(screenId) {
@@ -683,6 +1238,50 @@
 
     document.getElementById('recordsBackBtn').addEventListener('click', function() {
       showScreen('menuScreen');
+    });
+
+    // 내 평가 결과 보기
+    document.getElementById('viewEvaluationsBtn').addEventListener('click', async function() {
+      showScreen('myEvaluationsScreen');
+      await loadMyEvaluations();
+    });
+
+    document.getElementById('evaluationsBackBtn').addEventListener('click', function() {
+      showScreen('menuScreen');
+    });
+
+    // 교사 모드
+    document.getElementById('teacherModeBtn').addEventListener('click', function() {
+      showTeacherLoginModal();
+    });
+
+    document.getElementById('teacherBackBtn').addEventListener('click', function() {
+      showScreen('menuScreen');
+    });
+
+    // 평가항목 관리
+    document.getElementById('manageEvaluationsBtn').addEventListener('click', async function() {
+      showScreen('evaluationManageScreen');
+      await loadEvaluationManageList();
+    });
+
+    document.getElementById('manageBackBtn').addEventListener('click', function() {
+      showScreen('teacherModeScreen');
+    });
+
+    // 점수 입력
+    document.getElementById('inputScoresBtn').addEventListener('click', async function() {
+      showScreen('scoreInputScreen');
+      await loadEvaluationList();
+    });
+
+    document.getElementById('scoreBackBtn').addEventListener('click', function() {
+      showScreen('teacherModeScreen');
+    });
+
+    // 새 평가 생성
+    document.getElementById('newEvaluationBtn').addEventListener('click', function() {
+      showNewEvaluationModal();
     });
 
     // 과제 목록 로드
@@ -874,6 +1473,27 @@
               `;
             }
 
+            // 건의사항 입력 기능 추가
+            if (record.hasSuggestion) {
+              html += `
+                <div class="suggestion-box">
+                  <strong>💡 건의사항:</strong>
+                  <div style="margin-top: 8px;">
+                    <textarea 
+                      id="suggestion-${record.sheetName}" 
+                      class="suggestion-input"
+                      placeholder="이 기록에 대한 건의사항을 입력하세요..."
+                      rows="3">${record.suggestion || ''}</textarea>
+                    <button 
+                      class="suggestion-save-btn" 
+                      onclick="saveSuggestion('${record.sheetName}')">
+                      저장
+                    </button>
+                  </div>
+                </div>
+              `;
+            }
+
             card.innerHTML = html;
             listEl.appendChild(card);
           });
@@ -884,6 +1504,591 @@
         console.error('Load my records error:', error);
         showMessage('recordsMessage', '기록을 불러올 수 없습니다.', 'error');
       }
+    }
+
+    // 건의사항 저장
+    async function saveSuggestion(sheetName) {
+      const textareaId = `suggestion-${sheetName}`;
+      const textarea = document.getElementById(textareaId);
+      const suggestion = textarea.value.trim();
+      
+      // 버튼 찾기
+      const saveBtn = textarea.nextElementSibling;
+      const originalText = saveBtn.textContent;
+      
+      try {
+        // 버튼 상태 변경
+        saveBtn.disabled = true;
+        saveBtn.textContent = '저장 중...';
+        
+        const response = await fetch(`${API_BASE}/my-records`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            studentId: currentStudentId,
+            sheetName: sheetName,
+            suggestion: suggestion
+          })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          showMessage('recordsMessage', '건의사항이 저장되었습니다.', 'success');
+          
+          // 저장 성공 시 버튼 색상 변경
+          saveBtn.style.backgroundColor = '#28a745';
+          saveBtn.textContent = '저장됨';
+          
+          // 3초 후 원래 상태로 복원
+          setTimeout(() => {
+            saveBtn.style.backgroundColor = '';
+            saveBtn.textContent = originalText;
+            saveBtn.disabled = false;
+          }, 3000);
+        } else {
+          showMessage('recordsMessage', result.message, 'error');
+          saveBtn.disabled = false;
+          saveBtn.textContent = originalText;
+        }
+        
+      } catch (error) {
+        console.error('Save suggestion error:', error);
+        showMessage('recordsMessage', '건의사항 저장에 실패했습니다.', 'error');
+        saveBtn.disabled = false;
+        saveBtn.textContent = originalText;
+      }
+    }
+
+    // ==================== 평가 시스템 함수 ====================
+
+    // 학생용 평가 결과 조회
+    async function loadMyEvaluations() {
+      const listEl = document.getElementById('evaluationsList');
+      listEl.innerHTML = '<p style="text-align: center; color: #999;">평가 결과를 불러오는 중...</p>';
+
+      try {
+        const response = await fetch(`${API_BASE}/evaluation-results/my?studentId=${currentStudentId}`);
+        const result = await response.json();
+
+        if (result.success) {
+          if (result.evaluations.length === 0) {
+            listEl.innerHTML = '<div class="empty-state"><p>평가 결과가 없습니다.</p></div>';
+            return;
+          }
+
+          listEl.innerHTML = '';
+          result.evaluations.forEach(evaluation => {
+            const card = document.createElement('div');
+            card.className = 'evaluation-result-card';
+
+            const percentage = Math.round((evaluation.totalScore / evaluation.maxScore) * 100);
+            
+            let html = `
+              <h3>
+                ${evaluation.name}
+                <span class="evaluation-score">${evaluation.totalScore}/${evaluation.maxScore} (${percentage}%)</span>
+              </h3>
+              <div class="evaluation-meta">
+                <strong>유형:</strong> ${evaluation.type} | 
+                <strong>평가일:</strong> ${evaluation.evaluateDate}
+              </div>
+            `;
+
+            if (evaluation.description) {
+              html += `<p style="margin-bottom: 1rem; color: #666;">${evaluation.description}</p>`;
+            }
+
+            html += '<div class="evaluation-items">';
+            evaluation.items.forEach(item => {
+              const itemPercentage = Math.round((item.score / item.maxPoints) * 100);
+              html += `
+                <div class="evaluation-item">
+                  <div class="item-name">${item.name}</div>
+                  <div class="item-score">
+                    <span class="item-score-value">${item.score}/${item.maxPoints}</span>
+                    <span style="color: #999;">(${itemPercentage}%)</span>
+                  </div>
+                </div>
+              `;
+              if (item.comment) {
+                html += `<div class="item-comment">💬 ${item.comment}</div>`;
+              }
+            });
+            html += '</div>';
+
+            card.innerHTML = html;
+            listEl.appendChild(card);
+          });
+        } else {
+          showMessage('evaluationsMessage', result.message, 'error');
+        }
+      } catch (error) {
+        console.error('Load my evaluations error:', error);
+        showMessage('evaluationsMessage', '평가 결과를 불러올 수 없습니다.', 'error');
+      }
+    }
+
+    // 교사용 평가항목 관리 목록 로드
+    async function loadEvaluationManageList() {
+      const listEl = document.getElementById('evaluationManageList');
+      listEl.innerHTML = '<p style="text-align: center; color: #999;">평가항목을 불러오는 중...</p>';
+
+      try {
+        const response = await fetch(`${API_BASE}/evaluations`);
+        const result = await response.json();
+
+        if (result.success) {
+          if (result.evaluations.length === 0) {
+            listEl.innerHTML = '<div class="empty-state"><p>등록된 평가항목이 없습니다.</p></div>';
+            return;
+          }
+
+          listEl.innerHTML = '';
+          result.evaluations.forEach(evaluation => {
+            const card = document.createElement('div');
+            card.className = 'evaluation-card';
+
+            card.innerHTML = `
+              <h4>${evaluation.name}</h4>
+              <div class="evaluation-meta">
+                <span>🏷️ ${evaluation.type}</span> | 
+                <span>📊 ${evaluation.totalPoints}점</span> | 
+                <span>👥 ${evaluation.targetClass}</span> | 
+                <span>📅 ${evaluation.createdDate}</span>
+              </div>
+              <p style="color: #666; margin-bottom: 1rem;">${evaluation.description || '설명이 없습니다.'}</p>
+              <div class="evaluation-actions">
+                <button class="btn-secondary" onclick="editEvaluation('${evaluation.id}')">수정</button>
+                <button class="btn-primary" onclick="inputScores('${evaluation.id}')">점수 입력</button>
+                <button class="btn-danger" onclick="deleteEvaluation('${evaluation.id}')">삭제</button>
+              </div>
+            `;
+
+            listEl.appendChild(card);
+          });
+        } else {
+          showMessage('manageMessage', result.message, 'error');
+        }
+      } catch (error) {
+        console.error('Load evaluation manage list error:', error);
+        showMessage('manageMessage', '평가항목을 불러올 수 없습니다.', 'error');
+      }
+    }
+
+    // 점수 입력용 평가 목록 로드
+    async function loadEvaluationList() {
+      const selectEl = document.getElementById('evaluationSelect');
+      selectEl.innerHTML = '<option value="">평가를 선택하세요</option>';
+
+      try {
+        const response = await fetch(`${API_BASE}/evaluations`);
+        const result = await response.json();
+
+        if (result.success) {
+          result.evaluations.forEach(evaluation => {
+            const option = document.createElement('option');
+            option.value = evaluation.id;
+            option.textContent = `${evaluation.name} (${evaluation.type})`;
+            selectEl.appendChild(option);
+          });
+        }
+      } catch (error) {
+        console.error('Load evaluation list error:', error);
+      }
+    }
+
+    // 평가 선택 시 점수 입력 테이블 로드
+    async function loadEvaluationForScoring() {
+      const evaluationId = document.getElementById('evaluationSelect').value;
+      const contentEl = document.getElementById('scoreInputContent');
+
+      if (!evaluationId) {
+        contentEl.classList.add('hidden');
+        return;
+      }
+
+      try {
+        const response = await fetch(`${API_BASE}/evaluation-results?evaluationId=${evaluationId}`);
+        const result = await response.json();
+
+        if (result.success) {
+          // 평가 정보 표시
+          document.getElementById('selectedEvalName').textContent = result.evaluation.name;
+          document.getElementById('selectedEvalDesc').textContent = result.evaluation.description || '';
+
+          // 테이블 생성
+          createScoreTable(result.evaluation, result.items, result.students, result.existingResults);
+          contentEl.classList.remove('hidden');
+        } else {
+          showMessage('scoreMessage', result.message, 'error');
+        }
+      } catch (error) {
+        console.error('Load evaluation for scoring error:', error);
+        showMessage('scoreMessage', '평가 데이터를 불러올 수 없습니다.', 'error');
+      }
+    }
+
+    // 점수 입력 테이블 생성
+    function createScoreTable(evaluation, items, students, existingResults) {
+      const table = document.getElementById('scoreTable');
+      const thead = table.querySelector('thead tr');
+      const tbody = table.querySelector('tbody');
+
+      // 헤더 생성
+      thead.innerHTML = '<th>학번</th><th>이름</th><th>반</th>';
+      items.forEach(item => {
+        thead.innerHTML += `<th>${item.name}<br><small>(${item.points}점)</small></th>`;
+      });
+      thead.innerHTML += '<th>총점</th><th>코멘트</th>';
+
+      // 데이터 행 생성
+      tbody.innerHTML = '';
+      students.forEach(student => {
+        const row = document.createElement('tr');
+        
+        let html = `
+          <td>${student.studentId}</td>
+          <td>${student.name}</td>
+          <td>${student.class}</td>
+        `;
+
+        let totalScore = 0;
+        items.forEach(item => {
+          const existingScore = existingResults[student.studentId]?.[item.itemId]?.score || '';
+          const existingComment = existingResults[student.studentId]?.[item.itemId]?.comment || '';
+          
+          html += `
+            <td>
+              <input type="number" 
+                     class="score-input" 
+                     data-student="${student.studentId}" 
+                     data-item="${item.itemId}"
+                     data-max="${item.points}"
+                     value="${existingScore}" 
+                     min="0" 
+                     max="${item.points}"
+                     onchange="updateTotalScore(this)">
+            </td>
+          `;
+          
+          if (existingScore) {
+            totalScore += parseFloat(existingScore) || 0;
+          }
+        });
+
+        html += `
+          <td class="total-score" data-student="${student.studentId}">${totalScore || ''}</td>
+          <td>
+            <input type="text" 
+                   class="comment-input" 
+                   data-student="${student.studentId}"
+                   value="${existingResults[student.studentId] ? Object.values(existingResults[student.studentId])[0]?.comment || '' : ''}"
+                   placeholder="전체 코멘트">
+          </td>
+        `;
+
+        row.innerHTML = html;
+        tbody.appendChild(row);
+      });
+    }
+
+    // 총점 업데이트
+    function updateTotalScore(input) {
+      const studentId = input.dataset.student;
+      const row = input.closest('tr');
+      const scoreInputs = row.querySelectorAll('.score-input[data-student="' + studentId + '"]');
+      const totalCell = row.querySelector('.total-score[data-student="' + studentId + '"]');
+
+      let total = 0;
+      scoreInputs.forEach(scoreInput => {
+        const score = parseFloat(scoreInput.value) || 0;
+        const max = parseFloat(scoreInput.dataset.max) || 0;
+        
+        // 최대점수 초과 방지
+        if (score > max) {
+          scoreInput.value = max;
+          total += max;
+        } else {
+          total += score;
+        }
+      });
+
+      totalCell.textContent = total;
+    }
+
+    // 모든 점수 저장
+    async function saveAllScores() {
+      const evaluationId = document.getElementById('evaluationSelect').value;
+      const saveBtn = document.getElementById('saveScoresBtn');
+      const originalText = saveBtn.textContent;
+
+      if (!evaluationId) {
+        alert('평가를 선택해주세요.');
+        return;
+      }
+
+      // 점수 데이터 수집
+      const results = [];
+      const scoreInputs = document.querySelectorAll('.score-input');
+      const commentInputs = document.querySelectorAll('.comment-input');
+
+      scoreInputs.forEach(input => {
+        const studentId = input.dataset.student;
+        const itemId = input.dataset.item;
+        const score = parseFloat(input.value) || 0;
+        
+        // 해당 학생의 코멘트 찾기
+        const commentInput = Array.from(commentInputs).find(c => c.dataset.student === studentId);
+        const comment = commentInput ? commentInput.value : '';
+
+        if (score > 0) { // 점수가 입력된 경우만
+          results.push({
+            studentId: studentId,
+            itemId: itemId,
+            score: score,
+            comment: comment
+          });
+        }
+      });
+
+      if (results.length === 0) {
+        alert('입력된 점수가 없습니다.');
+        return;
+      }
+
+      try {
+        saveBtn.disabled = true;
+        saveBtn.textContent = '저장 중...';
+
+        const response = await fetch(`${API_BASE}/evaluation-results`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            evaluationId: evaluationId,
+            results: results,
+            teacherName: '교사' // 실제로는 로그인한 교사명 사용
+          })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          showMessage('scoreMessage', `${result.savedCount}개의 점수가 저장되었습니다.`, 'success');
+          
+          // 3초 후 새로고침
+          setTimeout(() => {
+            loadEvaluationForScoring();
+          }, 2000);
+        } else {
+          showMessage('scoreMessage', result.message, 'error');
+        }
+
+      } catch (error) {
+        console.error('Save scores error:', error);
+        showMessage('scoreMessage', '점수 저장에 실패했습니다.', 'error');
+      } finally {
+        saveBtn.disabled = false;
+        saveBtn.textContent = originalText;
+      }
+    }
+
+    // 새 평가 생성 모달 표시
+    function showNewEvaluationModal() {
+      document.getElementById('newEvaluationModal').classList.remove('hidden');
+      document.getElementById('newEvaluationForm').reset();
+    }
+
+    // 새 평가 생성 모달 숨김
+    function hideNewEvaluationModal() {
+      document.getElementById('newEvaluationModal').classList.add('hidden');
+    }
+
+    // 평가항목 추가
+    function addEvalItem() {
+      const container = document.getElementById('evalItems');
+      const newItem = document.createElement('div');
+      newItem.className = 'eval-item';
+      newItem.innerHTML = `
+        <input type="text" placeholder="항목명" class="item-name" required>
+        <input type="number" placeholder="배점" class="item-points" min="1" required>
+        <input type="text" placeholder="평가기준 (선택)" class="item-criteria">
+        <button type="button" onclick="removeEvalItem(this)">삭제</button>
+      `;
+      container.appendChild(newItem);
+    }
+
+    // 평가항목 삭제
+    function removeEvalItem(button) {
+      const container = document.getElementById('evalItems');
+      if (container.children.length > 1) {
+        button.closest('.eval-item').remove();
+      } else {
+        alert('최소 1개의 평가항목이 필요합니다.');
+      }
+    }
+
+    // 새 평가 생성
+    async function createNewEvaluation(event) {
+      event.preventDefault();
+      
+      const form = event.target;
+      const submitBtn = form.querySelector('.submit-btn');
+      const originalText = submitBtn.textContent;
+
+      // 폼 데이터 수집
+      const name = document.getElementById('evalName').value;
+      const description = document.getElementById('evalDescription').value;
+      const type = document.getElementById('evalType').value;
+      const totalPoints = parseInt(document.getElementById('evalPoints').value);
+      const targetClass = document.getElementById('evalTarget').value;
+
+      // 세부항목 수집
+      const items = [];
+      const evalItems = document.querySelectorAll('.eval-item');
+      
+      evalItems.forEach(item => {
+        const itemName = item.querySelector('.item-name').value;
+        const itemPoints = parseInt(item.querySelector('.item-points').value);
+        const itemCriteria = item.querySelector('.item-criteria').value;
+        
+        if (itemName && itemPoints) {
+          items.push({
+            name: itemName,
+            points: itemPoints,
+            criteria: itemCriteria
+          });
+        }
+      });
+
+      // 총배점 검증
+      const itemsTotal = items.reduce((sum, item) => sum + item.points, 0);
+      if (itemsTotal !== totalPoints) {
+        alert(`세부항목 배점 합계(${itemsTotal}점)가 총배점(${totalPoints}점)과 일치하지 않습니다.`);
+        return;
+      }
+
+      try {
+        submitBtn.disabled = true;
+        submitBtn.textContent = '생성 중...';
+
+        const response = await fetch(`${API_BASE}/evaluations`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            name: name,
+            description: description,
+            type: type,
+            totalPoints: totalPoints,
+            targetClass: targetClass,
+            items: items
+          })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          showMessage('manageMessage', '평가항목이 생성되었습니다.', 'success');
+          hideNewEvaluationModal();
+          loadEvaluationManageList(); // 목록 새로고침
+        } else {
+          alert(result.message);
+        }
+
+      } catch (error) {
+        console.error('Create evaluation error:', error);
+        alert('평가항목 생성에 실패했습니다.');
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalText;
+      }
+    }
+
+    // 평가 점수 입력 (평가항목 관리에서)
+    function inputScores(evaluationId) {
+      showScreen('scoreInputScreen');
+      document.getElementById('evaluationSelect').value = evaluationId;
+      loadEvaluationForScoring();
+    }
+
+    // 평가 수정 (추후 구현)
+    function editEvaluation(evaluationId) {
+      alert('평가 수정 기능은 추후 구현 예정입니다.');
+    }
+
+    // 평가 삭제 (추후 구현)
+    function deleteEvaluation(evaluationId) {
+      if (confirm('이 평가항목을 삭제하시겠습니까?')) {
+        alert('평가 삭제 기능은 추후 구현 예정입니다.');
+      }
+    }
+
+    // ==================== 교사 인증 함수 ====================
+
+    // 교사 로그인 모달 표시
+    function showTeacherLoginModal() {
+      document.getElementById('teacherLoginModal').classList.remove('hidden');
+      document.getElementById('teacherPassword').value = '';
+      document.getElementById('teacherLoginMessage').className = 'message';
+      document.getElementById('teacherLoginMessage').textContent = '';
+    }
+
+    // 교사 로그인 모달 숨김
+    function hideTeacherLoginModal() {
+      document.getElementById('teacherLoginModal').classList.add('hidden');
+    }
+
+    // 교사 인증
+    function authenticateTeacher(event) {
+      event.preventDefault();
+      
+      const password = document.getElementById('teacherPassword').value;
+      const messageEl = document.getElementById('teacherLoginMessage');
+      
+      if (password === TEACHER_PASSWORD) {
+        isTeacherMode = true;
+        hideTeacherLoginModal();
+        showScreen('teacherModeScreen');
+        
+        // 메뉴 화면에서 교사 모드 표시
+        updateMenuForTeacherMode();
+        
+        messageEl.className = 'message';
+        messageEl.textContent = '';
+      } else {
+        messageEl.className = 'message show error';
+        messageEl.textContent = '잘못된 비밀번호입니다.';
+        
+        // 3초 후 메시지 숨김
+        setTimeout(() => {
+          messageEl.className = 'message';
+        }, 3000);
+      }
+    }
+
+    // 교사 모드용 메뉴 업데이트
+    function updateMenuForTeacherMode() {
+      const teacherBtn = document.getElementById('teacherModeBtn');
+      if (isTeacherMode) {
+        teacherBtn.textContent = '👨‍🏫 교사 모드 (활성)';
+        teacherBtn.style.backgroundColor = '#28a745';
+      } else {
+        teacherBtn.textContent = '👨‍🏫 교사 모드';
+        teacherBtn.style.backgroundColor = '';
+      }
+    }
+
+    // 교사 모드 종료
+    function exitTeacherMode() {
+      isTeacherMode = false;
+      updateMenuForTeacherMode();
+      showScreen('menuScreen');
     }
   </script>
 </body>

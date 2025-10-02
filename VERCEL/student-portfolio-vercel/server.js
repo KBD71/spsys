@@ -53,15 +53,39 @@ const server = http.createServer(async (req, res) => {
 
   const wrappedRes = wrapResponse(res);
 
+  // URL 파싱 (쿼리 파라미터 지원)
+  const url = new URL(req.url, `http://localhost:${PORT}`);
+  req.query = Object.fromEntries(url.searchParams);
+
   // API 라우팅
-  if (req.url.startsWith('/api/login')) {
+  if (url.pathname === '/api/login') {
     const loginHandler = require('./api/login.js');
     return loginHandler(req, wrappedRes);
   }
 
-  if (req.url.startsWith('/api/change-password')) {
+  if (url.pathname === '/api/change-password') {
     const changePasswordHandler = require('./api/change-password.js');
     return changePasswordHandler(req, wrappedRes);
+  }
+
+  if (url.pathname === '/api/assignments') {
+    const assignmentsHandler = require('./api/assignments.js');
+    return assignmentsHandler(req, wrappedRes);
+  }
+
+  if (url.pathname === '/api/assignment-detail') {
+    const assignmentDetailHandler = require('./api/assignment-detail.js');
+    return assignmentDetailHandler(req, wrappedRes);
+  }
+
+  if (url.pathname === '/api/submit-assignment') {
+    const submitAssignmentHandler = require('./api/submit-assignment.js');
+    return submitAssignmentHandler(req, wrappedRes);
+  }
+
+  if (url.pathname === '/api/my-records') {
+    const myRecordsHandler = require('./api/my-records.js');
+    return myRecordsHandler(req, wrappedRes);
   }
 
   // 정적 파일 (index.html)

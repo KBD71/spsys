@@ -4,7 +4,6 @@
  */
 
 const { google } = require('googleapis');
-const crypto = require('crypto');
 
 /**
  * Google Sheets 인증 및 연결
@@ -25,21 +24,17 @@ async function getSheetsClient() {
 }
 
 /**
- * 비밀번호 해싱 (SHA-256 + Salt)
+ * 비밀번호 해싱 (평문 저장)
  */
 function hashPassword(password) {
-  const salt = process.env.SALT || 'default_salt_change_this';
-  const hash = crypto.createHash('sha256');
-  hash.update(password + salt);
-  return hash.digest('base64');
+  return password;
 }
 
 /**
- * 비밀번호 검증
+ * 비밀번호 검증 (평문 비교)
  */
-function verifyPassword(plainPassword, hashedPassword) {
-  const hash = hashPassword(plainPassword);
-  return hash === hashedPassword;
+function verifyPassword(plainPassword, storedPassword) {
+  return plainPassword === storedPassword;
 }
 
 /**

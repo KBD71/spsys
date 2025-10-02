@@ -26,7 +26,7 @@
       background: white;
       border-radius: 20px;
       box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-      max-width: 500px;
+      max-width: 900px;
       width: 100%;
       overflow: hidden;
     }
@@ -199,10 +199,16 @@
       border-radius: 8px;
       cursor: pointer;
       font-size: 0.9rem;
+      width: auto;
+      margin: 0;
     }
 
     .btn-back:hover {
       background: rgba(255, 255, 255, 0.3);
+    }
+
+    header h1 {
+      padding: 0 80px;
     }
 
     small {
@@ -226,6 +232,131 @@
 
     @keyframes spin {
       to { transform: rotate(360deg); }
+    }
+
+    /* 과제 카드 */
+    .assignment-card {
+      background: white;
+      border: 2px solid #e0e0e0;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 15px;
+      cursor: pointer;
+      transition: all 0.3s;
+      position: relative;
+    }
+
+    .assignment-card:hover {
+      border-color: #667eea;
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+      transform: translateY(-2px);
+    }
+
+    .assignment-card h3 {
+      margin-bottom: 10px;
+      color: #333;
+    }
+
+    .assignment-card p {
+      margin: 5px 0;
+      color: #666;
+      font-size: 0.9rem;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-top: 10px;
+    }
+
+    .badge.submitted {
+      background: #d4edda;
+      color: #155724;
+    }
+
+    .badge.pending {
+      background: #fff3cd;
+      color: #856404;
+    }
+
+    /* 기록 카드 */
+    .record-card {
+      background: #f8f9fa;
+      border-left: 4px solid #667eea;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+
+    .record-card h3 {
+      margin-bottom: 15px;
+      color: #333;
+    }
+
+    .record-card .data-row {
+      display: flex;
+      padding: 8px 0;
+      border-bottom: 1px solid #e0e0e0;
+    }
+
+    .record-card .data-row:last-child {
+      border-bottom: none;
+    }
+
+    .record-card .data-label {
+      font-weight: 600;
+      color: #555;
+      min-width: 120px;
+    }
+
+    .record-card .data-value {
+      color: #333;
+      flex: 1;
+    }
+
+    .feedback-box {
+      background: #fff3cd;
+      border-left: 4px solid #ffc107;
+      padding: 15px;
+      border-radius: 8px;
+      margin-top: 15px;
+    }
+
+    .feedback-box strong {
+      color: #856404;
+    }
+
+    textarea {
+      width: 100%;
+      padding: 12px;
+      border: 2px solid #e0e0e0;
+      border-radius: 10px;
+      font-size: 1rem;
+      font-family: inherit;
+      resize: vertical;
+      min-height: 150px;
+      transition: border-color 0.3s;
+    }
+
+    textarea:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+      color: #999;
+    }
+
+    .empty-state svg {
+      width: 60px;
+      height: 60px;
+      margin-bottom: 15px;
+      opacity: 0.3;
     }
   </style>
 </head>
@@ -268,6 +399,8 @@
         <p><strong>반:</strong> <span id="studentClass">-</span></p>
       </div>
 
+      <button id="viewAssignmentsBtn" class="btn-primary">📝 과제 목록</button>
+      <button id="viewRecordsBtn" class="btn-primary">📊 내 기록 보기</button>
       <button id="changePasswordBtn" class="btn-secondary">🔑 비밀번호 변경</button>
       <button id="logoutBtn" class="btn-danger">🚪 로그아웃</button>
     </main>
@@ -310,6 +443,47 @@
 
         <div id="passwordMessage" class="message"></div>
       </form>
+    </main>
+  </div>
+
+  <!-- 과제 목록 화면 -->
+  <div id="assignmentsScreen" class="container screen">
+    <header style="position: relative;">
+      <button id="assignmentsBackBtn" class="btn-back">← 뒤로</button>
+      <h1>📝 과제 목록</h1>
+    </header>
+    <main>
+      <div id="assignmentsList"></div>
+      <div id="assignmentsMessage" class="message"></div>
+    </main>
+  </div>
+
+  <!-- 과제 상세/제출 화면 -->
+  <div id="assignmentDetailScreen" class="container screen">
+    <header style="position: relative;">
+      <button id="detailBackBtn" class="btn-back">← 뒤로</button>
+      <h1>📝 과제 제출</h1>
+    </header>
+    <main>
+      <div class="info-card" id="assignmentInfo"></div>
+      <form id="assignmentForm">
+        <div id="questionsContainer"></div>
+        <button type="submit" class="btn-primary" id="submitAssignmentBtn">제출하기</button>
+        <button type="button" id="cancelAssignmentBtn" class="btn-secondary">취소</button>
+        <div id="assignmentDetailMessage" class="message"></div>
+      </form>
+    </main>
+  </div>
+
+  <!-- 내 기록 보기 화면 -->
+  <div id="myRecordsScreen" class="container screen">
+    <header style="position: relative;">
+      <button id="recordsBackBtn" class="btn-back">← 뒤로</button>
+      <h1>📊 내 기록</h1>
+    </header>
+    <main>
+      <div id="recordsList"></div>
+      <div id="recordsMessage" class="message"></div>
     </main>
   </div>
 
@@ -490,6 +664,227 @@
         showScreen('loginScreen');
       }
     });
+
+    // 과제 목록 보기
+    document.getElementById('viewAssignmentsBtn').addEventListener('click', async function() {
+      showScreen('assignmentsScreen');
+      await loadAssignments();
+    });
+
+    document.getElementById('assignmentsBackBtn').addEventListener('click', function() {
+      showScreen('menuScreen');
+    });
+
+    // 내 기록 보기
+    document.getElementById('viewRecordsBtn').addEventListener('click', async function() {
+      showScreen('myRecordsScreen');
+      await loadMyRecords();
+    });
+
+    document.getElementById('recordsBackBtn').addEventListener('click', function() {
+      showScreen('menuScreen');
+    });
+
+    // 과제 목록 로드
+    async function loadAssignments() {
+      const listEl = document.getElementById('assignmentsList');
+      listEl.innerHTML = '<p style="text-align: center; color: #999;">과제 목록을 불러오는 중...</p>';
+
+      try {
+        const response = await fetch(`${API_BASE}/assignments?studentId=${currentStudentId}`);
+        const result = await response.json();
+
+        if (result.success) {
+          if (result.assignments.length === 0) {
+            listEl.innerHTML = '<div class="empty-state"><p>등록된 과제가 없습니다.</p></div>';
+            return;
+          }
+
+          listEl.innerHTML = '';
+          result.assignments.forEach(assignment => {
+            const card = document.createElement('div');
+            card.className = 'assignment-card';
+            card.innerHTML = `
+              <h3>${assignment.name}</h3>
+              <p>시작일: ${assignment.startDate || '-'}</p>
+              <p>마감일: ${assignment.dueDate || '-'}</p>
+              <span class="badge ${assignment.submitted ? 'submitted' : 'pending'}">
+                ${assignment.submitted ? '✓ 제출완료' : '미제출'}
+              </span>
+            `;
+            card.addEventListener('click', () => {
+              loadAssignmentDetail(assignment.id);
+            });
+            listEl.appendChild(card);
+          });
+        } else {
+          showMessage('assignmentsMessage', result.message, 'error');
+        }
+      } catch (error) {
+        console.error('Load assignments error:', error);
+        showMessage('assignmentsMessage', '과제 목록을 불러올 수 없습니다.', 'error');
+      }
+    }
+
+    // 과제 상세 로드
+    let currentAssignmentId = '';
+
+    async function loadAssignmentDetail(assignmentId) {
+      currentAssignmentId = assignmentId;
+      showScreen('assignmentDetailScreen');
+
+      const infoEl = document.getElementById('assignmentInfo');
+      const containerEl = document.getElementById('questionsContainer');
+      infoEl.innerHTML = '<p style="color: #999;">과제 정보를 불러오는 중...</p>';
+      containerEl.innerHTML = '';
+
+      try {
+        const response = await fetch(`${API_BASE}/assignment-detail?assignmentId=${assignmentId}&studentId=${currentStudentId}`);
+        const result = await response.json();
+
+        if (result.success) {
+          const assignment = result.assignment;
+          infoEl.innerHTML = `
+            <p><strong>과제명:</strong> ${assignment.name}</p>
+            <p><strong>시작일:</strong> ${assignment.startDate || '-'}</p>
+            <p><strong>마감일:</strong> ${assignment.dueDate || '-'}</p>
+            ${result.submitted ? `<p><strong>제출일시:</strong> ${result.submittedAt || '-'}</p>` : ''}
+          `;
+
+          containerEl.innerHTML = '';
+          result.questions.forEach((q, index) => {
+            if (q.column === '제출일시' || q.column === '학생피드백') {
+              return; // 제출일시와 학생피드백은 표시하지 않음
+            }
+
+            const formGroup = document.createElement('div');
+            formGroup.className = 'form-group';
+            formGroup.innerHTML = `
+              <label for="q${index}">${q.question || q.column}</label>
+              <textarea id="q${index}" name="${q.column}" rows="4">${q.answer || ''}</textarea>
+            `;
+            containerEl.appendChild(formGroup);
+          });
+        } else {
+          showMessage('assignmentDetailMessage', result.message, 'error');
+        }
+      } catch (error) {
+        console.error('Load assignment detail error:', error);
+        showMessage('assignmentDetailMessage', '과제 정보를 불러올 수 없습니다.', 'error');
+      }
+    }
+
+    document.getElementById('detailBackBtn').addEventListener('click', function() {
+      showScreen('assignmentsScreen');
+    });
+
+    document.getElementById('cancelAssignmentBtn').addEventListener('click', function() {
+      showScreen('assignmentsScreen');
+    });
+
+    // 과제 제출
+    document.getElementById('assignmentForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+
+      const submitBtn = document.getElementById('submitAssignmentBtn');
+      const formData = new FormData(e.target);
+      const answers = {};
+
+      for (let [key, value] of formData.entries()) {
+        answers[key] = value;
+      }
+
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '제출 중... <span class="loading"></span>';
+      showMessage('assignmentDetailMessage', '과제를 제출하는 중...', 'info');
+
+      try {
+        const response = await fetch(`${API_BASE}/submit-assignment`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            studentId: currentStudentId,
+            assignmentId: currentAssignmentId,
+            answers: answers
+          })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          showMessage('assignmentDetailMessage', result.message, 'success');
+          setTimeout(() => {
+            showScreen('assignmentsScreen');
+            loadAssignments();
+          }, 2000);
+        } else {
+          showMessage('assignmentDetailMessage', result.message, 'error');
+        }
+      } catch (error) {
+        console.error('Submit assignment error:', error);
+        showMessage('assignmentDetailMessage', '과제 제출 중 오류가 발생했습니다.', 'error');
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = '제출하기';
+      }
+    });
+
+    // 내 기록 로드
+    async function loadMyRecords() {
+      const listEl = document.getElementById('recordsList');
+      listEl.innerHTML = '<p style="text-align: center; color: #999;">기록을 불러오는 중...</p>';
+
+      try {
+        const response = await fetch(`${API_BASE}/my-records?studentId=${currentStudentId}`);
+        const result = await response.json();
+
+        if (result.success) {
+          if (result.records.length === 0) {
+            listEl.innerHTML = '<div class="empty-state"><p>공개된 기록이 없습니다.</p></div>';
+            return;
+          }
+
+          listEl.innerHTML = '';
+          result.records.forEach(record => {
+            const card = document.createElement('div');
+            card.className = 'record-card';
+
+            let html = `<h3>${record.sheetName}</h3>`;
+
+            // 데이터 표시
+            for (let [key, value] of Object.entries(record.data)) {
+              if (key === '학번' || key === '반' || key === '이름') continue;
+              html += `
+                <div class="data-row">
+                  <div class="data-label">${key}:</div>
+                  <div class="data-value">${value || '-'}</div>
+                </div>
+              `;
+            }
+
+            // 피드백 있으면 표시
+            if (record.hasFeedback && record.feedback) {
+              html += `
+                <div class="feedback-box">
+                  <strong>💬 내 피드백:</strong>
+                  <p style="margin-top: 8px;">${record.feedback}</p>
+                </div>
+              `;
+            }
+
+            card.innerHTML = html;
+            listEl.appendChild(card);
+          });
+        } else {
+          showMessage('recordsMessage', result.message, 'error');
+        }
+      } catch (error) {
+        console.error('Load my records error:', error);
+        showMessage('recordsMessage', '기록을 불러올 수 없습니다.', 'error');
+      }
+    }
   </script>
 </body>
 </html>

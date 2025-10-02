@@ -50,10 +50,10 @@ async function findStudent(studentId) {
     const sheets = await getSheetsClient();
     const spreadsheetId = process.env.SPREADSHEET_ID;
 
-    // 시트 데이터 가져오기
+    // 시트 데이터 가져오기 (충분히 넓은 범위)
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: '학생명단_전체!A:G'
+      range: '학생명단_전체!A:Z'
     });
 
     const rows = response.data.values;
@@ -160,10 +160,10 @@ async function updatePassword(row, newPasswordHash, currentCount) {
     const sheets = await getSheetsClient();
     const spreadsheetId = process.env.SPREADSHEET_ID;
 
-    // 헤더 가져오기
+    // 헤더 가져오기 (충분히 넓은 범위)
     const headerResponse = await sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: '학생명단_전체!A1:G1'
+      range: '학생명단_전체!A1:Z1'
     });
 
     const headers = headerResponse.data.values[0];

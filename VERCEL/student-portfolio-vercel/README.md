@@ -29,7 +29,8 @@ Google Sheets와 Vercel Serverless Functions를 사용한 학생 비밀번호 �
 
 1. Google Sheets 생성
 2. 시트 이름: `학생명단_전체`
-3. 헤더: `학번 | 이름 | 반 | 비밀번호 | 이메일 | 비밀번호변경일 | 변경횟수`
+3. 헤더 (최소 필수): `학번 | 반 | 번호 | 이름 | 비밀번호 | 이메일 | 상태`
+   - 선택 컬럼: `비밀번호변경일`, `변경횟수` (자동으로 감지)
 4. **중요**: 서비스 계정 이메일로 시트 공유 (편집자 권한)
 
 ### 3. 로컬 설정
@@ -58,15 +59,30 @@ SPREADSHEET_ID=your_spreadsheet_id_here
 SALT=your_random_salt_string
 ```
 
-### 5. 로컬 테스트
+### 5. 초기 비밀번호 설정
+
+비밀번호 해싱 도구 사용:
 
 ```bash
+# 비밀번호 "1234"를 해싱
+npm run hash 1234
+```
+
+출력된 해시 값을 Google Sheets의 "비밀번호" 열에 입력
+
+### 6. 로컬 테스트
+
+```bash
+# 로컬 개발 서버 시작
 npm run dev
+
+# 또는 Google Sheets 연결 테스트
+npm run test
 ```
 
 브라우저에서 `http://localhost:3000` 접속
 
-### 6. Vercel 배포
+### 7. Vercel 배포
 
 ```bash
 # Vercel CLI 설치
@@ -79,7 +95,7 @@ vercel login
 vercel --prod
 ```
 
-### 7. Vercel 환경 변수 설정
+### 8. Vercel 환경 변수 설정
 
 Vercel 대시보드에서:
 1. Project → Settings → Environment Variables

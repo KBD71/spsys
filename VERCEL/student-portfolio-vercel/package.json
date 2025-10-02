@@ -1,0 +1,25 @@
+{
+  "name": "student-portfolio-vercel",
+  "version": "1.0.0",
+  "description": "학생 포트폴리오 시스템 - Vercel 배포용",
+  "main": "index.html",
+  "scripts": {
+    "dev": "vercel dev",
+    "deploy": "vercel --prod"
+  },
+  "keywords": [
+    "student",
+    "portfolio",
+    "password",
+    "vercel",
+    "serverless"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "googleapis": "^118.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

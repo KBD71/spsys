@@ -1806,58 +1806,6 @@ function addClickableButtons() {
   }
 }
 
-/**
- * onEdit 트리거 - 체크박스 클릭 시 자동 실행
- */
-function onEdit(e) {
-  try {
-    const sheet = e.source.getActiveSheet();
-    const range = e.range;
-    
-    // 메뉴 시트가 아니면 무시
-    if (sheet.getName() !== '메뉴') return;
-    
-    // 체크박스가 체크되었을 때만 실행
-    if (e.value !== true) return;
-    
-    const row = range.getRow();
-    const col = range.getColumn();
-    
-    // 시트 이동 체크박스들 (F11-F14)
-    if (col === 6) {
-      let targetSheet = '';
-      switch (row) {
-        case 11: targetSheet = '학생명단_전체'; break;
-        case 12: targetSheet = '과제목록'; break;
-        case 13: targetSheet = '제출현황'; break;
-        case 14: targetSheet = '공개'; break;
-      }
-      
-      if (targetSheet) {
-        goToSheet(targetSheet);
-        // 체크박스 리셋
-        range.setValue(false);
-      }
-    }
-    
-    // 액션 체크박스들 (D22-D26)
-    if (col === 4 && row >= 22 && row <= 26) {
-      switch (row) {
-        case 22: actionInitializeSheets(); break;
-        case 23: actionInitializeEvaluation(); break;
-        case 24: actionCreateSampleData(); break;
-        case 25: actionCreateBackup(); break;
-        case 26: actionCheckSystemStatus(); break;
-      }
-      
-      // 체크박스 리셋
-      range.setValue(false);
-    }
-    
-  } catch (error) {
-    Logger.log(`onEdit 오류: ${error.message}`);
-  }
-}
 
 // ==================== 메뉴 시트 버튼 액션 함수들 ====================
 
@@ -2595,7 +2543,7 @@ function createMacroMenu() {
 }
 
 /**
- * 동적 하이퍼링크 메뉴 시스템
+ * 개선된 동적 하이퍼링크 메뉴 시스템
  */
 function createDynamicHyperlinkMenu() {
   try {
@@ -2620,7 +2568,7 @@ function createDynamicHyperlinkMenu() {
       ['시스템 상태', '운영중', '현재 시스템 상태', new Date().toLocaleDateString()],
       [''],
       ['📊 시트 관리 및 바로가기'],
-      ['시트명', '상태', '설명', '작업']
+      ['카테고리', '시트명', '상태', '설명', '삭제']
     ];
     
     // 헤더 데이터 입력
@@ -2631,14 +2579,25 @@ function createDynamicHyperlinkMenu() {
     });
     
     // 헤더 서식 설정
-    menuSheet.getRange(1, 1, 1, 4).merge().setBackground('#4285F4').setFontColor('white').setFontWeight('bold').setFontSize(16).setHorizontalAlignment('center');
-    menuSheet.getRange(3, 1, 1, 4).merge().setBackground('#34A853').setFontColor('white').setFontWeight('bold').setFontSize(14).setHorizontalAlignment('center');
-    menuSheet.getRange(9, 1, 1, 4).merge().setBackground('#EA4335').setFontColor('white').setFontWeight('bold').setFontSize(14).setHorizontalAlignment('center');
-    menuSheet.getRange(4, 1, 1, 4).setBackground('#F0F0F0').setFontWeight('bold');
-    menuSheet.getRange(10, 1, 1, 4).setBackground('#F0F0F0').setFontWeight('bold');
+    menuSheet.getRange(1, 1, 1, 5).merge().setBackground('#4285F4').setFontColor('white').setFontWeight('bold').setFontSize(16).setHorizontalAlignment('center');
+    menuSheet.getRange(3, 1, 1, 5).merge().setBackground('#34A853').setFontColor('white').setFontWeight('bold').setFontSize(14).setHorizontalAlignment('center');
+    menuSheet.getRange(9, 1, 1, 5).merge().setBackground('#EA4335').setFontColor('white').setFontWeight('bold').setFontSize(14).setHorizontalAlignment('center');
+    menuSheet.getRange(4, 1, 1, 5).setBackground('#F0F0F0').setFontWeight('bold');
+    menuSheet.getRange(10, 1, 1, 5).setBackground('#F0F0F0').setFontWeight('bold');
     
     // 동적 시트 목록 생성
     updateSheetList();
+    
+    // 주요 기능 실행 영역 추가
+    const functionsData = [
+      [''],
+      ['🛠️ 주요 기능 실행'],
+      ['기능', '설명'],
+      ['📊 통계 새로고침', '시스템 통계 정보 업데이트'],
+      ['🔄 전체 초기화', '전체 시스템 초기화 실행'],
+      ['💾 백업 생성', '현재 데이터 백업'],
+      ['🗂️ 샘플 데이터', '테스트용 샘플 데이터 생성']
+    ];
     
     // 새 시트 생성 버튼 영역 추가
     const createButtonsData = [
@@ -2651,10 +2610,32 @@ function createDynamicHyperlinkMenu() {
       ['🗂️ 커스텀 시트', '사용자 정의 시트 생성']
     ];
     
-    const startRow = 11 + ss.getSheets().length + 2;
+    const sheetsCount = ss.getSheets().length;
+    let currentRow = 11 + sheetsCount + 2;
+    
+    // 주요 기능 섹션 추가
+    functionsData.forEach((row, index) => {
+      row.forEach((cell, colIndex) => {
+        const range = menuSheet.getRange(currentRow + index, colIndex + 1);
+        range.setValue(cell);
+        
+        // 기능 버튼 스타일 적용
+        if (index >= 3 && colIndex === 0) {
+          range.setBackground('#FFF3E0').setFontWeight('bold').setBorder(true, true, true, true);
+        }
+      });
+    });
+    
+    // 기능 섹션 제목 서식
+    menuSheet.getRange(currentRow + 1, 1, 1, 2).merge().setBackground('#FF9800').setFontColor('white').setFontWeight('bold').setFontSize(14).setHorizontalAlignment('center');
+    menuSheet.getRange(currentRow + 2, 1, 1, 2).setBackground('#F0F0F0').setFontWeight('bold');
+    
+    currentRow += functionsData.length + 1;
+    
+    // 새 시트 생성 섹션 추가
     createButtonsData.forEach((row, index) => {
       row.forEach((cell, colIndex) => {
-        const range = menuSheet.getRange(startRow + index, colIndex + 1);
+        const range = menuSheet.getRange(currentRow + index, colIndex + 1);
         range.setValue(cell);
         
         // 버튼 스타일 적용
@@ -2665,18 +2646,19 @@ function createDynamicHyperlinkMenu() {
     });
     
     // 제목 서식
-    menuSheet.getRange(startRow + 1, 1, 1, 2).merge().setBackground('#FF9800').setFontColor('white').setFontWeight('bold').setFontSize(14).setHorizontalAlignment('center');
-    menuSheet.getRange(startRow + 2, 1, 1, 2).setBackground('#F0F0F0').setFontWeight('bold');
+    menuSheet.getRange(currentRow + 1, 1, 1, 2).merge().setBackground('#2196F3').setFontColor('white').setFontWeight('bold').setFontSize(14).setHorizontalAlignment('center');
+    menuSheet.getRange(currentRow + 2, 1, 1, 2).setBackground('#F0F0F0').setFontWeight('bold');
     
     // 열 너비 조정
-    menuSheet.setColumnWidth(1, 200);
-    menuSheet.setColumnWidth(2, 100);
-    menuSheet.setColumnWidth(3, 300);
-    menuSheet.setColumnWidth(4, 150);
+    menuSheet.setColumnWidth(1, 120);  // 카테고리
+    menuSheet.setColumnWidth(2, 200);  // 시트명
+    menuSheet.setColumnWidth(3, 80);   // 상태
+    menuSheet.setColumnWidth(4, 300);  // 설명
+    menuSheet.setColumnWidth(5, 80);   // 삭제
     
     return {
       success: true,
-      message: '동적 하이퍼링크 메뉴가 생성되었습니다.'
+      message: '개선된 동적 하이퍼링크 메뉴가 생성되었습니다.'
     };
     
   } catch (error) {
@@ -2689,7 +2671,7 @@ function createDynamicHyperlinkMenu() {
 }
 
 /**
- * 시트 목록 자동 업데이트 (하이퍼링크 포함)
+ * 개선된 시트 목록 자동 업데이트 (카테고리 구분, 하이퍼링크 포함)
  */
 function updateSheetList() {
   try {
@@ -2706,11 +2688,15 @@ function updateSheetList() {
     // 기존 시트 목록 삭제 (헤더 제외)
     const lastRow = menuSheet.getLastRow();
     if (lastRow > startRow) {
-      menuSheet.getRange(startRow, 1, lastRow - startRow + 1, 4).clear();
+      menuSheet.getRange(startRow, 1, lastRow - startRow + 1, 5).clear();
     }
     
+    // 필수 시트와 선택 시트 구분
+    const requiredSheets = ['학생명단_전체', '과제목록', '평가항목설정', '평가세부항목', '평가결과', '제출현황', '공개'];
+    let currentRow = startRow;
+    
     // 시트별 정보 및 하이퍼링크 생성
-    sheets.forEach((sheet, index) => {
+    sheets.forEach((sheet) => {
       if (sheet.getName() === '메뉴') return; // 메뉴 시트 제외
       
       const sheetName = sheet.getName();
@@ -2719,25 +2705,57 @@ function updateSheetList() {
       const spreadsheetId = ss.getId();
       const sheetUrl = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit#gid=${gid}`;
       
-      const currentRow = startRow + index;
+      // 카테고리 결정
+      let category = '📁 선택';
+      let categoryColor = '#E8F5E8';
+      let isDeletable = true;
+      
+      if (requiredSheets.includes(sheetName)) {
+        category = '⭐ 필수';
+        categoryColor = '#FFE8E8';
+        isDeletable = false;
+      } else if (sheetName.includes('학생명단_')) {
+        category = '👥 학급';
+        categoryColor = '#E8F0FF';
+      } else if (sheetName.includes('과제_')) {
+        category = '📝 과제';
+        categoryColor = '#FFF0E8';
+      } else if (sheetName.includes('평가_')) {
+        category = '📊 평가';
+        categoryColor = '#F0E8FF';
+      }
+      
+      // 카테고리
+      menuSheet.getRange(currentRow, 1).setValue(category);
+      menuSheet.getRange(currentRow, 1).setBackground(categoryColor).setHorizontalAlignment('center').setFontWeight('bold');
       
       // 시트명에 하이퍼링크 설정
-      menuSheet.getRange(currentRow, 1).setFormula(`=HYPERLINK("${sheetUrl}", "${sheetName}")`);
-      menuSheet.getRange(currentRow, 1).setFontColor('#1155CC').setFontWeight('bold');
+      menuSheet.getRange(currentRow, 2).setFormula(`=HYPERLINK("${sheetUrl}", "${sheetName}")`);
+      menuSheet.getRange(currentRow, 2).setFontColor('#1155CC').setFontWeight('bold');
       
       // 상태 정보
       let status = '✅ 정상';
       if (rowCount <= 1) status = '⚠️ 비어있음';
       
-      menuSheet.getRange(currentRow, 2).setValue(status);
+      menuSheet.getRange(currentRow, 3).setValue(status);
+      menuSheet.getRange(currentRow, 3).setHorizontalAlignment('center');
       
       // 설명 생성
       let description = getSheetDescription(sheetName, rowCount);
-      menuSheet.getRange(currentRow, 3).setValue(description);
+      menuSheet.getRange(currentRow, 4).setValue(description);
       
-      // 작업 버튼
-      menuSheet.getRange(currentRow, 4).setValue('🗑️ 삭제');
-      menuSheet.getRange(currentRow, 4).setBackground('#FFEBEE').setFontColor('#D32F2F').setHorizontalAlignment('center');
+      // 삭제 버튼 (필수 시트는 삭제 불가)
+      if (isDeletable) {
+        menuSheet.getRange(currentRow, 5).setValue('🗑️');
+        menuSheet.getRange(currentRow, 5).setBackground('#FFEBEE').setFontColor('#D32F2F').setHorizontalAlignment('center');
+        menuSheet.getRange(currentRow, 5).setNote(`${sheetName} 시트 삭제`);
+      } else {
+        menuSheet.getRange(currentRow, 5).setValue('🔒');
+        menuSheet.getRange(currentRow, 5).setBackground('#F5F5F5').setFontColor('#757575').setHorizontalAlignment('center');
+        menuSheet.getRange(currentRow, 5).setNote('필수 시트는 삭제할 수 없습니다');
+      }
+      
+      currentRow++;
     });
     
     return {
@@ -2857,29 +2875,36 @@ function createNewSheet(sheetType, customName = '') {
 }
 
 /**
- * 시트 삭제
+ * 시트 삭제 (개선됨)
  */
-function deleteSheet(sheetName) {
+function deleteSheetByName(sheetName) {
   try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const sheet = ss.getSheetByName(sheetName);
     
     if (!sheet) {
-      throw new Error('시트를 찾을 수 없습니다.');
+      throw new Error(`"${sheetName}" 시트를 찾을 수 없습니다.`);
     }
     
     if (sheetName === '메뉴') {
       throw new Error('메뉴 시트는 삭제할 수 없습니다.');
     }
     
+    // 필수 시트 확인
+    const requiredSheets = ['학생명단_전체', '과제목록', '평가항목설정', '평가세부항목', '평가결과', '제출현황', '공개'];
+    if (requiredSheets.includes(sheetName)) {
+      throw new Error('필수 시트는 삭제할 수 없습니다.');
+    }
+    
     // 삭제 확인
     const ui = SpreadsheetApp.getUi();
-    const response = ui.alert('시트 삭제', `"${sheetName}" 시트를 삭제하시겠습니까?`, ui.ButtonSet.YES_NO);
+    const response = ui.alert('시트 삭제', `"${sheetName}" 시트를 삭제하시겠습니까?\n\n⚠️ 이 작업은 되돌릴 수 없습니다.`, ui.ButtonSet.YES_NO);
     
     if (response === ui.Button.YES) {
       ss.deleteSheet(sheet);
       updateSheetList(); // 메뉴 업데이트
       
+      ui.alert('삭제 완료', `"${sheetName}" 시트가 삭제되었습니다.`, ui.ButtonSet.OK);
       return {
         success: true,
         message: `${sheetName} 시트가 삭제되었습니다.`
@@ -2893,6 +2918,7 @@ function deleteSheet(sheetName) {
     
   } catch (error) {
     Logger.log(`시트 삭제 오류: ${error.message}`);
+    SpreadsheetApp.getUi().alert('삭제 실패', error.message, SpreadsheetApp.getUi().ButtonSet.OK);
     return {
       success: false,
       message: '시트 삭제 실패: ' + error.message
@@ -2901,7 +2927,89 @@ function deleteSheet(sheetName) {
 }
 
 /**
- * 메뉴 클릭 이벤트 처리
+ * 백업 생성 기능
+ */
+function actionCreateBackup() {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const timestamp = new Date().toLocaleString('ko-KR').replace(/[\/\s:]/g, '_');
+    const backupName = `${ss.getName()}_백업_${timestamp}`;
+    
+    // 현재 스프레드시트 복사
+    const backupFile = DriveApp.getFileById(ss.getId()).makeCopy(backupName);
+    
+    return {
+      success: true,
+      message: `백업이 생성되었습니다: ${backupName}`,
+      fileId: backupFile.getId()
+    };
+    
+  } catch (error) {
+    Logger.log(`백업 생성 오류: ${error.message}`);
+    return {
+      success: false,
+      message: '백업 생성 실패: ' + error.message
+    };
+  }
+}
+
+/**
+ * 샘플 데이터 생성 기능
+ */
+function actionCreateSampleData() {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    
+    // 학생명단_전체 시트에 샘플 데이터 추가
+    const studentSheet = ss.getSheetByName('학생명단_전체');
+    if (studentSheet) {
+      const sampleStudents = [
+        ['10101', '김철수', '1-1', 'hashed_password_1', new Date().toLocaleDateString()],
+        ['10102', '이영희', '1-1', 'hashed_password_2', new Date().toLocaleDateString()],
+        ['10103', '박민수', '1-1', 'hashed_password_3', new Date().toLocaleDateString()],
+        ['20201', '최지영', '2-2', 'hashed_password_4', new Date().toLocaleDateString()],
+        ['20202', '정현우', '2-2', 'hashed_password_5', new Date().toLocaleDateString()]
+      ];
+      
+      const lastRow = studentSheet.getLastRow();
+      if (lastRow <= 1) { // 헤더만 있는 경우
+        studentSheet.getRange(2, 1, sampleStudents.length, 5).setValues(sampleStudents);
+      }
+    }
+    
+    // 과제목록 시트에 샘플 데이터 추가
+    const assignmentSheet = ss.getSheetByName('과제목록');
+    if (assignmentSheet) {
+      const sampleAssignments = [
+        ['A001', '수학 함수 과제', '함수의 그래프를 그리고 분석하세요', '전체', new Date().toLocaleDateString(), new Date(Date.now() + 7*24*60*60*1000).toLocaleDateString(), '활성'],
+        ['A002', '영어 에세이', '자유 주제로 500단어 에세이 작성', '전체', new Date().toLocaleDateString(), new Date(Date.now() + 14*24*60*60*1000).toLocaleDateString(), '활성']
+      ];
+      
+      const lastRow = assignmentSheet.getLastRow();
+      if (lastRow <= 1) {
+        assignmentSheet.getRange(2, 1, sampleAssignments.length, 7).setValues(sampleAssignments);
+      }
+    }
+    
+    // 메뉴 업데이트
+    updateSheetList();
+    
+    return {
+      success: true,
+      message: '샘플 데이터가 생성되었습니다.'
+    };
+    
+  } catch (error) {
+    Logger.log(`샘플 데이터 생성 오류: ${error.message}`);
+    return {
+      success: false,
+      message: '샘플 데이터 생성 실패: ' + error.message
+    };
+  }
+}
+
+/**
+ * 개선된 메뉴 클릭 이벤트 처리
  */
 function onEditMenuClick(e) {
   if (!e || !e.range) return;
@@ -2916,31 +3024,61 @@ function onEditMenuClick(e) {
   const value = range.getValue();
   
   try {
-    // 새 시트 생성 버튼 클릭 처리
+    Logger.log(`메뉴 클릭: 행=${row}, 열=${col}, 값="${value}"`);
+    
+    // 주요 기능 실행 버튼 클릭 처리
     if (col === 1 && row > 10) {
       const buttonText = String(value);
       
-      if (buttonText.includes('새 학급 생성')) {
+      if (buttonText.includes('통계 새로고침')) {
+        const result = updateMenuStats();
+        SpreadsheetApp.getUi().alert('통계 새로고침', result.message, SpreadsheetApp.getUi().ButtonSet.OK);
+        return;
+      } else if (buttonText.includes('전체 초기화')) {
+        const ui = SpreadsheetApp.getUi();
+        const response = ui.alert('전체 초기화', '전체 시스템을 초기화하시겠습니까?', ui.ButtonSet.YES_NO);
+        if (response === ui.Button.YES) {
+          const result = initializeFullSystem();
+          ui.alert('전체 초기화', result.message, ui.ButtonSet.OK);
+        }
+        return;
+      } else if (buttonText.includes('백업 생성')) {
+        const result = actionCreateBackup();
+        SpreadsheetApp.getUi().alert('백업 생성', result.message, SpreadsheetApp.getUi().ButtonSet.OK);
+        return;
+      } else if (buttonText.includes('샘플 데이터')) {
+        const result = actionCreateSampleData();
+        SpreadsheetApp.getUi().alert('샘플 데이터', result.message, SpreadsheetApp.getUi().ButtonSet.OK);
+        return;
+      } else if (buttonText.includes('새 학급 생성')) {
         createNewSheet('class');
+        return;
       } else if (buttonText.includes('새 과제 시트')) {
         createNewSheet('assignment');
+        return;
       } else if (buttonText.includes('새 평가 시트')) {
         createNewSheet('evaluation');
+        return;
       } else if (buttonText.includes('커스텀 시트')) {
         createNewSheet('custom');
+        return;
       }
     }
     
-    // 삭제 버튼 클릭 처리
-    if (col === 4 && value === '🗑️ 삭제') {
-      const sheetName = sheet.getRange(row, 1).getDisplayValue().replace(/^[🔗\s]*/, '');
+    // 삭제 버튼 클릭 처리 (5열)
+    if (col === 5 && value === '🗑️') {
+      const sheetName = sheet.getRange(row, 2).getDisplayValue();
+      Logger.log(`삭제 요청: ${sheetName}`);
+      
       if (sheetName && sheetName !== '메뉴') {
-        deleteSheet(sheetName);
+        const cleanSheetName = sheetName.replace(/^[🔗\s]*/, '').trim();
+        deleteSheetByName(cleanSheetName);
       }
     }
     
   } catch (error) {
     Logger.log(`메뉴 클릭 처리 오류: ${error.message}`);
+    SpreadsheetApp.getUi().alert('오류', `처리 중 오류가 발생했습니다: ${error.message}`, SpreadsheetApp.getUi().ButtonSet.OK);
   }
 }
 

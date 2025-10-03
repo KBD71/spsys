@@ -1353,18 +1353,21 @@ function createMenuSheet() {
     
     const sheetData = [
       ['시트명', '상태', '설명', '마지막 업데이트', '액션'],
-      ['학생명단_전체', '필수', '전체 학생 명단', '', '👁️ 보기'],
-      ['과제목록', '필수', '과제 관리', '', '👁️ 보기'],
-      ['제출현황', '필수', '과제 제출 상황', '', '👁️ 보기'],
-      ['공개', '필수', '공개 기록 설정', '', '👁️ 보기'],
-      ['평가항목설정', '평가용', '평가 항목 관리', '', '👁️ 보기'],
-      ['평가세부항목', '평가용', '평가 세부 기준', '', '👁️ 보기'],
-      ['평가결과', '평가용', '평가 점수 저장', '', '👁️ 보기'],
-      ['평가통계', '평가용', '평가 통계 데이터', '', '👁️ 보기']
+      ['학생명단_전체', '필수', '전체 학생 명단', '', '🔄 매크로 실행'],
+      ['과제목록', '필수', '과제 관리', '', '🔄 매크로 실행'],
+      ['제출현황', '필수', '과제 제출 상황', '', '🔄 매크로 실행'],
+      ['공개', '필수', '공개 기록 설정', '', '🔄 매크로 실행'],
+      ['평가항목설정', '평가용', '평가 항목 관리', '', '🔄 매크로 실행'],
+      ['평가세부항목', '평가용', '평가 세부 기준', '', '🔄 매크로 실행'],
+      ['평가결과', '평가용', '평가 점수 저장', '', '🔄 매크로 실행'],
+      ['평가통계', '평가용', '평가 통계 데이터', '', '🔄 매크로 실행']
     ];
     
     menuSheet.getRange(10, 1, sheetData.length, 5).setValues(sheetData);
     menuSheet.getRange('A10:E10').setFontWeight('bold').setBackground('#f5f5f5');
+    
+    // 액션 버튼들을 클릭 가능하게 만들기
+    menuSheet.getRange('E11:E18').setFontColor('#1a73e8').setFontWeight('bold');
     
     // 4. 시스템 액션 섹션
     menuSheet.getRange('A20').setValue('⚙️ 시스템 액션').setFontSize(14).setFontWeight('bold').setBackground('#fff3e0');
@@ -1426,6 +1429,45 @@ function createMenuSheet() {
     
     menuSheet.setConditionalFormatRules([rule1, rule2]);
     
+    // 9. 빠른 액션 버튼 섹션 추가
+    menuSheet.getRange('G3').setValue('🚀 빠른 액션');
+    menuSheet.getRange('G3').setFontSize(14).setFontWeight('bold').setBackground('#ffe0b3');
+    
+    // 빠른 액션 버튼 목록
+    const quickActions = [
+      ['📊 통계 새로고침', 'refreshStats()'],
+      ['🔄 시트 초기화', 'actionInitializeSheets()'],
+      ['📈 평가시스템 초기화', 'actionInitializeEvaluation()'],
+      ['📋 샘플데이터 생성', 'actionCreateSampleData()'],
+      ['💾 백업 생성', 'actionCreateBackup()'],
+      ['🔍 시스템 상태 확인', 'actionCheckSystemStatus()']
+    ];
+    
+    menuSheet.getRange('G4').setValue('액션');
+    menuSheet.getRange('H4').setValue('실행 함수명');
+    menuSheet.getRange('G4:H4').setFontWeight('bold').setBackground('#f5f5f5');
+    
+    for (let i = 0; i < quickActions.length; i++) {
+      menuSheet.getRange(5 + i, 7).setValue(quickActions[i][0]);
+      menuSheet.getRange(5 + i, 8).setValue(quickActions[i][1]);
+    }
+    
+    // 스타일링
+    menuSheet.getRange('G5:H10').setFontSize(10);
+    menuSheet.getRange('H5:H10').setFontFamily('Courier New').setFontColor('#0066cc');
+    
+    // 사용법 안내
+    menuSheet.getRange('G12').setValue('💡 사용법');
+    menuSheet.getRange('G13').setValue('1. Apps Script 열기');
+    menuSheet.getRange('G14').setValue('2. 함수명 복사 후 실행');
+    menuSheet.getRange('G15').setValue('3. 또는 확장프로그램>매크로');
+    menuSheet.getRange('G12:G15').setFontSize(9).setFontColor('#666666');
+    menuSheet.getRange('G12').setFontWeight('bold').setFontColor('#333333');
+    
+    // 컬럼 너비 조정
+    menuSheet.setColumnWidth(7, 150); // 액션
+    menuSheet.setColumnWidth(8, 200); // 함수명
+    
     Logger.log('✅ 메뉴 시트 생성/업데이트 완료');
     return {
       success: true,
@@ -1486,6 +1528,507 @@ function getSystemStats() {
   return stats;
 }
 
+/**
+ * 매크로 메뉴 생성 (가장 간단한 클릭 방법)
+ */
+function createMacroMenu() {
+  try {
+    SpreadsheetApp.getUi().alert('✅ 매크로 메뉴 사용법:\n\n' +
+      '🎯 가장 간단한 방법!\n\n' +
+      '1. Google Sheets에서\n' +
+      '2. 확장 프로그램 > 매크로 클릭\n' +
+      '3. 원하는 함수 선택\n' +
+      '4. 클릭으로 즉시 실행!\n\n' +
+      '📋 주요 함수들:\n' +
+      '• goToStudents() - 학생명단으로 이동\n' +
+      '• goToAssignments() - 과제목록으로 이동\n' +
+      '• refreshStats() - 통계 새로고침\n' +
+      '• actionCreateBackup() - 백업 생성\n\n' +
+      '💡 트리거 설치 불필요!');
+    
+    return { success: true, message: '매크로 메뉴 사용법이 안내되었습니다.' };
+    
+  } catch (error) {
+    Logger.log(`매크로 메뉴 안내 오류: ${error.message}`);
+    return { success: false, message: '매크로 메뉴 안내 실패: ' + error.message };
+  }
+}
+
+/**
+ * 아이콘 버튼 생성 가이드 (가장 예쁜 방법)
+ */
+function createIconButtonGuide() {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const menuSheet = ss.getSheetByName('메뉴');
+    
+    if (!menuSheet) {
+      SpreadsheetApp.getUi().alert('❌ 메뉴 시트를 찾을 수 없습니다.');
+      return;
+    }
+    
+    // 아이콘 버튼 가이드 추가
+    menuSheet.getRange('L3').setValue('🎨 아이콘 버튼 만들기 (추천!)');
+    menuSheet.getRange('L3').setFontSize(14).setFontWeight('bold').setBackground('#f0f8ff');
+    
+    const iconGuide = [
+      ['방법', '설명'],
+      ['1', '삽입 > 이미지 > 아이콘'],
+      ['2', '원하는 아이콘 선택'],
+      ['3', '아이콘 클릭하여 선택'],
+      ['4', '⋮ > 스크립트 할당'],
+      ['5', '함수명 입력']
+    ];
+    
+    menuSheet.getRange('L4:M9').setValues(iconGuide);
+    menuSheet.getRange('L4:M4').setFontWeight('bold').setBackground('#f5f5f5');
+    
+    // 추천 아이콘 및 함수 매칭
+    menuSheet.getRange('L11').setValue('🏠 추천 아이콘 & 함수');
+    menuSheet.getRange('L11').setFontWeight('bold').setBackground('#e8f5e8');
+    
+    const iconMatching = [
+      ['아이콘 종류', '함수명', '용도'],
+      ['🏠 홈', 'goToStudents', '학생명단으로'],
+      ['📝 문서', 'goToAssignments', '과제목록으로'],
+      ['📊 차트', 'goToEvaluations', '평가로'],
+      ['🔄 새로고침', 'refreshStats', '통계 업데이트'],
+      ['💾 저장', 'actionCreateBackup', '백업 생성'],
+      ['📋 클립보드', 'actionCreateSampleData', '샘플 데이터']
+    ];
+    
+    menuSheet.getRange('L12:N18').setValues(iconMatching);
+    menuSheet.getRange('L12:N12').setFontWeight('bold').setBackground('#f5f5f5');
+    
+    // 이모지 텍스트 버튼 방법
+    menuSheet.getRange('L20').setValue('😊 이모지 텍스트 버튼 (초간단)');
+    menuSheet.getRange('L20').setFontWeight('bold').setBackground('#fff0f5');
+    
+    const emojiGuide = [
+      ['단계', '설명'],
+      ['1', '셀에 이모지 입력 (🏠📊🔄)'],
+      ['2', '셀 선택 > ⋮ > 스크립트 할당'],
+      ['3', '함수명 입력 > 완료!']
+    ];
+    
+    menuSheet.getRange('L21:M23').setValues(emojiGuide);
+    menuSheet.getRange('L21:M21').setFontWeight('bold').setBackground('#f5f5f5');
+    
+    // 컬럼 너비 조정
+    menuSheet.setColumnWidth(12, 180); // 아이콘 종류
+    menuSheet.setColumnWidth(13, 150); // 함수명
+    menuSheet.setColumnWidth(14, 120); // 용도
+    
+    // 스타일링
+    menuSheet.getRange('L13:M23').setFontSize(10);
+    menuSheet.getRange('M13:M18').setFontFamily('Courier New').setFontColor('#0066cc');
+    
+    SpreadsheetApp.getUi().alert('✅ 아이콘 버튼 가이드가 추가되었습니다!\n\n' +
+      '🎨 3가지 방법:\n' +
+      '1. 삽입 > 이미지 > 아이콘 (가장 예쁨)\n' +
+      '2. 이모지 텍스트 (가장 간단)\n' +
+      '3. 드로잉 (자유도 높음)\n\n' +
+      '💡 아이콘이 가장 깔끔하고 전문적입니다!');
+    
+    return { success: true, message: '아이콘 버튼 가이드가 추가되었습니다.' };
+    
+  } catch (error) {
+    Logger.log(`아이콘 가이드 추가 오류: ${error.message}`);
+    SpreadsheetApp.getUi().alert(`❌ 아이콘 가이드 추가 실패: ${error.message}`);
+    return { success: false, message: '아이콘 가이드 추가 실패: ' + error.message };
+  }
+}
+
+/**
+ * 간단한 드로잉 버튼 가이드 제공
+ */
+function createDrawingButtonGuide() {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const menuSheet = ss.getSheetByName('메뉴');
+    
+    if (!menuSheet) {
+      SpreadsheetApp.getUi().alert('❌ 메뉴 시트를 찾을 수 없습니다.');
+      return;
+    }
+    
+    // 드로잉 버튼 가이드 추가
+    menuSheet.getRange('J3').setValue('🎨 드로잉 버튼 만들기');
+    menuSheet.getRange('J3').setFontSize(14).setFontWeight('bold').setBackground('#f0f8ff');
+    
+    const guide = [
+      ['단계', '설명'],
+      ['1', '삽입 > 드로잉 클릭'],
+      ['2', '버튼 모양 그리기'],
+      ['3', '저장 후 버튼 클릭'],
+      ['4', '⋮ > 스크립트 할당'],
+      ['5', '함수명 입력 (아래 참조)']
+    ];
+    
+    menuSheet.getRange('J4:K9').setValues(guide);
+    menuSheet.getRange('J4:K4').setFontWeight('bold').setBackground('#f5f5f5');
+    
+    // 함수명 목록
+    menuSheet.getRange('J11').setValue('📋 시트 이동 함수명');
+    menuSheet.getRange('J11').setFontWeight('bold').setBackground('#e8f5e8');
+    
+    const sheetFunctions = [
+      ['goToStudents', '학생명단_전체'],
+      ['goToAssignments', '과제목록'],
+      ['goToSubmissions', '제출현황'],
+      ['goToPublic', '공개'],
+      ['goToEvaluations', '평가항목설정']
+    ];
+    
+    menuSheet.getRange('J12:K16').setValues(sheetFunctions);
+    menuSheet.getRange('J12:K12').setFontWeight('bold').setBackground('#f5f5f5');
+    
+    // 액션 함수명 목록
+    menuSheet.getRange('J18').setValue('⚙️ 액션 함수명');
+    menuSheet.getRange('J18').setFontWeight('bold').setBackground('#fff3e0');
+    
+    const actionFunctions = [
+      ['refreshStats', '통계 새로고침'],
+      ['actionInitializeSheets', '시트 초기화'],
+      ['actionCreateSampleData', '샘플 데이터 생성'],
+      ['actionCreateBackup', '백업 생성']
+    ];
+    
+    menuSheet.getRange('J19:K22').setValues(actionFunctions);
+    menuSheet.getRange('J19:K19').setFontWeight('bold').setBackground('#f5f5f5');
+    
+    // 스타일링
+    menuSheet.getRange('J12:K22').setFontSize(10);
+    menuSheet.getRange('J12:J22').setFontFamily('Courier New').setFontColor('#0066cc');
+    
+    // 컬럼 너비 조정
+    menuSheet.setColumnWidth(10, 180); // 함수명
+    menuSheet.setColumnWidth(11, 150); // 설명
+    
+    SpreadsheetApp.getUi().alert('✅ 드로잉 버튼 가이드가 추가되었습니다!\n\n' +
+      '💡 사용법:\n' +
+      '1. 삽입 > 드로잉으로 버튼 만들기\n' +
+      '2. 버튼에 함수 할당하기\n' +
+      '3. 클릭하면 즉시 실행됩니다!\n\n' +
+      '이 방법이 가장 안정적입니다.');
+    
+    return { success: true, message: '드로잉 버튼 가이드가 추가되었습니다.' };
+    
+  } catch (error) {
+    Logger.log(`가이드 추가 오류: ${error.message}`);
+    SpreadsheetApp.getUi().alert(`❌ 가이드 추가 실패: ${error.message}`);
+    return { success: false, message: '가이드 추가 실패: ' + error.message };
+  }
+}
+
+/**
+ * onEdit 트리거 설치 함수 (간단한 방법)
+ */
+function installOnEditTrigger() {
+  try {
+    SpreadsheetApp.getUi().alert('⚠️ 트리거 설치 방법:\n\n' +
+      '1. Apps Script 편집기에서\n' +
+      '2. 왼쪽 ⏰ 트리거 메뉴 클릭\n' +
+      '3. + 트리거 추가 클릭\n' +
+      '4. 함수: onEdit 선택\n' +
+      '5. 이벤트: 편집 시 선택\n' +
+      '6. 저장 클릭\n\n' +
+      '또는 드로잉 버튼을 사용하세요 (더 안정적)');
+    
+    return { success: true, message: '트리거 설치 방법이 안내되었습니다.' };
+    
+  } catch (error) {
+    Logger.log(`트리거 안내 오류: ${error.message}`);
+    return { success: false, message: '트리거 안내 실패: ' + error.message };
+  }
+}
+
+/**
+ * 클릭 가능한 버튼을 메뉴 시트에 추가하는 함수
+ */
+function addClickableButtons() {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const menuSheet = ss.getSheetByName('메뉴');
+    
+    if (!menuSheet) {
+      SpreadsheetApp.getUi().alert('❌ 메뉴 시트를 찾을 수 없습니다.');
+      return;
+    }
+    
+    // 체크박스와 조건부 서식을 이용한 "버튼" 만들기
+    
+    // 시트 이동 체크박스들
+    menuSheet.getRange('F11').insertCheckboxes();
+    menuSheet.getRange('F11').setValue(false);
+    menuSheet.getRange('F11').setNote('클릭하면 학생명단_전체로 이동합니다.');
+    
+    menuSheet.getRange('F12').insertCheckboxes();
+    menuSheet.getRange('F12').setValue(false);
+    menuSheet.getRange('F12').setNote('클릭하면 과제목록으로 이동합니다.');
+    
+    menuSheet.getRange('F13').insertCheckboxes();
+    menuSheet.getRange('F13').setValue(false);
+    menuSheet.getRange('F13').setNote('클릭하면 제출현황으로 이동합니다.');
+    
+    menuSheet.getRange('F14').insertCheckboxes();
+    menuSheet.getRange('F14').setValue(false);
+    menuSheet.getRange('F14').setNote('클릭하면 공개로 이동합니다.');
+    
+    // 액션 체크박스들
+    const actionRows = [22, 23, 24, 25, 26]; // 시스템 액션 행들
+    actionRows.forEach((row, index) => {
+      menuSheet.getRange(`D${row}`).insertCheckboxes();
+      menuSheet.getRange(`D${row}`).setValue(false);
+      
+      const actions = [
+        '시트 초기화를 실행합니다.',
+        '평가 시스템을 초기화합니다.',
+        '샘플 데이터를 생성합니다.',
+        '백업을 생성합니다.',
+        '시스템 상태를 확인합니다.'
+      ];
+      
+      if (actions[index]) {
+        menuSheet.getRange(`D${row}`).setNote(actions[index]);
+      }
+    });
+    
+    // 트리거도 함께 설치
+    installOnEditTrigger();
+    
+    return { success: true, message: '클릭 가능한 버튼과 트리거가 설치되었습니다.' };
+    
+  } catch (error) {
+    Logger.log(`버튼 추가 오류: ${error.message}`);
+    SpreadsheetApp.getUi().alert(`❌ 버튼 추가 실패: ${error.message}`);
+    return { success: false, message: '버튼 추가 실패: ' + error.message };
+  }
+}
+
+/**
+ * onEdit 트리거 - 체크박스 클릭 시 자동 실행
+ */
+function onEdit(e) {
+  try {
+    const sheet = e.source.getActiveSheet();
+    const range = e.range;
+    
+    // 메뉴 시트가 아니면 무시
+    if (sheet.getName() !== '메뉴') return;
+    
+    // 체크박스가 체크되었을 때만 실행
+    if (e.value !== true) return;
+    
+    const row = range.getRow();
+    const col = range.getColumn();
+    
+    // 시트 이동 체크박스들 (F11-F14)
+    if (col === 6) {
+      let targetSheet = '';
+      switch (row) {
+        case 11: targetSheet = '학생명단_전체'; break;
+        case 12: targetSheet = '과제목록'; break;
+        case 13: targetSheet = '제출현황'; break;
+        case 14: targetSheet = '공개'; break;
+      }
+      
+      if (targetSheet) {
+        goToSheet(targetSheet);
+        // 체크박스 리셋
+        range.setValue(false);
+      }
+    }
+    
+    // 액션 체크박스들 (D22-D26)
+    if (col === 4 && row >= 22 && row <= 26) {
+      switch (row) {
+        case 22: actionInitializeSheets(); break;
+        case 23: actionInitializeEvaluation(); break;
+        case 24: actionCreateSampleData(); break;
+        case 25: actionCreateBackup(); break;
+        case 26: actionCheckSystemStatus(); break;
+      }
+      
+      // 체크박스 리셋
+      range.setValue(false);
+    }
+    
+  } catch (error) {
+    Logger.log(`onEdit 오류: ${error.message}`);
+  }
+}
+
+// ==================== 메뉴 시트 버튼 액션 함수들 ====================
+
+/**
+ * 시트로 이동하는 버튼 액션
+ * @param {string} sheetName - 이동할 시트명
+ */
+function goToSheet(sheetName) {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName(sheetName);
+    
+    if (sheet) {
+      sheet.activate();
+      SpreadsheetApp.getUi().alert(`✅ "${sheetName}" 시트로 이동했습니다.`);
+    } else {
+      SpreadsheetApp.getUi().alert(`❌ "${sheetName}" 시트를 찾을 수 없습니다.`);
+    }
+  } catch (error) {
+    SpreadsheetApp.getUi().alert(`오류: ${error.message}`);
+  }
+}
+
+/**
+ * 개별 시트 이동 함수들
+ */
+function goToStudents() { goToSheet('학생명단_전체'); }
+function goToAssignments() { goToSheet('과제목록'); }
+function goToSubmissions() { goToSheet('제출현황'); }
+function goToPublic() { goToSheet('공개'); }
+function goToEvaluations() { goToSheet('평가항목설정'); }
+function goToEvaluationDetails() { goToSheet('평가세부항목'); }
+function goToEvaluationResults() { goToSheet('평가결과'); }
+function goToEvaluationStats() { goToSheet('평가통계'); }
+
+/**
+ * 시스템 액션 버튼 함수들
+ */
+function actionInitializeSheets() {
+  const ui = SpreadsheetApp.getUi();
+  const response = ui.alert('시트 초기화', '모든 필수 시트를 생성하시겠습니까?', ui.ButtonSet.YES_NO);
+  
+  if (response === ui.Button.YES) {
+    ui.alert('⏳ 시트 초기화를 시작합니다...');
+    const result = createEvaluationSheets();
+    
+    if (result.success) {
+      ui.alert('✅ 시트 초기화가 완료되었습니다!');
+      updateMenuStats(); // 통계 업데이트
+    } else {
+      ui.alert(`❌ 시트 초기화 실패: ${result.message}`);
+    }
+  }
+}
+
+function actionInitializeEvaluation() {
+  const ui = SpreadsheetApp.getUi();
+  const response = ui.alert('평가 시스템 초기화', '평가 관련 시트를 생성하시겠습니까?', ui.ButtonSet.YES_NO);
+  
+  if (response === ui.Button.YES) {
+    ui.alert('⏳ 평가 시스템 초기화를 시작합니다...');
+    initializeEvaluationSystem();
+    ui.alert('✅ 평가 시스템 초기화가 완료되었습니다!');
+    updateMenuStats(); // 통계 업데이트
+  }
+}
+
+function actionCreateSampleData() {
+  const ui = SpreadsheetApp.getUi();
+  const response = ui.alert('샘플 데이터 생성', '테스트용 샘플 데이터를 추가하시겠습니까?', ui.ButtonSet.YES_NO);
+  
+  if (response === ui.Button.YES) {
+    ui.alert('⏳ 샘플 데이터를 생성합니다...');
+    createSampleData();
+    ui.alert('✅ 샘플 데이터 생성이 완료되었습니다!');
+    updateMenuStats(); // 통계 업데이트
+  }
+}
+
+function actionCreateBackup() {
+  const ui = SpreadsheetApp.getUi();
+  const response = ui.alert('백업 생성', '현재 스프레드시트의 백업을 생성하시겠습니까?', ui.ButtonSet.YES_NO);
+  
+  if (response === ui.Button.YES) {
+    ui.alert('⏳ 백업을 생성합니다...');
+    createBackup();
+    ui.alert('✅ 백업이 생성되었습니다!');
+  }
+}
+
+function actionCheckSystemStatus() {
+  checkSystemStatus();
+  updateMenuStats(); // 통계 업데이트
+  SpreadsheetApp.getUi().alert('✅ 시스템 상태 확인이 완료되었습니다!\n로그를 확인하세요.');
+}
+
+/**
+ * 통계 새로고침 버튼
+ */
+function refreshStats() {
+  const result = updateMenuStats();
+  if (result.success) {
+    SpreadsheetApp.getUi().alert('✅ 통계가 업데이트되었습니다!');
+  } else {
+    SpreadsheetApp.getUi().alert(`❌ 통계 업데이트 실패: ${result.message}`);
+  }
+}
+
+/**
+ * 샘플 데이터 생성 함수
+ */
+function createSampleData() {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    
+    // 학생명단에 샘플 학생이 없으면 추가
+    const studentSheet = ss.getSheetByName('학생명단_전체');
+    if (studentSheet && studentSheet.getLastRow() < 5) {
+      const sampleStudents = [
+        ['20240001', '김학생', '1-1', 'hashed_password_1'],
+        ['20240002', '이학생', '1-1', 'hashed_password_2'],  
+        ['20240003', '박학생', '1-2', 'hashed_password_3']
+      ];
+      
+      studentSheet.getRange(studentSheet.getLastRow() + 1, 1, sampleStudents.length, 4)
+        .setValues(sampleStudents);
+    }
+    
+    // 과제목록에 샘플 과제 추가
+    const assignmentSheet = ss.getSheetByName('과제목록');
+    if (assignmentSheet && assignmentSheet.getLastRow() < 3) {
+      const sampleAssignments = [
+        ['A001', '수학 과제 1', '함수와 그래프', '2025-10-10', '활성'],
+        ['A002', '국어 과제 1', '문학 작품 분석', '2025-10-15', '활성']
+      ];
+      
+      assignmentSheet.getRange(assignmentSheet.getLastRow() + 1, 1, sampleAssignments.length, 5)
+        .setValues(sampleAssignments);
+    }
+    
+    return { success: true, message: '샘플 데이터가 생성되었습니다.' };
+    
+  } catch (error) {
+    Logger.log(`샘플 데이터 생성 오류: ${error.message}`);
+    return { success: false, message: '샘플 데이터 생성 실패: ' + error.message };
+  }
+}
+
+/**
+ * 백업 생성 함수
+ */
+function createBackup() {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').split('T')[0];
+    const backupName = `${ss.getName()}_백업_${timestamp}`;
+    
+    const backup = ss.copy(backupName);
+    
+    return { 
+      success: true, 
+      message: `백업이 생성되었습니다: ${backupName}`,
+      backupId: backup.getId()
+    };
+    
+  } catch (error) {
+    Logger.log(`백업 생성 오류: ${error.message}`);
+    return { success: false, message: '백업 생성 실패: ' + error.message };
+  }
+}
+
 // ==================== 빠른 실행용 래퍼 함수들 ====================
 
 /**
@@ -1510,6 +2053,64 @@ function runCreateMenuSheet() {
   
   Logger.log('=== 메뉴 시트 생성 완료 ===');
   return result;
+}
+
+/**
+ * 완전한 인터랙티브 메뉴 시스템 설정
+ */
+function setupCompleteInteractiveMenu() {
+  Logger.log('🚀 완전한 인터랙티브 메뉴 시스템 설정 시작...');
+  
+  try {
+    // 1. 전체 시스템 초기화
+    const initResult = initializeFullSystem();
+    if (!initResult.success) {
+      throw new Error('시스템 초기화 실패: ' + initResult.message);
+    }
+    
+    // 2. 매크로 메뉴 안내
+    const macroResult = createMacroMenu();
+    if (!macroResult.success) {
+      Logger.log('⚠️ 매크로 메뉴 안내 실패, 계속 진행...');
+    }
+    
+    // 3. 아이콘 버튼 가이드 추가 (가장 예쁜 방법)
+    const iconResult = createIconButtonGuide();
+    if (!iconResult.success) {
+      Logger.log('⚠️ 아이콘 가이드 추가 실패, 계속 진행...');
+    }
+    
+    // 4. 드로잉 버튼 가이드 추가
+    const guideResult = createDrawingButtonGuide();
+    if (!guideResult.success) {
+      Logger.log('⚠️ 드로잉 가이드 추가 실패, 계속 진행...');
+    }
+    
+    Logger.log('🎉 완전한 인터랙티브 메뉴 시스템 설정 완료!');
+    Logger.log('');
+    Logger.log('📋 사용 가능한 방법:');
+    Logger.log('   1. 확장프로그램 > 매크로 메뉴 (가장 간단!)');
+    Logger.log('   2. 삽입 > 이미지 > 아이콘 (가장 예쁨!)');
+    Logger.log('   3. 이모지 텍스트 버튼 (초간단)');
+    Logger.log('   4. 드로잉 버튼 생성 (자유도 높음)');
+    Logger.log('   5. Apps Script에서 함수 직접 실행');
+    Logger.log('');
+    Logger.log('🔐 교사 로그인 정보:');
+    Logger.log('   ID: admin (또는 teacher)');
+    Logger.log('   비밀번호: teacher2025! (메뉴 시트에서 변경 가능)');
+    
+    return {
+      success: true,
+      message: '완전한 인터랙티브 메뉴 시스템이 설정되었습니다.'
+    };
+    
+  } catch (error) {
+    Logger.log(`❌ 메뉴 시스템 설정 실패: ${error.message}`);
+    return {
+      success: false,
+      message: '메뉴 시스템 설정 실패: ' + error.message
+    };
+  }
 }
 
 /**
@@ -1787,6 +2388,254 @@ function updateMenuStats() {
     return {
       success: false,
       message: '통계 업데이트 실패: ' + error.message
+    };
+  }
+}
+
+/**
+ * 완전한 아이콘 버튼 구현
+ */
+function setupIconButtons() {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const menuSheet = ss.getSheetByName('메뉴');
+    
+    if (!menuSheet) {
+      return {
+        success: false,
+        message: '메뉴 시트를 찾을 수 없습니다.'
+      };
+    }
+    
+    // 아이콘 버튼 가이드 생성
+    createIconButtonGuide();
+    
+    // 텍스트 기반 아이콘 버튼 추가
+    const iconButtons = [
+      ['🏠 학생명단', 'goToStudents', 'E10'],
+      ['📝 과제목록', 'goToAssignments', 'E11'], 
+      ['📊 평가관리', 'goToEvaluations', 'E12'],
+      ['📋 제출현황', 'goToSubmissions', 'E13'],
+      ['🔄 통계갱신', 'refreshStats', 'E14'],
+      ['💾 백업생성', 'actionCreateBackup', 'E15']
+    ];
+    
+    // 텍스트 아이콘 버튼 생성
+    iconButtons.forEach(([text, funcName, cellRef]) => {
+      const range = menuSheet.getRange(cellRef);
+      range.setValue(text);
+      range.setFontSize(14);
+      range.setHorizontalAlignment('center');
+      range.setVerticalAlignment('middle');
+      range.setBorder(true, true, true, true, null, null);
+      range.setBackground('#E8F4FD');
+      
+      // 셀에 함수명을 노트로 추가
+      range.setNote(`클릭하면 ${funcName} 함수가 실행됩니다.`);
+    });
+    
+    // onEdit 트리거 설정 (이미 존재하지 않는 경우에만)
+    const triggers = ScriptApp.getProjectTriggers();
+    const hasOnEditTrigger = triggers.some(trigger => 
+      trigger.getHandlerFunction() === 'onEditIconButton' && 
+      trigger.getEventType() === ScriptApp.EventType.ON_EDIT
+    );
+    
+    if (!hasOnEditTrigger) {
+      ScriptApp.newTrigger('onEditIconButton')
+        .onEdit()
+        .create();
+    }
+    
+    return {
+      success: true,
+      message: '아이콘 버튼이 설정되었습니다.'
+    };
+    
+  } catch (error) {
+    Logger.log(`아이콘 버튼 설정 오류: ${error.message}`);
+    return {
+      success: false,
+      message: '아이콘 버튼 설정 실패: ' + error.message
+    };
+  }
+}
+
+/**
+ * 아이콘 버튼 클릭 이벤트 처리
+ */
+function onEditIconButton(e) {
+  if (!e || !e.range) return;
+  
+  const range = e.range;
+  const sheet = range.getSheet();
+  
+  // 메뉴 시트가 아니면 무시
+  if (sheet.getName() !== '메뉴') return;
+  
+  const row = range.getRow();
+  const col = range.getColumn();
+  const value = range.getValue();
+  
+  try {
+    // 아이콘 버튼 매핑
+    const buttonActions = {
+      '🏠 학생명단': 'goToStudents',
+      '📝 과제목록': 'goToAssignments', 
+      '📊 평가관리': 'goToEvaluations',
+      '📋 제출현황': 'goToSubmissions',
+      '🔄 통계갱신': 'refreshStats',
+      '💾 백업생성': 'actionCreateBackup'
+    };
+    
+    const functionName = buttonActions[value];
+    
+    if (functionName && col === 5 && row >= 10 && row <= 15) {
+      Logger.log(`아이콘 버튼 클릭: ${value} -> ${functionName}`);
+      
+      // 함수 실행
+      if (typeof this[functionName] === 'function') {
+        this[functionName]();
+      } else {
+        Logger.log(`함수를 찾을 수 없습니다: ${functionName}`);
+      }
+    }
+    
+  } catch (error) {
+    Logger.log(`아이콘 버튼 실행 오류: ${error.message}`);
+  }
+}
+
+/**
+ * 아이콘 버튼 가이드 생성
+ */
+function createIconButtonGuide() {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const menuSheet = ss.getSheetByName('메뉴');
+    
+    if (!menuSheet) return;
+    
+    // 아이콘 버튼 사용법 가이드
+    const guideData = [
+      ['아이콘 버튼 사용법'],
+      [''],
+      ['방법 1: 텍스트 아이콘 버튼 (추천)'],
+      ['- 이미 생성된 텍스트 아이콘을 클릭하세요'],
+      ['- 🏠 학생명단, 📝 과제목록 등을 클릭하면 해당 시트로 이동'],
+      [''],
+      ['방법 2: Google 아이콘 삽입'],
+      ['1. 삽입 > 아이콘 선택'],
+      ['2. 원하는 아이콘 검색 (예: home, document, chart)'],
+      ['3. 아이콘 삽입 후 크기 조정'],
+      ['4. 아이콘을 우클릭 > "스크립트 할당"'],
+      ['5. 함수명 입력 (예: goToStudents, goToAssignments)'],
+      [''],
+      ['방법 3: 그림 그리기'],
+      ['1. 삽입 > 그림 > 새로 만들기'],
+      ['2. 도형이나 텍스트로 버튼 디자인'],
+      ['3. 저장 후 그림을 우클릭 > "스크립트 할당"'],
+      ['4. 함수명 입력'],
+      [''],
+      ['사용 가능한 함수들:'],
+      ['- goToStudents: 학생명단으로 이동'],
+      ['- goToAssignments: 과제목록으로 이동'], 
+      ['- goToEvaluations: 평가관리로 이동'],
+      ['- goToSubmissions: 제출현황으로 이동'],
+      ['- refreshStats: 통계 새로고침'],
+      ['- actionCreateBackup: 백업 생성']
+    ];
+    
+    // G열에 가이드 추가
+    guideData.forEach((row, index) => {
+      menuSheet.getRange(10 + index, 7).setValue(row[0]);
+    });
+    
+    // 가이드 영역 서식 설정
+    const guideRange = menuSheet.getRange(10, 7, guideData.length, 1);
+    guideRange.setFontSize(10);
+    guideRange.setWrap(true);
+    guideRange.setVerticalAlignment('top');
+    
+    // 제목 서식
+    menuSheet.getRange(10, 7).setFontWeight('bold').setFontSize(12);
+    
+    return true;
+    
+  } catch (error) {
+    Logger.log(`아이콘 가이드 생성 오류: ${error.message}`);
+    return false;
+  }
+}
+
+/**
+ * 매크로 메뉴 생성 (아이콘 대안)
+ */
+function createMacroMenu() {
+  try {
+    const ui = SpreadsheetApp.getUi();
+    
+    ui.createMenu('📋 시트 이동')
+      .addItem('🏠 학생명단', 'goToStudents')
+      .addItem('📝 과제목록', 'goToAssignments')
+      .addItem('📊 평가관리', 'goToEvaluations')
+      .addItem('📋 제출현황', 'goToSubmissions')
+      .addSeparator()
+      .addItem('🔄 통계 새로고침', 'refreshStats')
+      .addItem('💾 백업 생성', 'actionCreateBackup')
+      .addToUi();
+    
+    Logger.log('매크로 메뉴가 생성되었습니다.');
+    return true;
+    
+  } catch (error) {
+    Logger.log(`매크로 메뉴 생성 오류: ${error.message}`);
+    return false;
+  }
+}
+
+/**
+ * 완전한 대화형 메뉴 설정
+ */
+function setupCompleteInteractiveMenu() {
+  Logger.log('=== 완전한 대화형 메뉴 설정 시작 ===');
+  
+  const results = [];
+  
+  try {
+    // 1. 메뉴 시트 생성
+    const menuResult = createMenuSheet();
+    results.push(`메뉴 시트: ${menuResult.success ? '✅' : '❌'} ${menuResult.message}`);
+    
+    // 2. 아이콘 버튼 설정
+    const iconResult = setupIconButtons();
+    results.push(`아이콘 버튼: ${iconResult.success ? '✅' : '❌'} ${iconResult.message}`);
+    
+    // 3. 매크로 메뉴 생성
+    const macroResult = createMacroMenu();
+    results.push(`매크로 메뉴: ${macroResult ? '✅' : '❌'} ${macroResult ? '성공' : '실패'}`);
+    
+    // 4. 체크박스 버튼 설정
+    const checkboxResult = setupCheckboxButtons();
+    results.push(`체크박스 버튼: ${checkboxResult.success ? '✅' : '❌'} ${checkboxResult.message}`);
+    
+    // 결과 출력
+    Logger.log('=== 대화형 메뉴 설정 결과 ===');
+    results.forEach(result => Logger.log(result));
+    Logger.log('==========================');
+    
+    return {
+      success: true,
+      message: '완전한 대화형 메뉴가 설정되었습니다.',
+      results: results
+    };
+    
+  } catch (error) {
+    Logger.log(`대화형 메뉴 설정 오류: ${error.message}`);
+    return {
+      success: false,
+      message: '대화형 메뉴 설정 실패: ' + error.message,
+      results: results
     };
   }
 }

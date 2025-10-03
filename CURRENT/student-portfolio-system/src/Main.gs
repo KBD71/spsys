@@ -72,18 +72,25 @@ function createAssignmentSheet() {
         .setFontWeight('bold');
     }
 
-    // 과제명 컬럼(3번째)을 기준으로 마지막 데이터 행 찾기
-    const assignmentNameColumn = assignmentSettingsSheet.getRange(2, 3, assignmentSettingsSheet.getMaxRows() - 1, 1).getValues();
-    let lastRow = 1;
-    for (let i = 0; i < assignmentNameColumn.length; i++) {
-      if (assignmentNameColumn[i][0] && assignmentNameColumn[i][0].toString().trim()) {
-        lastRow = i + 2; // 헤더 다음부터 시작이므로 +2
-      } else {
-        break;
-      }
+    // 마지막 데이터 행 찾기 및 과제ID 생성 (중복 방지)
+    const lastRow = assignmentSettingsSheet.getLastRow();
+    let maxId = 0;
+
+    if (lastRow > 1) {
+      // 기존 과제ID에서 최대값 찾기
+      const assignmentData = assignmentSettingsSheet.getRange(2, 2, lastRow - 1, 1).getValues();
+      assignmentData.forEach(row => {
+        const id = row[0];
+        if (id && id.toString().startsWith('TS')) {
+          const num = parseInt(id.toString().substring(2));
+          if (!isNaN(num) && num > maxId) {
+            maxId = num;
+          }
+        }
+      });
     }
 
-    const assignmentId = `TS${String(lastRow).padStart(3, '0')}`;
+    const assignmentId = `TS${String(maxId + 1).padStart(3, '0')}`;
 
     // 시트명 중복 확인
     let finalSheetName = assignmentName;
@@ -165,7 +172,7 @@ function createAssignmentSheet() {
     }
 
     const questionHeaders = [];
-    for (let i = 1; i <= questionCount; i++) {
+    for (let i = 1; i <= questions.length; i++) {
       questionHeaders.push(`질문${i}`);
     }
 
@@ -190,7 +197,7 @@ function createAssignmentSheet() {
       `과제ID: ${assignmentId}\n` +
       `시작일: ${startDate}\n` +
       `마감일: ${endDate}\n` +
-      `질문 개수: ${questionCount}개`,
+      `질문 개수: ${questions.length}개`,
       ui.ButtonSet.OK
     );
 

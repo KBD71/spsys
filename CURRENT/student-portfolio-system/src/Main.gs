@@ -2544,7 +2544,7 @@ function createDynamicHyperlinkMenu() {
         
         // 기능 버튼 스타일 적용
         if (index >= 3 && colIndex === 0) {
-          range.setBackground('#FFF3E0').setFontWeight('bold').setBorder(true, true, true, true);
+          range.setBackground('#FFF3E0').setFontWeight('bold').setBorder(true, true, true, true, false, false);
         }
       });
     });
@@ -2563,7 +2563,7 @@ function createDynamicHyperlinkMenu() {
         
         // 버튼 스타일 적용
         if (index >= 3 && colIndex === 0) {
-          range.setBackground('#E3F2FD').setFontWeight('bold').setBorder(true, true, true, true);
+          range.setBackground('#E3F2FD').setFontWeight('bold').setBorder(true, true, true, true, false, false);
         }
       });
     });

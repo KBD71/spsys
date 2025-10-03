@@ -3,6 +3,72 @@
  * Google Sheets 기반 과제 관리 시스템
  */
 
+// ==================== 상수 정의 ====================
+
+const COLUMN_INDEX = {
+  PUBLIC: 0,           // 공개 여부
+  ASSIGNMENT_ID: 1,    // 과제ID
+  ASSIGNMENT_NAME: 2,  // 과제명
+  TARGET_SHEET: 3,     // 대상시트
+  START_DATE: 4,       // 시작일
+  END_DATE: 5,         // 마감일
+  QUESTION_START: 6    // 질문 시작 컬럼
+};
+
+const ROW_INDEX = {
+  HEADER: 1,
+  DATA_START: 2
+};
+
+const SHEET_NAMES = {
+  ASSIGNMENT_SETTINGS: '과제설정',
+  PUBLIC: '공개',
+  MENU: '메뉴',
+  TEMPLATE: 'template',
+  STUDENT_LIST: '학생명단_전체'
+};
+
+const REQUIRED_SHEETS = [SHEET_NAMES.STUDENT_LIST, SHEET_NAMES.ASSIGNMENT_SETTINGS, SHEET_NAMES.PUBLIC, SHEET_NAMES.TEMPLATE];
+
+const MENU_CONFIG = {
+  START_ROW: 5,
+  MIN_CLEAR_ROWS: 100,
+  HIDDEN_COLUMN: 6
+};
+
+// ==================== 유틸리티 함수 ====================
+
+/**
+ * 날짜 형식 검증 (YYYY-MM-DD)
+ */
+function isValidDate(dateString) {
+  if (!dateString || typeof dateString !== 'string') {
+    return false;
+  }
+
+  // YYYY-MM-DD 형식 검증
+  const datePattern = /^\d{4}-\d{2}-\d{2}$/;
+  if (!datePattern.test(dateString)) {
+    return false;
+  }
+
+  // 실제 날짜 유효성 검증
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) {
+    return false;
+  }
+
+  // 입력된 날짜와 Date 객체가 만든 날짜가 일치하는지 확인 (예: 2025-02-30은 무효)
+  const parts = dateString.split('-');
+  const year = parseInt(parts[0]);
+  const month = parseInt(parts[1]);
+  const day = parseInt(parts[2]);
+
+  return date.getFullYear() === year &&
+         (date.getMonth() + 1) === month &&
+         date.getDate() === day;
+}
+
 // ==================== 과제 시트 생성 ====================
 
 /**
@@ -33,9 +99,14 @@ function createAssignmentSheet() {
       ui.ButtonSet.OK_CANCEL
     );
     if (startDateResponse.getSelectedButton() !== ui.Button.OK) {
-      return { success: false, message: '취소되었습니다.' };
+      return { success: false, message: '시작일 입력이 취소되었습니다.' };
     }
     const startDate = startDateResponse.getResponseText().trim();
+
+    // 시작일 유효성 검증
+    if (!isValidDate(startDate)) {
+      return { success: false, message: '시작일 형식이 올바르지 않습니다. (예: 2025-01-01)' };
+    }
 
     const endDateResponse = ui.prompt(
       '마감일 입력',
@@ -43,9 +114,19 @@ function createAssignmentSheet() {
       ui.ButtonSet.OK_CANCEL
     );
     if (endDateResponse.getSelectedButton() !== ui.Button.OK) {
-      return { success: false, message: '취소되었습니다.' };
+      return { success: false, message: '마감일 입력이 취소되었습니다.' };
     }
     const endDate = endDateResponse.getResponseText().trim();
+
+    // 마감일 유효성 검증
+    if (!isValidDate(endDate)) {
+      return { success: false, message: '마감일 형식이 올바르지 않습니다. (예: 2025-01-31)' };
+    }
+
+    // 날짜 순서 검증
+    if (new Date(startDate) > new Date(endDate)) {
+      return { success: false, message: '시작일이 마감일보다 늦을 수 없습니다.' };
+    }
 
     const questionCountResponse = ui.prompt(
       '질문 개수 입력',
@@ -61,12 +142,12 @@ function createAssignmentSheet() {
     }
 
     // 2. 과제설정 시트에 데이터 추가
-    let assignmentSettingsSheet = ss.getSheetByName('과제설정');
+    let assignmentSettingsSheet = ss.getSheetByName(SHEET_NAMES.ASSIGNMENT_SETTINGS);
     if (!assignmentSettingsSheet) {
-      assignmentSettingsSheet = ss.insertSheet('과제설정');
+      assignmentSettingsSheet = ss.insertSheet(SHEET_NAMES.ASSIGNMENT_SETTINGS);
       const headers = [['공개', '과제ID', '과제명', '대상시트', '시작일', '마감일', '질문1', '질문2', '질문3', '질문4', '질문5']];
-      assignmentSettingsSheet.getRange(1, 1, 1, headers[0].length).setValues(headers);
-      assignmentSettingsSheet.getRange(1, 1, 1, headers[0].length)
+      assignmentSettingsSheet.getRange(ROW_INDEX.HEADER, 1, 1, headers[0].length).setValues(headers);
+      assignmentSettingsSheet.getRange(ROW_INDEX.HEADER, 1, 1, headers[0].length)
         .setBackground('#4285F4')
         .setFontColor('white')
         .setFontWeight('bold');
@@ -76,9 +157,14 @@ function createAssignmentSheet() {
     const lastRow = assignmentSettingsSheet.getLastRow();
     let maxId = 0;
 
-    if (lastRow > 1) {
+    if (lastRow > ROW_INDEX.HEADER) {
       // 기존 과제ID에서 최대값 찾기
-      const assignmentData = assignmentSettingsSheet.getRange(2, 2, lastRow - 1, 1).getValues();
+      const assignmentData = assignmentSettingsSheet.getRange(
+        ROW_INDEX.DATA_START,
+        COLUMN_INDEX.ASSIGNMENT_ID + 1,
+        lastRow - ROW_INDEX.HEADER,
+        1
+      ).getValues();
       assignmentData.forEach(row => {
         const id = row[0];
         if (id && id.toString().startsWith('TS')) {
@@ -117,11 +203,16 @@ function createAssignmentSheet() {
     }
 
     // 과제설정 시트의 현재 헤더 확인 및 확장
-    const currentHeaders = assignmentSettingsSheet.getRange(1, 1, 1, assignmentSettingsSheet.getLastColumn()).getValues()[0];
+    const currentHeaders = assignmentSettingsSheet.getRange(
+      ROW_INDEX.HEADER,
+      1,
+      1,
+      assignmentSettingsSheet.getLastColumn()
+    ).getValues()[0];
     let currentQuestionCount = 0;
 
     // 현재 질문 컬럼 개수 세기
-    for (let i = 6; i < currentHeaders.length; i++) {
+    for (let i = COLUMN_INDEX.QUESTION_START; i < currentHeaders.length; i++) {
       if (currentHeaders[i] && currentHeaders[i].toString().includes('질문')) {
         currentQuestionCount++;
       }
@@ -132,7 +223,12 @@ function createAssignmentSheet() {
       const additionalQuestions = questions.length - currentQuestionCount;
       for (let i = 0; i < additionalQuestions; i++) {
         const newQuestionNum = currentQuestionCount + i + 1;
-        const headerCell = assignmentSettingsSheet.getRange(1, 6 + newQuestionNum);
+        // QUESTION_START=6은 질문1의 배열 인덱스(0-indexed)
+        // 질문1: 배열[6] = 컬럼 7, 질문N: 배열[6+N-1] = 컬럼 6+N
+        const headerCell = assignmentSettingsSheet.getRange(
+          ROW_INDEX.HEADER,
+          COLUMN_INDEX.QUESTION_START + newQuestionNum + 1  // TODO: 이 부분 검토 필요 (6+N이 맞는지 6+N+1이 맞는지)
+        );
         headerCell.setValue(`질문${newQuestionNum}`);
         headerCell.setBackground('#4285F4').setFontColor('white').setFontWeight('bold');
       }
@@ -155,19 +251,49 @@ function createAssignmentSheet() {
     const publicCell = assignmentSettingsSheet.getRange(lastRow + 1, 1);
     publicCell.insertCheckboxes();
 
+    // 2.5. '공개' 시트에 자동 등록
+    let publicSheet = ss.getSheetByName(SHEET_NAMES.PUBLIC);
+    if (!publicSheet) {
+      // '공개' 시트가 없으면 생성
+      publicSheet = ss.insertSheet(SHEET_NAMES.PUBLIC);
+      const publicHeaders = [['공개여부', '시트이름', '대상반']];
+      publicSheet.getRange(ROW_INDEX.HEADER, 1, 1, publicHeaders[0].length).setValues(publicHeaders);
+      publicSheet.getRange(ROW_INDEX.HEADER, 1, 1, publicHeaders[0].length)
+        .setBackground('#4285F4')
+        .setFontColor('white')
+        .setFontWeight('bold');
+    }
+
+    // '공개' 시트에 새 과제 시트 등록 (기본값: 공개 안함, 전체 대상)
+    const publicLastRow = publicSheet.getLastRow();
+    const publicRow = [false, finalSheetName, '전체'];
+    publicSheet.getRange(publicLastRow + 1, 1, 1, publicRow.length).setValues([publicRow]);
+
+    // 공개여부 체크박스 설정
+    const publicCheckboxCell = publicSheet.getRange(publicLastRow + 1, 1);
+    publicCheckboxCell.insertCheckboxes();
+
     // 3. 새 과제 시트 생성
-    let templateSheet = ss.getSheetByName('수행평가1_에세이');
+    // template 시트 우선 사용, 없으면 기본 헤더 사용
+    let templateSheet = ss.getSheetByName(SHEET_NAMES.TEMPLATE);
     let baseHeaders = [];
 
-    if (templateSheet) {
-      const templateHeaders = templateSheet.getRange(1, 1, 1, templateSheet.getLastColumn()).getValues()[0];
-      const questionStartIndex = templateHeaders.findIndex(h => h.toString().includes('질문1'));
+    if (templateSheet && templateSheet.getLastColumn() > 0) {
+      const templateHeaders = templateSheet.getRange(
+        ROW_INDEX.HEADER,
+        1,
+        1,
+        templateSheet.getLastColumn()
+      ).getValues()[0];
+      const questionStartIndex = templateHeaders.findIndex(h => h && h.toString().includes('질문1'));
       if (questionStartIndex > 0) {
         baseHeaders = templateHeaders.slice(0, questionStartIndex);
       } else {
+        // template 시트에 질문1이 없으면 기본 헤더 사용
         baseHeaders = ['학번', '반', '이름'];
       }
     } else {
+      // template 시트가 없거나 비어있으면 기본 헤더 사용
       baseHeaders = ['학번', '반', '이름'];
     }
 
@@ -226,10 +352,10 @@ function createAssignmentSheet() {
 function createDynamicHyperlinkMenu() {
   try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
-    let menuSheet = ss.getSheetByName('메뉴');
+    let menuSheet = ss.getSheetByName(SHEET_NAMES.MENU);
 
     if (!menuSheet) {
-      menuSheet = ss.insertSheet('메뉴', 0);
+      menuSheet = ss.insertSheet(SHEET_NAMES.MENU, 0);
     }
 
     menuSheet.clear();
@@ -302,15 +428,15 @@ function createDynamicHyperlinkMenu() {
 function updateSheetList() {
   try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
-    const menuSheet = ss.getSheetByName('메뉴');
+    const menuSheet = ss.getSheetByName(SHEET_NAMES.MENU);
 
     if (!menuSheet) {
       throw new Error('메뉴 시트를 찾을 수 없습니다.');
     }
 
     const sheets = ss.getSheets();
-    const startRow = 5;
-    const maxRow = Math.max(menuSheet.getLastRow(), 100); // 최소 100행까지 클리어
+    const startRow = MENU_CONFIG.START_ROW;
+    const maxRow = Math.max(menuSheet.getLastRow(), MENU_CONFIG.MIN_CLEAR_ROWS);
 
     if (maxRow >= startRow) {
       const clearRange = menuSheet.getRange(startRow, 1, maxRow - startRow + 1, 8);
@@ -318,11 +444,11 @@ function updateSheetList() {
       clearRange.clearDataValidations(); // 체크박스 제거
     }
 
-    const requiredSheets = ['학생명단_전체', '과제설정', '공개', 'template'];
+    const requiredSheets = REQUIRED_SHEETS;
     const sheetInfoList = [];
 
     sheets.forEach((sheet) => {
-      if (sheet.getName() === '메뉴') return;
+      if (sheet.getName() === SHEET_NAMES.MENU) return;
 
       const sheetName = sheet.getName();
       const rowCount = sheet.getLastRow();
@@ -448,12 +574,11 @@ function deleteSheetByName(sheetName) {
       throw new Error(`"${sheetName}" 시트를 찾을 수 없습니다.`);
     }
 
-    if (sheetName === '메뉴') {
+    if (sheetName === SHEET_NAMES.MENU) {
       throw new Error('메뉴 시트는 삭제할 수 없습니다.');
     }
 
-    const requiredSheets = ['학생명단_전체', '과제설정', '공개', 'template'];
-    if (requiredSheets.includes(sheetName)) {
+    if (REQUIRED_SHEETS.includes(sheetName)) {
       throw new Error('필수 시트는 삭제할 수 없습니다.');
     }
 
@@ -465,22 +590,22 @@ function deleteSheetByName(sheetName) {
       ss.deleteSheet(sheet);
 
       // 공개 시트에서 해당 행 삭제
-      const publicSheet = ss.getSheetByName('공개');
+      const publicSheet = ss.getSheetByName(SHEET_NAMES.PUBLIC);
       if (publicSheet) {
         const publicData = publicSheet.getDataRange().getValues();
-        for (let i = publicData.length - 1; i >= 1; i--) {
-          if (publicData[i][1] === sheetName) {  // 시트명 컬럼이 2번째
+        for (let i = publicData.length - 1; i >= ROW_INDEX.HEADER; i--) {
+          if (publicData[i][1] === sheetName) {  // 시트명 컬럼이 2번째 (인덱스 1)
             publicSheet.deleteRow(i + 1);
           }
         }
       }
 
       // 과제설정 시트에서 해당 행 삭제
-      const assignmentSettingsSheet = ss.getSheetByName('과제설정');
+      const assignmentSettingsSheet = ss.getSheetByName(SHEET_NAMES.ASSIGNMENT_SETTINGS);
       if (assignmentSettingsSheet) {
         const assignmentData = assignmentSettingsSheet.getDataRange().getValues();
-        for (let i = assignmentData.length - 1; i >= 1; i--) {
-          if (assignmentData[i][3] === sheetName) {  // 대상시트 컬럼이 4번째
+        for (let i = assignmentData.length - 1; i >= ROW_INDEX.HEADER; i--) {
+          if (assignmentData[i][COLUMN_INDEX.TARGET_SHEET] === sheetName) {
             assignmentSettingsSheet.deleteRow(i + 1);
           }
         }
@@ -510,7 +635,7 @@ function onEditMenuClick(e) {
   const range = e.range;
   const sheet = range.getSheet();
 
-  if (sheet.getName() !== '메뉴') return;
+  if (sheet.getName() !== SHEET_NAMES.MENU) return;
 
   const row = range.getRow();
   const col = range.getColumn();
@@ -518,13 +643,13 @@ function onEditMenuClick(e) {
 
   try {
     // 삭제 체크박스만 처리 (5열)
-    if (col === 5 && value === true && row >= 5) {
+    if (col === 5 && value === true && row >= MENU_CONFIG.START_ROW) {
       range.setValue(false);
-      const sheetName = sheet.getRange(row, 6).getValue();
+      const sheetName = sheet.getRange(row, MENU_CONFIG.HIDDEN_COLUMN).getValue();
 
       Logger.log(`삭제 요청: ${sheetName}`);
 
-      if (sheetName && sheetName !== '메뉴') {
+      if (sheetName && sheetName !== SHEET_NAMES.MENU) {
         const cleanSheetName = sheetName.trim();
         deleteSheetByName(cleanSheetName);
       }
@@ -588,7 +713,7 @@ function setupCompleteInteractiveMenu() {
  */
 function goToMenu() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const menuSheet = ss.getSheetByName('메뉴');
+  const menuSheet = ss.getSheetByName(SHEET_NAMES.MENU);
 
   if (menuSheet) {
     menuSheet.activate();

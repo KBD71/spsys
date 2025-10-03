@@ -1,0 +1,30 @@
+{
+  "name": "student-portfolio-vercel",
+  "version": "1.0.0",
+  "description": "학생 포트폴리오 시스템 - Vercel 배포용",
+  "main": "index.html",
+  "scripts": {
+    "dev": "node server.js",
+    "dev:vercel": "vercel dev",
+    "deploy": "vercel --prod",
+    "hash": "node hash-password.js",
+    "test": "node test-sheets.js"
+  },
+  "keywords": [
+    "student",
+    "portfolio",
+    "password",
+    "vercel",
+    "serverless"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "bcryptjs": "^3.0.2",
+    "dotenv": "^17.2.3",
+    "googleapis": "^118.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

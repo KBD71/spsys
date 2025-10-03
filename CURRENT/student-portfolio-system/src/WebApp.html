@@ -1,0 +1,1827 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="학생 포트폴리오 시스템">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://apis.google.com https://polyfill.io https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline';">
+  <title>학생 포트폴리오 시스템</title>
+
+  <!-- MathJax for LaTeX support -->
+  <script>
+    MathJax = {
+      tex: {
+        inlineMath: [['$', '$'], ['\\(', '\\)']],
+        displayMath: [['$$', '$$'], ['\\[', '\\]']]
+      },
+      options: {
+        menuOptions: {
+          settings: {
+            texHints: true
+          }
+        }
+      }
+    };
+  </script>
+  <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+  <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  <style>
+    /* ==================== 기본 설정 ==================== */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans KR', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+      color: #333;
+      line-height: 1.6;
+    }
+
+    /* ==================== 화면 레이아웃 ==================== */
+    .screen {
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      max-width: 600px;
+      width: 100%;
+      overflow: hidden;
+      animation: fadeIn 0.5s ease-in-out;
+    }
+
+    .screen.hidden {
+      display: none;
+    }
+
+    /* ==================== 헤더 ==================== */
+    header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 30px;
+      text-align: center;
+      position: relative;
+    }
+
+    header h1 {
+      font-size: 1.8rem;
+      font-weight: 700;
+      margin: 0;
+    }
+
+    .btn-back {
+      position: absolute;
+      left: 20px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: rgba(255, 255, 255, 0.2);
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      font-weight: 600;
+      transition: all 0.3s ease;
+    }
+
+    .btn-back:hover {
+      background: rgba(255, 255, 255, 0.3);
+      transform: translateY(-50%) translateX(-2px);
+    }
+
+    /* ==================== 메인 컨텐츠 ==================== */
+    main {
+      padding: 40px 30px;
+    }
+
+    section {
+      margin-bottom: 30px;
+    }
+
+    section:last-child {
+      margin-bottom: 0;
+    }
+
+    h2 {
+      font-size: 1.3rem;
+      margin-bottom: 15px;
+      color: #667eea;
+      font-weight: 700;
+    }
+
+    h3 {
+      font-size: 1rem;
+      margin-bottom: 10px;
+      color: #764ba2;
+      font-weight: 600;
+    }
+
+    /* ==================== 폼 스타일 ==================== */
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 600;
+      color: #555;
+      font-size: 0.95rem;
+    }
+
+    input {
+      width: 100%;
+      padding: 12px 16px;
+      border: 2px solid #e0e0e0;
+      border-radius: 10px;
+      font-size: 1rem;
+      transition: all 0.3s ease;
+      background: #f9f9f9;
+    }
+
+    input:focus {
+      outline: none;
+      border-color: #667eea;
+      background: white;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    input::placeholder {
+      color: #aaa;
+    }
+
+    small {
+      display: block;
+      margin-top: 5px;
+      color: #888;
+      font-size: 0.85rem;
+    }
+
+    /* ==================== 버튼 스타일 ==================== */
+    .btn {
+      padding: 14px 28px;
+      border: none;
+      border-radius: 10px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      width: 100%;
+      margin-top: 10px;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+    }
+
+    .btn-primary:active {
+      transform: translateY(0);
+    }
+
+    .btn-secondary {
+      background: #f0f0f0;
+      color: #555;
+    }
+
+    .btn-secondary:hover {
+      background: #e0e0e0;
+      transform: translateY(-2px);
+    }
+
+    .btn-danger {
+      background: #ff6b6b;
+      color: white;
+    }
+
+    .btn-danger:hover {
+      background: #ff5252;
+      transform: translateY(-2px);
+    }
+
+    /* ==================== 카드 스타일 ==================== */
+    .info-card {
+      background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    }
+
+    .info-card p {
+      margin-bottom: 10px;
+      font-size: 1rem;
+    }
+
+    .info-card p:last-child {
+      margin-bottom: 0;
+    }
+
+    .info-card strong {
+      color: #667eea;
+      margin-right: 8px;
+    }
+
+    .info-box {
+      background: #f0f4ff;
+      border-left: 4px solid #667eea;
+      padding: 20px;
+      border-radius: 10px;
+      margin: 20px 0;
+    }
+
+    .info-box ul {
+      list-style: none;
+      padding-left: 0;
+    }
+
+    .info-box li {
+      padding: 8px 0;
+      padding-left: 25px;
+      position: relative;
+    }
+
+    .info-box li:before {
+      content: "✓";
+      position: absolute;
+      left: 0;
+      color: #667eea;
+      font-weight: bold;
+    }
+
+    /* ==================== 설정 버튼 ==================== */
+    .settings-buttons {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    /* ==================== 폼 액션 ==================== */
+    .form-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    .form-actions .btn {
+      margin-top: 0;
+    }
+
+    /* ==================== 과제 및 모달 스타일 ==================== */
+    .assignments-list {
+      margin-top: 1rem;
+    }
+
+    .assignment-card {
+      background: #f8f9fa;
+      border: 1px solid #e9ecef;
+      border-radius: 8px;
+      padding: 1rem;
+      margin-bottom: 1rem;
+      transition: all 0.3s ease;
+    }
+
+    .assignment-card:hover {
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      transform: translateY(-2px);
+    }
+
+    .assignment-card h4 {
+      color: #667eea;
+      margin-bottom: 0.5rem;
+    }
+
+    .assignment-meta {
+      font-size: 0.9rem;
+      color: #666;
+      margin-bottom: 1rem;
+    }
+
+    .submit-assignment-btn {
+      background: #667eea;
+      color: white;
+      border: none;
+      padding: 0.5rem 1rem;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background 0.3s ease;
+    }
+
+    .submit-assignment-btn:hover {
+      background: #5a67d8;
+    }
+
+    /* 모달 스타일 */
+    .modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.5);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    }
+
+    .modal.hidden {
+      display: none;
+    }
+
+    .modal-content {
+      background: white;
+      border-radius: 12px;
+      max-width: 800px;
+      width: 90%;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1.5rem;
+      border-bottom: 1px solid #e9ecef;
+    }
+
+    .close-btn {
+      background: none;
+      border: none;
+      font-size: 1.5rem;
+      cursor: pointer;
+      color: #666;
+    }
+
+    .modal-body {
+      padding: 1.5rem;
+    }
+
+    .form-group {
+      margin-bottom: 1.5rem;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 0.5rem;
+      font-weight: 500;
+    }
+
+    .latex-help {
+      font-size: 0.85rem;
+      color: #667eea;
+      font-weight: normal;
+    }
+
+    .form-group textarea {
+      width: 100%;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      padding: 0.75rem;
+      font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+      font-size: 0.9rem;
+      line-height: 1.4;
+      resize: vertical;
+    }
+
+    .preview-section {
+      background: #f8f9fa;
+      border: 1px solid #e9ecef;
+      border-radius: 6px;
+      padding: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .preview-section h4 {
+      margin-bottom: 0.5rem;
+      color: #333;
+    }
+
+    .math-preview {
+      background: white;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      padding: 1rem;
+      min-height: 60px;
+      white-space: pre-wrap;
+    }
+
+    .form-actions {
+      display: flex;
+      gap: 0.5rem;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+    }
+
+    .form-actions button {
+      padding: 0.75rem 1.5rem;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      transition: all 0.3s ease;
+    }
+
+    .preview-btn {
+      background: #28a745;
+      color: white;
+    }
+
+    .preview-btn:hover {
+      background: #218838;
+    }
+
+    .submit-btn {
+      background: #667eea;
+      color: white;
+    }
+
+    .submit-btn:hover {
+      background: #5a67d8;
+    }
+
+    .cancel-btn {
+      background: #6c757d;
+      color: white;
+    }
+
+    .cancel-btn:hover {
+      background: #5a6268;
+    }
+
+    .loading-message {
+      text-align: center;
+      color: #666;
+      padding: 2rem;
+    }
+
+    /* ==================== 내 기록 스타일 ==================== */
+    .my-records-list {
+      margin-top: 1rem;
+    }
+
+    .record-card {
+      background: #f8f9fa;
+      border: 1px solid #e9ecef;
+      border-radius: 8px;
+      padding: 1rem;
+      margin-bottom: 1rem;
+      transition: all 0.3s ease;
+    }
+
+    .record-card:hover {
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      transform: translateY(-2px);
+    }
+
+    .record-card h3 {
+      color: #667eea;
+      margin-bottom: 0.5rem;
+    }
+
+    .data-row {
+      display: flex;
+      margin-bottom: 0.5rem;
+      padding: 0.25rem 0;
+      border-bottom: 1px solid #eee;
+    }
+
+    .data-label {
+      font-weight: 500;
+      color: #666;
+      min-width: 120px;
+      flex-shrink: 0;
+    }
+
+    .data-value {
+      color: #333;
+      flex: 1;
+    }
+
+    .feedback-box {
+      background: #fff3cd;
+      border-left: 4px solid #ffc107;
+      padding: 15px;
+      border-radius: 8px;
+      margin-top: 15px;
+    }
+
+    .feedback-box strong {
+      color: #856404;
+    }
+
+    .suggestion-box {
+      background: #e1f5fe;
+      border-left: 4px solid #0288d1;
+      padding: 15px;
+      border-radius: 8px;
+      margin-top: 15px;
+    }
+
+    .suggestion-box strong {
+      color: #01579b;
+    }
+
+    .suggestion-input {
+      width: 100%;
+      padding: 12px;
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+      font-size: 14px;
+      font-family: inherit;
+      resize: vertical;
+      transition: border-color 0.3s ease;
+      margin-bottom: 8px;
+    }
+
+    .suggestion-input:focus {
+      border-color: #0288d1;
+      outline: none;
+    }
+
+    .suggestion-save-btn {
+      background: #0288d1;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.3s ease;
+    }
+
+    .suggestion-save-btn:hover {
+      background: #0277bd;
+    }
+
+    .suggestion-save-btn:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+
+    /* ==================== 내 평가 결과 스타일 ==================== */
+    .my-evaluations-list {
+      margin-top: 1rem;
+    }
+
+    .evaluation-card {
+      background: #f8f9fa;
+      border: 1px solid #e9ecef;
+      border-radius: 8px;
+      padding: 1rem;
+      margin-bottom: 1rem;
+      transition: all 0.3s ease;
+    }
+
+    .evaluation-card:hover {
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      transform: translateY(-2px);
+    }
+
+    .evaluation-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 1rem;
+    }
+
+    .evaluation-header h3 {
+      color: #667eea;
+      margin: 0;
+      flex: 1;
+    }
+
+    .evaluation-score {
+      text-align: right;
+      margin-left: 1rem;
+    }
+
+    .evaluation-score .score {
+      font-size: 1.2rem;
+      font-weight: bold;
+      color: #333;
+      display: block;
+    }
+
+    .evaluation-score .percentage {
+      font-size: 0.9rem;
+      color: #666;
+      font-weight: normal;
+    }
+
+    .evaluation-description {
+      color: #666;
+      font-size: 0.9rem;
+      margin-bottom: 1rem;
+      font-style: italic;
+    }
+
+    .evaluation-items {
+      border-top: 1px solid #e9ecef;
+      padding-top: 1rem;
+    }
+
+    .evaluation-item {
+      background: white;
+      border: 1px solid #dee2e6;
+      border-radius: 6px;
+      padding: 0.75rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .item-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .item-name {
+      font-weight: 500;
+      color: #333;
+    }
+
+    .item-score {
+      color: #667eea;
+      font-weight: bold;
+      font-size: 0.9rem;
+    }
+
+    .item-comment {
+      margin-top: 0.5rem;
+      padding: 0.5rem;
+      background: #f1f3f4;
+      border-radius: 4px;
+      color: #555;
+      font-size: 0.85rem;
+      border-left: 3px solid #667eea;
+    }
+
+    .evaluation-date {
+      margin-top: 1rem;
+      padding-top: 0.5rem;
+      border-top: 1px solid #e9ecef;
+      color: #666;
+      font-size: 0.85rem;
+      text-align: right;
+    }
+
+    /* ==================== 메시지 스타일 ==================== */
+    .message {
+      margin-top: 20px;
+      padding: 12px 16px;
+      border-radius: 10px;
+      font-size: 0.95rem;
+      font-weight: 500;
+      display: none;
+      animation: slideIn 0.3s ease-in-out;
+    }
+
+    .message.show {
+      display: block;
+    }
+
+    .message.success {
+      background: #d4edda;
+      color: #155724;
+      border-left: 4px solid #28a745;
+    }
+
+    .message.error {
+      background: #f8d7da;
+      color: #721c24;
+      border-left: 4px solid #dc3545;
+    }
+
+    .message.info {
+      background: #d1ecf1;
+      color: #0c5460;
+      border-left: 4px solid #17a2b8;
+    }
+
+    /* ==================== 플레이스홀더 ==================== */
+    .content-placeholder {
+      background: #f9f9f9;
+      padding: 30px;
+      border-radius: 10px;
+      text-align: center;
+      color: #888;
+      border: 2px dashed #e0e0e0;
+    }
+
+    /* ==================== 로딩 스피너 ==================== */
+    .spinner {
+      border: 3px solid #f3f3f3;
+      border-top: 3px solid #667eea;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin: 20px auto;
+    }
+
+    /* ==================== 애니메이션 ==================== */
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateX(-20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    /* ==================== 반응형 디자인 ==================== */
+    @media (max-width: 768px) {
+      body {
+        padding: 10px;
+      }
+
+      .screen {
+        border-radius: 15px;
+      }
+
+      header {
+        padding: 20px;
+      }
+
+      header h1 {
+        font-size: 1.5rem;
+      }
+
+      main {
+        padding: 25px 20px;
+      }
+
+      h2 {
+        font-size: 1.2rem;
+      }
+
+      .btn-back {
+        left: 15px;
+        padding: 6px 12px;
+        font-size: 0.85rem;
+      }
+
+      .form-actions {
+        flex-direction: column;
+      }
+    }
+
+    @media (max-width: 480px) {
+      header h1 {
+        font-size: 1.3rem;
+      }
+
+      main {
+        padding: 20px 15px;
+      }
+
+      .btn {
+        font-size: 0.95rem;
+        padding: 12px 20px;
+      }
+    }
+
+    /* ==================== 접근성 ==================== */
+    .visually-hidden {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      margin: -1px;
+      padding: 0;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      border: 0;
+    }
+
+    /* 포커스 스타일 강화 */
+    button:focus,
+    input:focus {
+      outline: 2px solid #667eea;
+      outline-offset: 2px;
+    }
+
+    /* 고대비 모드 지원 */
+    @media (prefers-contrast: high) {
+      input {
+        border-width: 3px;
+      }
+
+      .btn {
+        border: 2px solid currentColor;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 로그인 화면 -->
+  <section id="loginScreen" class="screen" aria-label="로그인">
+    <header>
+      <h1>🎓 학생 포트폴리오</h1>
+    </header>
+
+    <main>
+      <form id="loginForm" aria-label="로그인 양식">
+        <div class="form-group">
+          <label for="studentId">학번</label>
+          <input
+            type="text"
+            id="studentId"
+            name="studentId"
+            pattern="[0-9]{5}"
+            maxlength="5"
+            placeholder="5자리 숫자"
+            required
+            aria-required="true"
+            aria-describedby="studentIdHelp"
+          >
+          <small id="studentIdHelp">5자리 숫자를 입력하세요</small>
+        </div>
+
+        <div class="form-group">
+          <label for="password">비밀번호</label>
+          <input
+            type="password"
+            id="password"
+            name="password"
+            required
+            aria-required="true"
+          >
+        </div>
+
+        <button type="submit" class="btn btn-primary">로그인</button>
+
+        <div id="loginMessage" class="message" role="alert" aria-live="polite"></div>
+      </form>
+    </main>
+  </section>
+
+  <!-- 메뉴 화면 -->
+  <section id="menuScreen" class="screen hidden" aria-label="메인 메뉴">
+    <header>
+      <h1>🎓 학생 포트폴리오</h1>
+    </header>
+
+    <main>
+      <!-- 학생 정보 영역 -->
+      <section class="student-info" aria-label="학생 정보">
+        <h2>학생 정보</h2>
+        <div class="info-card">
+          <p><strong>이름:</strong> <span id="studentName">-</span></p>
+          <p><strong>학번:</strong> <span id="studentIdDisplay">-</span></p>
+          <p><strong>반:</strong> <span id="studentClass">-</span></p>
+        </div>
+      </section>
+
+      <!-- 과제 섹션 -->
+      <section class="assignments" aria-label="과제">
+        <h2>📝 과제</h2>
+        
+        <!-- 과제 목록 -->
+        <div id="assignmentsList" class="assignments-list">
+          <div class="loading-message">과제 목록을 불러오는 중...</div>
+        </div>
+        
+        <!-- 과제 제출 모달 -->
+        <div id="submitModal" class="modal hidden">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h3 id="submitModalTitle">과제 제출</h3>
+              <button type="button" class="close-btn" onclick="hideSubmitModal()">×</button>
+            </div>
+            
+            <div class="modal-body">
+              <form id="assignmentSubmitForm" onsubmit="submitAssignment(event)">
+                <div class="form-group">
+                  <label for="assignmentContent">
+                    제출 내용 
+                    <span class="latex-help">(LaTeX 수식 지원: $수식$ 또는 $$수식$$)</span>
+                  </label>
+                  <textarea 
+                    id="assignmentContent" 
+                    name="content" 
+                    rows="10" 
+                    placeholder="과제 내용을 입력하세요...
+
+예시:
+- 인라인 수식: 이차방정식 $ax^2 + bx + c = 0$의 해는...
+- 블록 수식: 
+$$x = \frac{-b \pm \sqrt{b^2-4ac}}{2a}$$
+
+지원되는 LaTeX 명령어:
+- 분수: \frac{분자}{분모}
+- 제곱근: \sqrt{내용}  
+- 적분: \int_a^b f(x) dx
+- 합: \sum_{i=1}^n x_i
+- 그리스 문자: \alpha, \beta, \pi, \theta 등"
+                    required></textarea>
+                </div>
+                
+                <div class="preview-section">
+                  <h4>미리보기</h4>
+                  <div id="mathPreview" class="math-preview"></div>
+                </div>
+                
+                <div class="form-actions">
+                  <button type="button" onclick="previewMath()" class="preview-btn">수식 미리보기</button>
+                  <button type="submit" class="submit-btn">제출하기</button>
+                  <button type="button" onclick="hideSubmitModal()" class="cancel-btn">취소</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 내 기록 섹션 -->
+      <section class="my-records" aria-label="내 기록">
+        <h2>📊 내 기록</h2>
+        
+        <div id="myRecordsList" class="my-records-list">
+          <div class="loading-message">기록을 불러오는 중...</div>
+        </div>
+      </section>
+
+      <!-- 내 평가 결과 섹션 -->
+      <section class="my-evaluations" aria-label="내 평가 결과">
+        <h2>📈 내 평가 결과</h2>
+        
+        <div id="myEvaluationsList" class="my-evaluations-list">
+          <div class="loading-message">평가 결과를 불러오는 중...</div>
+        </div>
+      </section>
+
+      <!-- 설정 섹션 -->
+      <section class="settings" aria-label="설정">
+        <h2>⚙️ 설정</h2>
+        <div class="settings-buttons">
+          <button id="changePasswordBtn" class="btn btn-secondary">
+            🔑 비밀번호 변경
+          </button>
+          <button id="logoutBtn" class="btn btn-danger">
+            🚪 로그아웃
+          </button>
+        </div>
+      </section>
+    </main>
+  </section>
+
+  <!-- 비밀번호 변경 화면 -->
+  <section id="passwordChangeScreen" class="screen hidden" aria-label="비밀번호 변경">
+    <header>
+      <button id="backBtn" class="btn-back" aria-label="뒤로 가기">
+        ← 뒤로
+      </button>
+      <h1>🔑 비밀번호 변경</h1>
+    </header>
+
+    <main>
+      <form id="passwordChangeForm" aria-label="비밀번호 변경 양식">
+        <div class="form-group">
+          <label for="currentPassword">현재 비밀번호</label>
+          <input
+            type="password"
+            id="currentPassword"
+            name="currentPassword"
+            required
+            aria-required="true"
+            autocomplete="current-password"
+          >
+        </div>
+
+        <div class="form-group">
+          <label for="newPassword">새 비밀번호</label>
+          <input
+            type="password"
+            id="newPassword"
+            name="newPassword"
+            minlength="4"
+            maxlength="20"
+            required
+            aria-required="true"
+            aria-describedby="passwordRules"
+            autocomplete="new-password"
+          >
+        </div>
+
+        <div class="form-group">
+          <label for="confirmPassword">새 비밀번호 확인</label>
+          <input
+            type="password"
+            id="confirmPassword"
+            name="confirmPassword"
+            minlength="4"
+            maxlength="20"
+            required
+            aria-required="true"
+            autocomplete="new-password"
+          >
+        </div>
+
+        <!-- 비밀번호 규칙 안내 -->
+        <div id="passwordRules" class="info-box" role="region" aria-label="비밀번호 규칙">
+          <h3>📌 비밀번호 규칙</h3>
+          <ul>
+            <li>최소 4자 이상, 최대 20자</li>
+            <li>영문, 숫자 조합 권장</li>
+            <li>현재 비밀번호와 달라야 함</li>
+            <li>24시간에 한 번만 변경 가능</li>
+          </ul>
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary">변경하기</button>
+          <button type="button" id="cancelBtn" class="btn btn-secondary">취소</button>
+        </div>
+
+        <div id="passwordChangeMessage" class="message" role="alert" aria-live="polite"></div>
+      </form>
+    </main>
+  </section>
+
+  <script>
+    // ==================== 전역 변수 ====================
+    let currentStudentId = '';
+    let currentStudentName = '';
+    let currentStudentClass = '';
+
+    // ==================== 초기화 ====================
+    document.addEventListener('DOMContentLoaded', function() {
+      // 로그인 폼 이벤트
+      document.getElementById('loginForm').addEventListener('submit', handleLogin);
+
+      // 메뉴 버튼 이벤트
+      document.getElementById('changePasswordBtn').addEventListener('click', showPasswordChangeForm);
+      document.getElementById('logoutBtn').addEventListener('click', logout);
+
+      // 비밀번호 변경 폼 이벤트
+      document.getElementById('passwordChangeForm').addEventListener('submit', submitPasswordChange);
+      document.getElementById('backBtn').addEventListener('click', showMenu);
+      document.getElementById('cancelBtn').addEventListener('click', showMenu);
+    });
+
+    // ==================== 로그인 처리 ====================
+    /**
+     * 로그인 폼 제출 처리
+     * @param {Event} event - 폼 제출 이벤트
+     */
+    function handleLogin(event) {
+      event.preventDefault();
+
+      const studentId = document.getElementById('studentId').value.trim();
+      const password = document.getElementById('password').value.trim();
+
+      // 입력값 검증
+      if (!studentId || !password) {
+        showLoginMessage('학번과 비밀번호를 입력해주세요.', 'error');
+        return;
+      }
+
+      // 학번 형식 검증 (5자리 숫자)
+      if (!/^[0-9]{5}$/.test(studentId)) {
+        showLoginMessage('학번은 5자리 숫자여야 합니다.', 'error');
+        return;
+      }
+
+      // 로딩 메시지 표시
+      showLoginMessage('로그인 중...', 'info');
+      disableLoginButton(true);
+
+      // 서버 인증 호출
+      google.script.run
+        .withSuccessHandler(handleLoginSuccess)
+        .withFailureHandler(handleLoginError)
+        .authenticateStudent(studentId, password);
+    }
+
+    /**
+     * 로그인 성공 처리
+     * @param {Object} result - 서버 응답
+     */
+    function handleLoginSuccess(result) {
+      disableLoginButton(false);
+
+      if (result.success) {
+        currentStudentId = result.studentId;
+        currentStudentName = result.name;
+        currentStudentClass = result.class || '-';
+        showMenu();
+      } else {
+        showLoginMessage(result.message, 'error');
+      }
+    }
+
+    /**
+     * 로그인 에러 처리
+     * @param {Error} error - 에러 객체
+     */
+    function handleLoginError(error) {
+      console.error('로그인 에러:', error);
+      disableLoginButton(false);
+      showLoginMessage('로그인 중 오류가 발생했습니다.', 'error');
+    }
+
+    /**
+     * 로그인 버튼 비활성화/활성화
+     * @param {boolean} disabled - 비활성화 여부
+     */
+    function disableLoginButton(disabled) {
+      const submitBtn = document.querySelector('#loginForm button[type="submit"]');
+      if (submitBtn) {
+        submitBtn.disabled = disabled;
+        submitBtn.textContent = disabled ? '로그인 중...' : '로그인';
+      }
+    }
+
+    // ==================== 화면 전환 ====================
+    /**
+     * 메뉴 화면 표시
+     */
+    function showMenu() {
+      hideAllScreens();
+      document.getElementById('menuScreen').classList.remove('hidden');
+
+      // 학생 정보 업데이트
+      document.getElementById('studentName').textContent = sanitizeText(currentStudentName);
+      document.getElementById('studentIdDisplay').textContent = sanitizeText(currentStudentId);
+      document.getElementById('studentClass').textContent = sanitizeText(currentStudentClass);
+      
+      // 과제 목록 로드
+      loadAssignments();
+      
+      // 내 기록 로드
+      loadMyRecords();
+      
+      // 내 평가 결과 로드
+      loadMyEvaluations();
+      
+      // 실시간 미리보기 설정 (모달이 열릴 때마다 설정됨)
+      setTimeout(setupLivePreview, 100);
+    }
+
+    /**
+     * 비밀번호 변경 화면 표시
+     */
+    function showPasswordChangeForm() {
+      hideAllScreens();
+      document.getElementById('passwordChangeScreen').classList.remove('hidden');
+
+      // 폼 초기화
+      document.getElementById('passwordChangeForm').reset();
+      document.getElementById('passwordChangeMessage').className = 'message';
+      document.getElementById('passwordChangeMessage').textContent = '';
+    }
+
+    /**
+     * 모든 화면 숨기기
+     */
+    function hideAllScreens() {
+      const screens = document.querySelectorAll('.screen');
+      screens.forEach(screen => screen.classList.add('hidden'));
+    }
+
+    // ==================== 비밀번호 변경 ====================
+    /**
+     * 비밀번호 변경 폼 제출 처리
+     * @param {Event} event - 폼 제출 이벤트
+     */
+    function submitPasswordChange(event) {
+      event.preventDefault();
+
+      const currentPassword = document.getElementById('currentPassword').value.trim();
+      const newPassword = document.getElementById('newPassword').value.trim();
+      const confirmPassword = document.getElementById('confirmPassword').value.trim();
+
+      // 클라이언트 측 검증
+      // 1. 빈 값 체크
+      if (!currentPassword || !newPassword || !confirmPassword) {
+        showPasswordMessage('모든 필드를 입력해주세요.', 'error');
+        return;
+      }
+
+      // 2. 새 비밀번호 일치 확인
+      if (newPassword !== confirmPassword) {
+        showPasswordMessage('새 비밀번호가 일치하지 않습니다.', 'error');
+        return;
+      }
+
+      // 3. 최소 길이 확인
+      if (newPassword.length < 4) {
+        showPasswordMessage('새 비밀번호는 최소 4자 이상이어야 합니다.', 'error');
+        return;
+      }
+
+      // 4. 최대 길이 확인
+      if (newPassword.length > 20) {
+        showPasswordMessage('새 비밀번호는 최대 20자까지 가능합니다.', 'error');
+        return;
+      }
+
+      // 5. 현재 비밀번호와 다른지 확인
+      if (currentPassword === newPassword) {
+        showPasswordMessage('새 비밀번호는 현재 비밀번호와 달라야 합니다.', 'error');
+        return;
+      }
+
+      // 로딩 표시
+      showPasswordMessage('비밀번호 변경 중...', 'info');
+      disableFormButtons(true);
+
+      // 서버 함수 호출
+      google.script.run
+        .withSuccessHandler(handlePasswordChangeSuccess)
+        .withFailureHandler(handlePasswordChangeError)
+        .changeStudentPassword(currentStudentId, currentPassword, newPassword);
+    }
+
+    /**
+     * 비밀번호 변경 성공 처리
+     * @param {Object} result - 서버 응답
+     */
+    function handlePasswordChangeSuccess(result) {
+      disableFormButtons(false);
+
+      if (result.success) {
+        showPasswordMessage(result.message, 'success');
+
+        // 3초 후 메뉴로 자동 이동
+        setTimeout(() => {
+          showMenu();
+        }, 3000);
+      } else {
+        showPasswordMessage(result.message, 'error');
+      }
+    }
+
+    /**
+     * 비밀번호 변경 에러 처리
+     * @param {Error} error - 에러 객체
+     */
+    function handlePasswordChangeError(error) {
+      console.error('비밀번호 변경 에러:', error);
+      disableFormButtons(false);
+      showPasswordMessage('비밀번호 변경 중 오류가 발생했습니다.', 'error');
+    }
+
+    /**
+     * 폼 버튼 비활성화/활성화
+     * @param {boolean} disabled - 비활성화 여부
+     */
+    function disableFormButtons(disabled) {
+      const submitBtn = document.querySelector('#passwordChangeForm button[type="submit"]');
+      const cancelBtn = document.getElementById('cancelBtn');
+
+      if (submitBtn) submitBtn.disabled = disabled;
+      if (cancelBtn) cancelBtn.disabled = disabled;
+
+      if (disabled) {
+        submitBtn.textContent = '처리 중...';
+      } else {
+        submitBtn.textContent = '변경하기';
+      }
+    }
+
+    // ==================== 로그아웃 ====================
+    /**
+     * 로그아웃 처리
+     */
+    function logout() {
+      if (confirm('로그아웃 하시겠습니까?')) {
+        // 전역 변수 초기화
+        currentStudentId = '';
+        currentStudentName = '';
+        currentStudentClass = '';
+
+        // 로그인 화면으로 이동
+        hideAllScreens();
+        document.getElementById('loginScreen').classList.remove('hidden');
+
+        // 로그인 폼 초기화
+        document.getElementById('loginForm').reset();
+        document.getElementById('loginMessage').className = 'message';
+        document.getElementById('loginMessage').textContent = '';
+      }
+    }
+
+    // ==================== 메시지 표시 ====================
+    /**
+     * 로그인 메시지 표시
+     * @param {string} message - 표시할 메시지
+     * @param {string} type - 메시지 타입 (success, error, info)
+     */
+    function showLoginMessage(message, type) {
+      const messageEl = document.getElementById('loginMessage');
+      messageEl.textContent = message;
+      messageEl.className = `message show ${type}`;
+
+      // 5초 후 자동 숨김 (info 메시지 제외)
+      if (type !== 'info') {
+        setTimeout(() => {
+          messageEl.className = 'message';
+        }, 5000);
+      }
+    }
+
+    /**
+     * 비밀번호 변경 메시지 표시
+     * @param {string} message - 표시할 메시지
+     * @param {string} type - 메시지 타입 (success, error, info)
+     */
+    function showPasswordMessage(message, type) {
+      const messageEl = document.getElementById('passwordChangeMessage');
+      messageEl.textContent = message;
+      messageEl.className = `message show ${type}`;
+
+      // 메시지로 스크롤
+      messageEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+      // 5초 후 자동 숨김 (success와 info 제외)
+      if (type === 'error') {
+        setTimeout(() => {
+          messageEl.className = 'message';
+        }, 5000);
+      }
+    }
+
+    // ==================== 과제 관리 함수 ====================
+    
+    /**
+     * 과제 목록 로드
+     */
+    function loadAssignments() {
+      const assignmentsList = document.getElementById('assignmentsList');
+      
+      // 로딩 상태 표시
+      assignmentsList.innerHTML = '<div class="loading-message">과제 목록을 불러오는 중...</div>';
+      
+      // Google Apps Script 함수 호출
+      google.script.run
+        .withSuccessHandler(function(result) {
+          if (result.success) {
+            displayAssignments(result.assignments);
+          } else {
+            assignmentsList.innerHTML = `<div class="error-message">오류: ${result.message}</div>`;
+          }
+        })
+        .withFailureHandler(function(error) {
+          console.error('과제 목록 로드 실패:', error);
+          assignmentsList.innerHTML = '<div class="error-message">과제 목록을 불러오는데 실패했습니다.</div>';
+        })
+        .getAssignments(currentStudentId);
+    }
+    
+    /**
+     * 과제 목록 표시
+     * @param {Array} assignments - 과제 목록
+     */
+    function displayAssignments(assignments) {
+      const assignmentsList = document.getElementById('assignmentsList');
+      
+      if (!assignments || assignments.length === 0) {
+        assignmentsList.innerHTML = '<div class="loading-message">등록된 과제가 없습니다.</div>';
+        return;
+      }
+      
+      let html = '';
+      assignments.forEach(assignment => {
+        html += `
+          <div class="assignment-card">
+            <h4>${sanitizeText(assignment.name)}</h4>
+            <p>${sanitizeText(assignment.description)}</p>
+            <div class="assignment-meta">
+              <span>📅 마감: ${assignment.dueDate}</span> | 
+              <span>📊 배점: ${assignment.points}점</span> |
+              <span>👥 대상: ${assignment.targetClass}</span>
+            </div>
+            <button class="submit-assignment-btn" onclick="showSubmitModal('${assignment.id}', '${sanitizeText(assignment.name)}')">
+              제출하기
+            </button>
+          </div>
+        `;
+      });
+      
+      assignmentsList.innerHTML = html;
+    }
+    
+    /**
+     * 과제 제출 모달 표시
+     * @param {string} assignmentId - 과제 ID
+     * @param {string} assignmentName - 과제명
+     */
+    function showSubmitModal(assignmentId, assignmentName) {
+      const modal = document.getElementById('submitModal');
+      const title = document.getElementById('submitModalTitle');
+      const form = document.getElementById('assignmentSubmitForm');
+      const textarea = document.getElementById('assignmentContent');
+      
+      // 모달 설정
+      title.textContent = `과제 제출: ${assignmentName}`;
+      form.dataset.assignmentId = assignmentId;
+      textarea.value = '';
+      document.getElementById('mathPreview').innerHTML = '';
+      
+      // 모달 표시
+      modal.classList.remove('hidden');
+      textarea.focus();
+    }
+    
+    /**
+     * 과제 제출 모달 숨김
+     */
+    function hideSubmitModal() {
+      const modal = document.getElementById('submitModal');
+      modal.classList.add('hidden');
+    }
+    
+    /**
+     * 수식 미리보기
+     */
+    function previewMath() {
+      const content = document.getElementById('assignmentContent').value;
+      const preview = document.getElementById('mathPreview');
+      
+      if (!content.trim()) {
+        preview.innerHTML = '<em>미리볼 내용이 없습니다.</em>';
+        return;
+      }
+      
+      // 내용을 미리보기에 설정
+      preview.innerHTML = sanitizeText(content);
+      
+      // MathJax로 수식 렌더링
+      if (window.MathJax) {
+        MathJax.typesetPromise([preview]).catch(function (err) {
+          console.error('MathJax 렌더링 오류:', err);
+          preview.innerHTML += '<br><span style="color: red;">수식 렌더링 오류가 발생했습니다.</span>';
+        });
+      }
+    }
+    
+    /**
+     * 과제 제출
+     * @param {Event} event - 폼 이벤트
+     */
+    function submitAssignment(event) {
+      event.preventDefault();
+      
+      const form = event.target;
+      const assignmentId = form.dataset.assignmentId;
+      const content = document.getElementById('assignmentContent').value.trim();
+      const submitBtn = form.querySelector('.submit-btn');
+      
+      if (!content) {
+        alert('제출 내용을 입력해주세요.');
+        return;
+      }
+      
+      // 버튼 비활성화
+      submitBtn.disabled = true;
+      submitBtn.textContent = '제출 중...';
+      
+      // Google Apps Script 함수 호출
+      google.script.run
+        .withSuccessHandler(function(result) {
+          if (result.success) {
+            alert('과제가 성공적으로 제출되었습니다!');
+            hideSubmitModal();
+            loadAssignments(); // 목록 새로고침
+          } else {
+            alert('제출 실패: ' + result.message);
+          }
+          
+          // 버튼 복원
+          submitBtn.disabled = false;
+          submitBtn.textContent = '제출하기';
+        })
+        .withFailureHandler(function(error) {
+          console.error('과제 제출 실패:', error);
+          alert('과제 제출 중 오류가 발생했습니다.');
+          
+          // 버튼 복원
+          submitBtn.disabled = false;
+          submitBtn.textContent = '제출하기';
+        })
+        .submitAssignment(currentStudentId, assignmentId, content);
+    }
+    
+    /**
+     * 실시간 수식 미리보기 (입력하면서 자동 업데이트)
+     */
+    function setupLivePreview() {
+      const textarea = document.getElementById('assignmentContent');
+      let previewTimeout;
+      
+      textarea.addEventListener('input', function() {
+        clearTimeout(previewTimeout);
+        previewTimeout = setTimeout(previewMath, 500); // 0.5초 후 미리보기 업데이트
+      });
+    }
+
+    // ==================== 내 기록 관리 함수 ====================
+    
+    /**
+     * 내 기록 로드
+     */
+    function loadMyRecords() {
+      const recordsList = document.getElementById('myRecordsList');
+      
+      // 로딩 상태 표시
+      recordsList.innerHTML = '<div class="loading-message">기록을 불러오는 중...</div>';
+      
+      // Google Apps Script 함수 호출
+      google.script.run
+        .withSuccessHandler(function(result) {
+          if (result.success) {
+            displayMyRecords(result.records);
+          } else {
+            recordsList.innerHTML = `<div class="error-message">오류: ${result.message}</div>`;
+          }
+        })
+        .withFailureHandler(function(error) {
+          console.error('내 기록 로드 실패:', error);
+          recordsList.innerHTML = '<div class="error-message">기록을 불러오는데 실패했습니다.</div>';
+        })
+        .getMyRecords(currentStudentId);
+    }
+    
+    /**
+     * 내 기록 표시
+     * @param {Array} records - 기록 목록
+     */
+    function displayMyRecords(records) {
+      const recordsList = document.getElementById('myRecordsList');
+      
+      if (!records || records.length === 0) {
+        recordsList.innerHTML = '<div class="loading-message">공개된 기록이 없습니다.</div>';
+        return;
+      }
+      
+      recordsList.innerHTML = '';
+      
+      records.forEach(record => {
+        const card = document.createElement('div');
+        card.className = 'record-card';
+
+        let html = `<h3>${sanitizeText(record.sheetName)}</h3>`;
+
+        // 데이터 표시
+        for (let [key, value] of Object.entries(record.data)) {
+          if (key === '학번' || key === '반' || key === '이름') continue;
+          html += `
+            <div class="data-row">
+              <div class="data-label">${sanitizeText(key)}:</div>
+              <div class="data-value">${sanitizeText(value || '-')}</div>
+            </div>
+          `;
+        }
+
+        // 피드백 있으면 표시
+        if (record.hasFeedback && record.feedback) {
+          html += `
+            <div class="feedback-box">
+              <strong>💬 내 피드백:</strong>
+              <p style="margin-top: 8px;">${sanitizeText(record.feedback)}</p>
+            </div>
+          `;
+        }
+
+        // 건의사항 입력 기능 추가
+        if (record.hasSuggestion) {
+          html += `
+            <div class="suggestion-box">
+              <strong>💡 건의사항:</strong>
+              <div style="margin-top: 8px;">
+                <textarea 
+                  id="suggestion-${sanitizeText(record.sheetName)}" 
+                  class="suggestion-input"
+                  placeholder="이 기록에 대한 건의사항을 입력하세요..."
+                  rows="3">${sanitizeText(record.suggestion || '')}</textarea>
+                <button 
+                  class="suggestion-save-btn" 
+                  onclick="saveSuggestionAppsScript('${sanitizeText(record.sheetName)}')">
+                  저장
+                </button>
+              </div>
+            </div>
+          `;
+        }
+
+        card.innerHTML = html;
+        recordsList.appendChild(card);
+      });
+    }
+    
+    /**
+     * 건의사항 저장 (Apps Script 버전)
+     * @param {string} sheetName - 시트명
+     */
+    function saveSuggestionAppsScript(sheetName) {
+      const textareaId = `suggestion-${sheetName}`;
+      const textarea = document.getElementById(textareaId);
+      const suggestion = textarea.value.trim();
+      
+      // 버튼 찾기
+      const saveBtn = textarea.nextElementSibling;
+      const originalText = saveBtn.textContent;
+      
+      // 버튼 상태 변경
+      saveBtn.disabled = true;
+      saveBtn.textContent = '저장 중...';
+      
+      // Google Apps Script 함수 호출
+      google.script.run
+        .withSuccessHandler(function(result) {
+          if (result.success) {
+            // 저장 성공 시 버튼 색상 변경
+            saveBtn.style.backgroundColor = '#28a745';
+            saveBtn.textContent = '저장됨';
+            
+            // 3초 후 원래 상태로 복원
+            setTimeout(() => {
+              saveBtn.style.backgroundColor = '';
+              saveBtn.textContent = originalText;
+              saveBtn.disabled = false;
+            }, 3000);
+          } else {
+            alert('저장 실패: ' + result.message);
+            saveBtn.disabled = false;
+            saveBtn.textContent = originalText;
+          }
+        })
+        .withFailureHandler(function(error) {
+          console.error('건의사항 저장 실패:', error);
+          alert('건의사항 저장에 실패했습니다.');
+          saveBtn.disabled = false;
+          saveBtn.textContent = originalText;
+        })
+        .saveSuggestion(currentStudentId, sheetName, suggestion);
+    }
+
+    // ==================== 내 평가 결과 관리 함수 ====================
+    
+    /**
+     * 내 평가 결과 로드
+     */
+    function loadMyEvaluations() {
+      const evaluationsList = document.getElementById('myEvaluationsList');
+      
+      // 로딩 상태 표시
+      evaluationsList.innerHTML = '<div class="loading-message">평가 결과를 불러오는 중...</div>';
+      
+      // Google Apps Script 함수 호출
+      google.script.run
+        .withSuccessHandler(function(result) {
+          if (result.success) {
+            displayMyEvaluations(result.evaluations);
+          } else {
+            evaluationsList.innerHTML = `<div class="error-message">오류: ${result.message}</div>`;
+          }
+        })
+        .withFailureHandler(function(error) {
+          console.error('평가 결과 로드 실패:', error);
+          evaluationsList.innerHTML = '<div class="error-message">평가 결과를 불러오는데 실패했습니다.</div>';
+        })
+        .getMyEvaluations(currentStudentId);
+    }
+    
+    /**
+     * 내 평가 결과 표시
+     * @param {Array} evaluations - 평가 결과 목록
+     */
+    function displayMyEvaluations(evaluations) {
+      const evaluationsList = document.getElementById('myEvaluationsList');
+      
+      if (!evaluations || evaluations.length === 0) {
+        evaluationsList.innerHTML = '<div class="loading-message">평가 결과가 없습니다.</div>';
+        return;
+      }
+      
+      evaluationsList.innerHTML = '';
+      
+      evaluations.forEach(evaluation => {
+        const card = document.createElement('div');
+        card.className = 'evaluation-card';
+
+        // 백분율 계산
+        const percentage = evaluation.maxScore > 0 ? 
+          Math.round((evaluation.totalScore / evaluation.maxScore) * 100) : 0;
+        
+        let html = `
+          <div class="evaluation-header">
+            <h3>${sanitizeText(evaluation.name)}</h3>
+            <div class="evaluation-score">
+              <span class="score">${evaluation.totalScore}/${evaluation.maxScore}</span>
+              <span class="percentage">(${percentage}%)</span>
+            </div>
+          </div>
+        `;
+
+        if (evaluation.description) {
+          html += `<p class="evaluation-description">${sanitizeText(evaluation.description)}</p>`;
+        }
+
+        // 세부 항목
+        if (evaluation.items && evaluation.items.length > 0) {
+          html += '<div class="evaluation-items">';
+          evaluation.items.forEach(item => {
+            const itemPercentage = item.maxPoints > 0 ? 
+              Math.round((item.score / item.maxPoints) * 100) : 0;
+            
+            html += `
+              <div class="evaluation-item">
+                <div class="item-header">
+                  <span class="item-name">${sanitizeText(item.name)}</span>
+                  <span class="item-score">${item.score}/${item.maxPoints} (${itemPercentage}%)</span>
+                </div>
+            `;
+            
+            if (item.comment) {
+              html += `<div class="item-comment">💬 ${sanitizeText(item.comment)}</div>`;
+            }
+            
+            html += '</div>';
+          });
+          html += '</div>';
+        }
+
+        if (evaluation.evaluateDate) {
+          html += `<div class="evaluation-date">평가일: ${sanitizeText(evaluation.evaluateDate)}</div>`;
+        }
+
+        card.innerHTML = html;
+        evaluationsList.appendChild(card);
+      });
+    }
+
+    // ==================== 유틸리티 함수 ====================
+    /**
+     * 텍스트 Sanitize 함수 (XSS 방지)
+     * @param {string} text - Sanitize할 텍스트
+     * @returns {string} Sanitize된 텍스트
+     */
+    function sanitizeText(text) {
+      if (!text) return '';
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.textContent;
+    }
+
+    /**
+     * 입력 필드 실시간 검증
+     */
+    function setupInputValidation() {
+      const newPasswordInput = document.getElementById('newPassword');
+      const confirmPasswordInput = document.getElementById('confirmPassword');
+
+      if (newPasswordInput && confirmPasswordInput) {
+        confirmPasswordInput.addEventListener('input', function() {
+          const newPassword = newPasswordInput.value;
+          const confirmPassword = this.value;
+
+          if (confirmPassword && newPassword !== confirmPassword) {
+            this.setCustomValidity('비밀번호가 일치하지 않습니다.');
+          } else {
+            this.setCustomValidity('');
+          }
+        });
+      }
+    }
+
+    // 페이지 로드 시 실시간 검증 설정
+    setupInputValidation();
+  </script>
+
+</body>
+</html>

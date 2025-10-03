@@ -2,7 +2,7 @@
 
 ## 📋 프로젝트 개요
 
-완전한 학생 관리, 과제 제출, 평가 시스템이 통합된 교육용 웹 애플리케이션
+Google Sheets 기반 과제 관리 시스템
 
 **현재 위치**: `/Users/kbd/Library/CloudStorage/OneDrive-문현고등학교/spsys`
 
@@ -10,39 +10,27 @@
 
 ## 🎯 현재 상태
 
-### ✅ 완료된 모든 기능
+### ✅ 완료된 기능
 
-**Phase 1: 기본 인증 시스템**
-- ✅ 학생 로그인 (5자리 학번)
-- ✅ 교사 로그인 (관리자 모드)
-- ✅ 비밀번호 변경 (SHA-256 해싱, 24시간 제한)
-- ✅ Google Sheets 연동
-- ✅ 반응형 UI (한글)
+**핵심 시스템**
+- ✅ 과제 시트 자동 생성
+- ✅ 과제ID 자동 채번 (TS001, TS002...)
+- ✅ 과제설정 시트 관리
+- ✅ 공개 시트 자동 등록
+- ✅ 날짜 유효성 검증
 
-**Phase 2: 과제 관리 시스템**
-- ✅ 과제 등록 및 관리
-- ✅ 학생 과제 제출
-- ✅ LaTeX 수식 지원 (MathJax)
-- ✅ 제출 현황 추적
-- ✅ 건의사항 입력 기능
+**메뉴 시스템**
+- ✅ 동적 하이퍼링크 메뉴
+- ✅ 카테고리별 자동 분류
+- ✅ 시트 삭제 기능 (필수 시트 보호)
+- ✅ 실시간 시트 목록 업데이트
 
-**Phase 3: 평가 시스템**
-- ✅ 평가 항목 설정 및 관리
-- ✅ 세부 항목별 점수 입력
-- ✅ 학생별 평가 결과 조회
-- ✅ 반별 접근 권한 관리
-- ✅ 평가 통계 및 분석
-
-**시스템 관리 기능**
-- ✅ 동적 하이퍼링크 메뉴 시스템
-- ✅ 시트 자동 생성 (헤더 포함)
-- ✅ 카테고리별 시트 분류
-- ✅ 자동 백업 생성
-- ✅ 실시간 통계 업데이트
-
-### 🚧 현재 상태
-
-**모든 핵심 기능 완료** - 프로덕션 사용 준비 완료
+**코드 품질**
+- ✅ 상수 정의 및 적용
+- ✅ isValidDate() 함수 구현
+- ✅ 과제ID 중복 방지
+- ✅ template 시트 우선 사용
+- ✅ 에러 처리 완비
 
 ---
 
@@ -50,167 +38,197 @@
 
 ```
 spsys/
-├── WORKSPACE.md                          # 이 파일 - 프로젝트 현황  
-├── README.md                             # 프로젝트 소개 (최신 버전)
-├── CURRENT/student-portfolio-system/     # 메인 Apps Script 버전
+├── README.md                                    # 프로젝트 개요
+├── WORKSPACE.md                                 # 이 파일
+│
+├── CURRENT/student-portfolio-system/            # 메인 시스템 ⭐
 │   ├── src/
-│   │   ├── Main.gs                      # 핵심 백엔드 로직 (3000+ 라인)
-│   │   ├── WebApp.html                  # 프론트엔드 UI
-│   │   └── appsscript.json              # Apps Script 설정
-│   └── docs/                            # 상세 문서
-│       ├── API.md
-│       ├── CHANGELOG.md
-│       ├── DEPLOYMENT.md
-│       ├── FUNCTIONS.md
-│       └── SETUP.md
-├── VERCEL/student-portfolio-vercel/      # Vercel 서버리스 버전
-│   ├── api/                             # API 엔드포인트
-│   │   ├── assignments.js               # 과제 관리
-│   │   ├── change-password.js           # 비밀번호 변경
-│   │   ├── evaluation-results.js        # 평가 결과
-│   │   ├── login.js                     # 인증
-│   │   ├── menu.js                      # 메뉴 관리
-│   │   ├── my-records.js                # 개인 기록
-│   │   ├── sheets.js                    # Google Sheets 연동
-│   │   └── submit-assignment.js         # 과제 제출
-│   ├── index.html                       # 메인 웹페이지
-│   ├── package.json                     # 의존성 관리
-│   └── .env.example                     # 환경 변수 템플릿
-└── ARCHIVE/                              # 과거 버전 보관
-    └── desktop-v1/                      # 초기 개발 버전
+│   │   ├── Main.gs                             # 핵심 로직 (737줄)
+│   │   └── appsscript.json                     # 설정
+│   └── README.md                               # 상세 가이드
+│
+├── VERCEL/student-portfolio-vercel/             # (사용 안 함)
+│   ├── api/
+│   ├── index.html
+│   └── package.json
+│
+└── ARCHIVE/                                     # 과거 버전
+    └── desktop-v1/
 ```
 
 ---
 
 ## 🔑 핵심 정보
 
-### 완성된 시스템 구조
+### 시스템 구성
 
-**Google Sheets 구조**:
+**필수 시트 (⭐)**:
 - 📋 `메뉴`: 중앙 관리 허브
-- ⭐ `학생명단_전체`: 전체 학생 데이터
-- ⭐ `과제목록`: 과제 정보
-- ⭐ `평가항목설정`: 평가 체계
-- ⭐ `평가세부항목`: 세부 평가 기준
-- ⭐ `평가결과`: 평가 점수 데이터
-- ⭐ `제출현황`: 과제 제출 추적
-- ⭐ `공개`: 학생 조회 가능 항목
-- 📁 동적 생성: `학생명단_{반}`, `과제_{과제명}`, `평가_{평가명}`
+- ⭐ `학생명단_전체`: 학생 데이터
+- ⭐ `과제설정`: 과제 정보
+- ⭐ `공개`: 공개 설정
+- ⭐ `template`: 시트 템플릿
 
-### 학번 형식
-- **5자리 숫자** (예: 20240101)
-- 정규식: `/^[0-9]{5}$/`
+**동적 생성**:
+- 과제별 전용 시트 (과제 생성 시)
 
-### 보안 정책
-- 비밀번호: SHA-256 해싱 + Salt
-- 변경 제한: 24시간
-- 반별 접근 권한 제어
-- 관리자/학생 권한 분리
+### 주요 상수
+
+```javascript
+// 컬럼 인덱스 (0-indexed)
+COLUMN_INDEX = {
+  PUBLIC: 0,
+  ASSIGNMENT_ID: 1,
+  ASSIGNMENT_NAME: 2,
+  TARGET_SHEET: 3,
+  START_DATE: 4,
+  END_DATE: 5,
+  QUESTION_START: 6
+}
+
+// 필수 시트
+REQUIRED_SHEETS = [
+  '학생명단_전체',
+  '과제설정',
+  '공개',
+  'template'
+]
+```
 
 ---
 
-## 🚀 배포 및 사용
+## 🚀 사용 방법
 
-### Google Apps Script (권장 방법)
+### 초기 설정
 
-**빠른 시작**:
 1. Google Sheets에서 새 스프레드시트 생성
-2. `CURRENT/student-portfolio-system/src/Main.gs` 복사
-3. Apps Script에서 `setupCompleteInteractiveMenu()` 실행
-4. 웹앱 배포하여 URL 획득
+2. Apps Script 열기 (확장 프로그램 > Apps Script)
+3. Main.gs 복사하여 붙여넣기
+4. `setupCompleteInteractiveMenu()` 실행
+5. 권한 승인 후 완료
 
-**장점**:
-- 설정 매우 간단 (10분)
-- 무료 HTTPS 제공
-- Google Sheets 직접 연결
-- 모든 기능 완전 지원
+### 일상 사용
 
-### Vercel 서버리스 (확장성 중시)
+**과제 생성**:
+```
+메뉴 > 📋 포트폴리오 > ➕ 새 과제 시트
+→ 과제명, 날짜, 질문 입력
+→ 자동으로 시트 생성 및 등록
+```
 
-**설정 방법**:
-1. `VERCEL/student-portfolio-vercel` 디렉토리 이동
-2. `.env` 파일 설정 (Google Sheets API)
-3. `npm install && vercel --prod` 실행
+**시트 탐색**:
+```
+메뉴 시트 > 시트명 클릭
+→ 해당 시트로 이동
+```
 
-**장점**:
-- 무제한 확장성
-- 커스텀 도메인
-- 글로벌 CDN
-
----
-
-## 📚 시스템 사용법
-
-### 교사용 (관리자)
-
-1. **시스템 초기화**: `setupCompleteInteractiveMenu()` 실행
-2. **메뉴 시트**: 모든 기능의 중앙 허브
-3. **시트 관리**: 하이퍼링크로 빠른 이동
-4. **과제 관리**: 과제목록 시트에서 등록/수정
-5. **평가 관리**: 평가항목설정에서 체계 구축
-6. **데이터 관리**: 백업 생성, 통계 확인
-
-### 학생용
-
-1. **로그인**: 5자리 학번 + 비밀번호
-2. **과제 확인**: 활성 과제 목록 조회
-3. **과제 제출**: LaTeX 수식 지원
-4. **평가 확인**: 개인 평가 결과 조회
-5. **정보 관리**: 비밀번호 변경, 건의사항 입력
+**시트 삭제**:
+```
+메뉴 시트 > 삭제 체크박스 클릭
+→ 확인 후 삭제
+```
 
 ---
 
-## 🎯 주요 완성 기능
+## 🔧 최근 개선사항
 
-### 관리 시스템
-- ✅ 동적 메뉴 (하이퍼링크 기반)
-- ✅ 시트 자동 생성 (목적별 헤더)
-- ✅ 카테고리별 시트 분류
-- ✅ 필수/선택 시트 구분
-- ✅ 자동 백업 및 통계
+### 2025-10-03 업데이트
 
-### 교육 기능
-- ✅ 과제 관리 (등록/제출/추적)
-- ✅ 평가 시스템 (항목/점수/통계)
-- ✅ LaTeX 수식 지원
-- ✅ 반별 권한 관리
-- ✅ 건의사항 시스템
+1. **상수 정의**
+   - COLUMN_INDEX, ROW_INDEX, SHEET_NAMES 추가
+   - 모든 매직 넘버를 상수로 대체
 
-### 보안 및 인증
-- ✅ 이중 로그인 (학생/교사)
-- ✅ SHA-256 해싱
-- ✅ 24시간 변경 제한
-- ✅ 접근 권한 제어
+2. **날짜 검증**
+   - isValidDate() 함수 구현
+   - 형식, 유효성, 순서 검증
 
----
+3. **공개 시트 자동 등록**
+   - 과제 생성 시 자동으로 공개 시트에 등록
+   - 기본값: 공개 안함, 전체 대상
 
-## 🔧 기술 스택
+4. **template 시트 처리**
+   - template 시트 우선 사용
+   - 없거나 비어있으면 기본 헤더 사용
 
-**Backend**: Google Apps Script / Node.js (Vercel)
-**Frontend**: HTML/CSS/JavaScript, MathJax
-**Database**: Google Sheets
-**Authentication**: SHA-256 + Salt
-**Deployment**: Apps Script Web App / Vercel
+5. **과제ID 중복 방지**
+   - maxId 기반 ID 생성
+   - 행 삭제 후에도 중복 없음
 
 ---
 
-## 📈 시스템 상태
+## 📊 Git 상태
 
-**현재 버전**: v3.0 (Phase 3 완료)
-**프로덕션 준비**: ✅ 완료
-**테스트 상태**: ✅ 모든 기능 검증 완료
-**문서화**: ✅ 완전한 사용자 가이드 제공
+### 최근 커밋
+
+```
+e57ca4d Refactor: Add constants, validation, and auto-registration features
+4a47e62 Fix critical issues in assignment creation
+2780c0b Simplify system: Remove web app and focus on Google Sheets
+```
+
+### 브랜치
+
+- **main**: 메인 브랜치 (활성)
 
 ---
 
-## 🤝 기여 및 지원
+## 🐛 알려진 이슈
 
-- 📧 **GitHub**: https://github.com/KBD71/spsys
-- 🐛 **Issues**: https://github.com/KBD71/spsys/issues
-- 📖 **문서**: `CURRENT/student-portfolio-system/docs/`
+### 검증 필요
+
+- **질문 헤더 컬럼 계산** (Main.gs:230)
+  - 현재: `COLUMN_INDEX.QUESTION_START + newQuestionNum + 1`
+  - 검증 필요: 질문이 올바른 위치에 저장되는지 테스트 필요
+
+---
+
+## 📈 향후 계획
+
+### 단기 (1-2주)
+- [ ] 질문 헤더 컬럼 계산 검증 및 수정
+- [ ] 사용자 테스트 수행
+- [ ] 버그 수정
+
+### 중기 (1-2개월)
+- [ ] 평가 시스템 추가
+- [ ] 학생 로그인 기능
+- [ ] 웹 인터페이스 개발
+
+### 장기
+- [ ] 파일 업로드 (Google Drive)
+- [ ] 통계 대시보드
+- [ ] 모바일 앱
+
+---
+
+## 🤝 기여
+
+- **GitHub**: https://github.com/KBD71/spsys
+- **Issues**: https://github.com/KBD71/spsys/issues
+
+---
+
+## 📝 개발 노트
+
+### 주요 결정사항
+
+1. **Google Sheets 전용**
+   - 웹앱 기능 제거
+   - Apps Script로 단순화
+   - 배포 및 유지보수 용이
+
+2. **상수 기반 설계**
+   - 매직 넘버 제거
+   - 유지보수성 향상
+   - 코드 가독성 개선
+
+3. **자동화 우선**
+   - 과제ID 자동 생성
+   - 시트 자동 등록
+   - 메뉴 자동 업데이트
 
 ---
 
 **마지막 업데이트**: 2025-10-03
-**현재 버전**: v3.0 (완전 기능 시스템)
+**현재 버전**: v1.0 (과제 관리 시스템)
 **작업자**: KBD71

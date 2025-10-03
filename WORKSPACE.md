@@ -1,36 +1,48 @@
-# 학생 포트폴리오 시스템 (SPSYS) - 작업 공간
+# 📚 학생 포트폴리오 시스템 - 작업 공간
 
 ## 📋 프로젝트 개요
 
-Google Sheets 기반 학생 비밀번호 관리 및 평가 시스템
+완전한 학생 관리, 과제 제출, 평가 시스템이 통합된 교육용 웹 애플리케이션
 
-**현재 위치**: `C:\Users\matht\Documents\spsys`
+**현재 위치**: `/Users/kbd/Library/CloudStorage/OneDrive-문현고등학교/spsys`
 
 ---
 
 ## 🎯 현재 상태
 
-### ✅ 완료된 작업
+### ✅ 완료된 모든 기능
 
-1. **Phase 1: 기본 인증 시스템 (완료)**
-   - ✅ 학생 로그인 (5자리 학번)
-   - ✅ 비밀번호 변경 (SHA-256 해싱, 24시간 제한)
-   - ✅ Google Sheets 연동
-   - ✅ 반응형 UI (한글)
+**Phase 1: 기본 인증 시스템**
+- ✅ 학생 로그인 (5자리 학번)
+- ✅ 교사 로그인 (관리자 모드)
+- ✅ 비밀번호 변경 (SHA-256 해싱, 24시간 제한)
+- ✅ Google Sheets 연동
+- ✅ 반응형 UI (한글)
 
-2. **배포 옵션 구현**
-   - ✅ Google Apps Script 버전 (`CURRENT/`)
-   - ✅ Vercel Serverless 버전 (`VERCEL/`)
+**Phase 2: 과제 관리 시스템**
+- ✅ 과제 등록 및 관리
+- ✅ 학생 과제 제출
+- ✅ LaTeX 수식 지원 (MathJax)
+- ✅ 제출 현황 추적
+- ✅ 건의사항 입력 기능
 
-### 🚧 진행 중인 작업
+**Phase 3: 평가 시스템**
+- ✅ 평가 항목 설정 및 관리
+- ✅ 세부 항목별 점수 입력
+- ✅ 학생별 평가 결과 조회
+- ✅ 반별 접근 권한 관리
+- ✅ 평가 통계 및 분석
 
-- 없음 (다음 단계 대기 중)
+**시스템 관리 기능**
+- ✅ 동적 하이퍼링크 메뉴 시스템
+- ✅ 시트 자동 생성 (헤더 포함)
+- ✅ 카테고리별 시트 분류
+- ✅ 자동 백업 생성
+- ✅ 실시간 통계 업데이트
 
-### 📅 예정된 작업
+### 🚧 현재 상태
 
-- Phase 2: 과제 관리 시스템 (사용자 지시 대기)
-- Phase 3: 평가 시스템 (사용자 지시 대기)
-- Phase 4: 파일 업로드 (선택 사항)
+**모든 핵심 기능 완료** - 프로덕션 사용 준비 완료
 
 ---
 
@@ -38,172 +50,167 @@ Google Sheets 기반 학생 비밀번호 관리 및 평가 시스템
 
 ```
 spsys/
-├── WORKSPACE.md              # 이 파일 - 프로젝트 현황
-├── README.md                 # 프로젝트 소개
-├── TASKS/                    # 작업 관리
-│   ├── TODO.md              # 체크리스트
-│   ├── NEXT_STEPS.md        # 다음 작업 가이드
-│   └── PHASE_2_ASSIGNMENTS.md  # Phase 2 구현 계획
-├── CURRENT/                  # 현재 사용 중인 Apps Script 버전
-│   ├── 코드.gs
-│   ├── 웹페이지.html
-│   ├── 배포가이드.md
-│   └── README.md
-├── VERCEL/                   # Vercel 배포 버전
-│   ├── index.html
-│   ├── api/
-│   │   ├── login.js
-│   │   ├── change-password.js
-│   │   └── sheets.js
-│   ├── package.json
-│   ├── vercel.json
-│   ├── .env.example
-│   └── README.md
-└── ARCHIVE/                  # 이전 버전 보관
-    ├── desktop-v1/          # 바탕화면 초기 버전
-    └── github-old/          # 이전 GitHub 버전
+├── WORKSPACE.md                          # 이 파일 - 프로젝트 현황  
+├── README.md                             # 프로젝트 소개 (최신 버전)
+├── CURRENT/student-portfolio-system/     # 메인 Apps Script 버전
+│   ├── src/
+│   │   ├── Main.gs                      # 핵심 백엔드 로직 (3000+ 라인)
+│   │   ├── WebApp.html                  # 프론트엔드 UI
+│   │   └── appsscript.json              # Apps Script 설정
+│   └── docs/                            # 상세 문서
+│       ├── API.md
+│       ├── CHANGELOG.md
+│       ├── DEPLOYMENT.md
+│       ├── FUNCTIONS.md
+│       └── SETUP.md
+├── VERCEL/student-portfolio-vercel/      # Vercel 서버리스 버전
+│   ├── api/                             # API 엔드포인트
+│   │   ├── assignments.js               # 과제 관리
+│   │   ├── change-password.js           # 비밀번호 변경
+│   │   ├── evaluation-results.js        # 평가 결과
+│   │   ├── login.js                     # 인증
+│   │   ├── menu.js                      # 메뉴 관리
+│   │   ├── my-records.js                # 개인 기록
+│   │   ├── sheets.js                    # Google Sheets 연동
+│   │   └── submit-assignment.js         # 과제 제출
+│   ├── index.html                       # 메인 웹페이지
+│   ├── package.json                     # 의존성 관리
+│   └── .env.example                     # 환경 변수 템플릿
+└── ARCHIVE/                              # 과거 버전 보관
+    └── desktop-v1/                      # 초기 개발 버전
 ```
 
 ---
 
 ## 🔑 핵심 정보
 
+### 완성된 시스템 구조
+
+**Google Sheets 구조**:
+- 📋 `메뉴`: 중앙 관리 허브
+- ⭐ `학생명단_전체`: 전체 학생 데이터
+- ⭐ `과제목록`: 과제 정보
+- ⭐ `평가항목설정`: 평가 체계
+- ⭐ `평가세부항목`: 세부 평가 기준
+- ⭐ `평가결과`: 평가 점수 데이터
+- ⭐ `제출현황`: 과제 제출 추적
+- ⭐ `공개`: 학생 조회 가능 항목
+- 📁 동적 생성: `학생명단_{반}`, `과제_{과제명}`, `평가_{평가명}`
+
 ### 학번 형식
 - **5자리 숫자** (예: 20240101)
 - 정규식: `/^[0-9]{5}$/`
 
-### 비밀번호 정책
-- 길이: 4-20자
-- 해싱: SHA-256 + Salt
+### 보안 정책
+- 비밀번호: SHA-256 해싱 + Salt
 - 변경 제한: 24시간
-
-### Google Sheets 구조
-
-**시트 이름**: `학생명단_전체`
-
-| 학번 | 이름 | 반 | 비밀번호 | 이메일 | 비밀번호변경일 | 변경횟수 |
-|------|------|-----|----------|--------|---------------|----------|
-| 20240101 | 홍길동 | 1-1 | (해시) | hong@... | 2025-10-02 | 1 |
+- 반별 접근 권한 제어
+- 관리자/학생 권한 분리
 
 ---
 
-## 🚀 배포 옵션
+## 🚀 배포 및 사용
 
-### Option 1: Google Apps Script (추천 - 간단)
+### Google Apps Script (권장 방법)
+
+**빠른 시작**:
+1. Google Sheets에서 새 스프레드시트 생성
+2. `CURRENT/student-portfolio-system/src/Main.gs` 복사
+3. Apps Script에서 `setupCompleteInteractiveMenu()` 실행
+4. 웹앱 배포하여 URL 획득
 
 **장점**:
-- 설정 간단 (클릭 몇 번)
-- 무료 HTTPS
+- 설정 매우 간단 (10분)
+- 무료 HTTPS 제공
 - Google Sheets 직접 연결
+- 모든 기능 완전 지원
 
-**단점**:
-- Apps Script 제약 (30초 실행 제한)
-- 커스텀 도메인 불가
+### Vercel 서버리스 (확장성 중시)
 
-**배포 방법**: `CURRENT/배포가이드.md` 참조
-
-### Option 2: Vercel (추천 - 확장성)
+**설정 방법**:
+1. `VERCEL/student-portfolio-vercel` 디렉토리 이동
+2. `.env` 파일 설정 (Google Sheets API)
+3. `npm install && vercel --prod` 실행
 
 **장점**:
-- 무제한 확장 가능
+- 무제한 확장성
 - 커스텀 도메인
-- 빠른 성능 (글로벌 CDN)
-- 높은 할당량 (일 500,000 요청)
-
-**단점**:
-- Google Cloud Console 설정 필요
-- 환경 변수 관리 필요
-
-**배포 방법**: `VERCEL/README.md` 참조
+- 글로벌 CDN
 
 ---
 
-## 💻 다른 노트북에서 작업하기
+## 📚 시스템 사용법
 
-### 1단계: 저장소 클론
+### 교사용 (관리자)
 
-```bash
-cd Documents
-git clone https://github.com/KBD71/spsys.git
-cd spsys
-```
+1. **시스템 초기화**: `setupCompleteInteractiveMenu()` 실행
+2. **메뉴 시트**: 모든 기능의 중앙 허브
+3. **시트 관리**: 하이퍼링크로 빠른 이동
+4. **과제 관리**: 과제목록 시트에서 등록/수정
+5. **평가 관리**: 평가항목설정에서 체계 구축
+6. **데이터 관리**: 백업 생성, 통계 확인
 
-### 2단계: 현재 상태 확인
+### 학생용
 
-```bash
-# 이 파일 읽기
-cat WORKSPACE.md
-
-# 다음 작업 확인
-cat TASKS/TODO.md
-cat TASKS/NEXT_STEPS.md
-```
-
-### 3단계: 필요한 도구 설치
-
-**Apps Script 배포용**:
-- Google 계정만 있으면 됨
-
-**Vercel 배포용**:
-```bash
-# Node.js 설치 필요
-npm install
-
-# Vercel CLI 설치
-npm install -g vercel
-```
-
-### 4단계: 작업 계속
-
-1. `TASKS/TODO.md`에서 현재 진행 상황 확인
-2. `TASKS/NEXT_STEPS.md`에서 다음 작업 확인
-3. 작업 완료 후 git commit & push
+1. **로그인**: 5자리 학번 + 비밀번호
+2. **과제 확인**: 활성 과제 목록 조회
+3. **과제 제출**: LaTeX 수식 지원
+4. **평가 확인**: 개인 평가 결과 조회
+5. **정보 관리**: 비밀번호 변경, 건의사항 입력
 
 ---
 
-## 📞 문제 해결
+## 🎯 주요 완성 기능
 
-### Google Sheets 연결 안 됨
+### 관리 시스템
+- ✅ 동적 메뉴 (하이퍼링크 기반)
+- ✅ 시트 자동 생성 (목적별 헤더)
+- ✅ 카테고리별 시트 분류
+- ✅ 필수/선택 시트 구분
+- ✅ 자동 백업 및 통계
 
-**Apps Script 버전**:
-1. 스프레드시트 ID 확인
-2. `코드.gs`에서 CONFIG.SHEET_NAME 확인
-3. 열 이름이 정확한지 확인
+### 교육 기능
+- ✅ 과제 관리 (등록/제출/추적)
+- ✅ 평가 시스템 (항목/점수/통계)
+- ✅ LaTeX 수식 지원
+- ✅ 반별 권한 관리
+- ✅ 건의사항 시스템
 
-**Vercel 버전**:
-1. 서비스 계정 이메일로 시트 공유 확인
-2. `.env` 파일 환경 변수 확인
-3. `vercel env pull` 실행
-
-### 학번 인식 안 됨
-
-- 5자리 숫자 확인
-- Google Sheets에서 학번 열이 텍스트 형식인지 확인
-- 앞에 0이 있으면 텍스트로 저장해야 함
-
-### 비밀번호 변경 안 됨
-
-- 24시간 제한 확인
-- 현재 비밀번호 정확한지 확인
-- 새 비밀번호가 4-20자인지 확인
+### 보안 및 인증
+- ✅ 이중 로그인 (학생/교사)
+- ✅ SHA-256 해싱
+- ✅ 24시간 변경 제한
+- ✅ 접근 권한 제어
 
 ---
 
-## 🔄 업데이트 이력
+## 🔧 기술 스택
 
-- **2025-10-02**: 프로젝트 재구성, 저장소 이름 변경 (spsys)
-- **Phase 1 완료**: 기본 인증 시스템 구현
-- **다음 단계**: Phase 2 과제 관리 시스템 (사용자 지시 대기)
-
----
-
-## 📧 연락처
-
-- GitHub: https://github.com/KBD71/spsys
-- Issues: https://github.com/KBD71/spsys/issues
+**Backend**: Google Apps Script / Node.js (Vercel)
+**Frontend**: HTML/CSS/JavaScript, MathJax
+**Database**: Google Sheets
+**Authentication**: SHA-256 + Salt
+**Deployment**: Apps Script Web App / Vercel
 
 ---
 
-**마지막 업데이트**: 2025-10-02
+## 📈 시스템 상태
+
+**현재 버전**: v3.0 (Phase 3 완료)
+**프로덕션 준비**: ✅ 완료
+**테스트 상태**: ✅ 모든 기능 검증 완료
+**문서화**: ✅ 완전한 사용자 가이드 제공
+
+---
+
+## 🤝 기여 및 지원
+
+- 📧 **GitHub**: https://github.com/KBD71/spsys
+- 🐛 **Issues**: https://github.com/KBD71/spsys/issues
+- 📖 **문서**: `CURRENT/student-portfolio-system/docs/`
+
+---
+
+**마지막 업데이트**: 2025-10-03
+**현재 버전**: v3.0 (완전 기능 시스템)
 **작업자**: KBD71
-**현재 브랜치**: main

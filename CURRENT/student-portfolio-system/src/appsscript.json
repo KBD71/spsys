@@ -1,15 +1,15 @@
 {
   "timeZone": "Asia/Seoul",
   "dependencies": {},
+  "webapp": {
+    "access": "MYSELF",
+    "executeAs": "USER_DEPLOYING"
+  },
   "exceptionLogging": "STACKDRIVER",
-  "runtimeVersion": "V8",
   "oauthScopes": [
     "https://www.googleapis.com/auth/spreadsheets",
-    "https://www.googleapis.com/auth/script.storage",
+    "https://www.googleapis.com/auth/script.container.ui",
     "https://www.googleapis.com/auth/script.scriptapp"
   ],
-  "webapp": {
-    "access": "DOMAIN",
-    "executeAs": "USER_DEPLOYING"
-  }
+  "runtimeVersion": "V8"
 }

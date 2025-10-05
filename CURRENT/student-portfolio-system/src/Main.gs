@@ -18,11 +18,17 @@ function onOpen() {
         .addItem('🧑‍🎓 학생명단', 'goToStudents')
         .addItem('📝 과제설정', 'goToAssignments')
         .addItem('📢 공개설정', 'goToPublic')
-        .addItem('🤖 프롬프트', 'goToPrompts')
+        .addItem('🤖 프롬프트', 'goToPrompts') // AI 프롬프트 시트 바로가기
       )
       .addSeparator()
       .addItem('🔄 대시보드 새로고침', 'refreshDashboard')
       .addItem('🗑️ 시트 삭제', 'promptToDeleteSheet')
+      .addSeparator()
+      // ★★★ 여기에 AI 기능 메뉴가 포함되어 있습니다 ★★★
+      .addSubMenu(SpreadsheetApp.getUi().createMenu('🤖 AI 기능')
+        .addItem('🔑 AI API 키 설정', 'setApiKey')
+        // 'AI 생기부 요약 실행'은 체크박스 클릭으로 자동 실행되므로 메뉴에서 제거
+      )
       .addSeparator()
       .addItem('⚙️ 필수 시트 생성/초기화', 'initializeMinimalSystem')
       .addToUi();
@@ -91,6 +97,12 @@ function onEdit(e) {
   }
 }
 
+/**
+ * AI 요약 초안을 생성하는 메인 함수 (수정됨)
+ * @param {Sheet} sheet - 현재 작업 중인 시트
+ * @param {number} row - 편집된 행 번호
+ * @param {Array<string>} headers - 시트의 헤더 목록
+ */
 function generateAiSummary(sheet, row, headers) {
   const ui = SpreadsheetApp.getUi();
   try {
@@ -121,7 +133,11 @@ function generateAiSummary(sheet, row, headers) {
 
     if (!context) throw new Error("요약할 학생의 답변 내용이 없습니다.");
 
-    const promptTemplate = getPromptTemplate('종합의견');
+    // ★★★ 수정된 부분 ★★★
+    // 현재 시트 이름을 기반으로 프롬프트 템플릿을 동적으로 가져옵니다.
+    const summaryType = sheet.getName();
+    const promptTemplate = getPromptTemplate(summaryType);
+    
     const finalPrompt = `
       ${promptTemplate.persona}
       ${promptTemplate.task}
@@ -285,7 +301,7 @@ function initializeMinimalSystem() {
             '과제설정': ['공개', '과제ID', '과제명', '대상시트', '시작일', '마감일', '질문1', '질문2', '질문3', '질문4', '질문5'],
             '공개': ['공개', '시트이름', '대상반'],
             'template': ['학번', '반', '이름', '질문1', '질문2', '질문3', '질문4', '질문5', '제출일시', '초안생성', '종합의견'],
-            '프롬프트': ['요약 종류', '역할 (Persona)', '작업 (Task)', '지시사항 (Instructions)']
+            '프롬프트': ['요약종류', '역할 (Persona)', '작업 (Task)', '지시사항 (Instructions)']
         };
         let createdCount = 0;
         for (const sheetName in requiredSheets) {
@@ -436,7 +452,7 @@ function getApiKey() {
 function callGeminiAPI(prompt) {
   const apiKey = getApiKey();
   if (!apiKey) return "API 키가 설정되지 않았습니다.";
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro-latest:generateContent?key=${apiKey}`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro-latest:generateContent?key=${apiKey}`;
   const payload = {"contents": [{"parts": [{"text": prompt}]}]};
   const options = {'method': 'post', 'contentType': 'application/json', 'payload': JSON.stringify(payload), 'muteHttpExceptions': true};
   const response = UrlFetchApp.fetch(url, options);
@@ -470,13 +486,24 @@ function getQuestionText(sheetName, questionHeader) {
     }
 }
 
+/**
+ * '프롬프트' 시트에서 지정된 유형의 프롬프트 템플릿을 가져오는 함수 (수정됨)
+ * @param {string} summaryType - 찾으려는 요약의 종류 (시트 이름과 일치)
+ * @returns {Object} 페르소나, 작업, 지시사항이 포함된 객체
+ */
 function getPromptTemplate(summaryType) {
     const promptSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('프롬프트');
     if (!promptSheet) throw new Error("'프롬프트' 시트를 찾을 수 없습니다.");
     const data = promptSheet.getDataRange().getValues();
-    data.shift(); 
+    data.shift(); // 헤더 행 제거
     const templateRow = data.find(row => row[0] === summaryType);
-    if (!templateRow) throw new Error(`'프롬프트' 시트에서 '${summaryType}' 종류를 찾을 수 없습니다.`);
+
+    // ★★★ 수정된 부분 ★★★
+    // 시트명과 일치하는 프롬프트가 없을 경우, 더 명확한 에러 메시지를 반환합니다.
+    if (!templateRow) {
+      throw new Error(`'프롬프트' 시트에서 현재 시트명과 일치하는 요약 종류('${summaryType}')를 찾을 수 없습니다. 프롬프트 시트에 해당 항목을 추가해주세요.`);
+    }
+    
     return { persona: templateRow[1], task: templateRow[2], instructions: templateRow[3] };
 }
 

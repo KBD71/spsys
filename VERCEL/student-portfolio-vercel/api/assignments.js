@@ -1,6 +1,7 @@
 /**
- * 과제 목록 조회 API (v3 - 날짜 형식 처리 강화)
- * 'YYYY. MM. DD' 형식의 날짜를 인식하도록 수정하여 날짜 비교 오류를 해결합니다.
+ * 과제 목록 조회 API (v4 - 최종 안정화 버전)
+ * - 다양한 날짜 형식('YYYY.MM.DD', 'YYYY-MM-DD' 등)을 모두 처리하도록 로직 강화
+ * - 서버 로그에 각 과제 데이터의 처리 과정을 기록하여 디버깅 용이성 확보
  */
 const { google } = require('googleapis');
 
@@ -16,100 +17,94 @@ async function getSheetsClient() {
   return google.sheets({ version: 'v4', auth: authClient });
 }
 
-/**
- * 'YYYY. MM. DD' 형식의 날짜 문자열을 Date 객체로 변환하는 함수
- * @param {string} dateString - '2025. 10. 1'과 같은 형식의 날짜 문자열
- * @returns {Date|null} 변환된 Date 객체 또는 null
- */
-function parseCustomDate(dateString) {
+// 더욱 유연한 날짜 변환 함수
+function parseLenientDate(dateString) {
   if (!dateString || typeof dateString !== 'string') return null;
-  
-  const parts = dateString.split('.').map(part => part.trim());
-  if (parts.length === 3) {
-    const year = parseInt(parts[0], 10);
-    const month = parseInt(parts[1], 10) - 1; // JavaScript의 월은 0부터 시작
-    const day = parseInt(parts[2], 10);
-    if (!isNaN(year) && !isNaN(month) && !isNaN(day)) {
-      return new Date(year, month, day);
-    }
-  }
-  // 표준 형식도 시도
-  const standardDate = new Date(dateString);
-  if (!isNaN(standardDate.getTime())) {
-      return standardDate;
-  }
-  
-  return null;
+  // 'YYYY. MM. DD.' 형식을 'YYYY-MM-DD'로 변환
+  const formattedString = dateString.replace(/\.\s*/g, '-').replace(/-$/, '');
+  const date = new Date(formattedString);
+  return isNaN(date.getTime()) ? null : date;
 }
 
 module.exports = async (req, res) => {
-  // CORS 헤더 설정
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
-  if (req.method !== 'GET') {
-    return res.status(405).json({ success: false, message: 'Method not allowed' });
-  }
+  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (req.method !== 'GET') return res.status(405).json({ success: false, message: 'Method not allowed' });
+
+  console.log("'/api/assignments' 요청 시작");
 
   try {
     const { studentId } = req.query;
     if (!studentId) {
+      console.log("오류: 학번이 누락되었습니다.");
       return res.status(400).json({ success: false, message: '학번을 입력해주세요.' });
     }
 
     const sheets = await getSheetsClient();
     const spreadsheetId = process.env.SPREADSHEET_ID;
 
-    // '과제설정' 시트 읽기
-    const assignmentResponse = await sheets.spreadsheets.values.get({
+    const response = await sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: '과제설정!A:G' // 질문1까지 읽도록 범위 확장
+      range: '과제설정!A:G'
     });
-    const assignmentData = assignmentResponse.data.values;
-    if (!assignmentData || assignmentData.length < 2) {
+    const allRows = response.data.values;
+    if (!allRows || allRows.length < 2) {
+      console.log("'과제설정' 시트에 데이터가 없습니다.");
       return res.status(200).json({ success: true, assignments: [] });
     }
 
     const assignments = [];
     const today = new Date();
-    today.setHours(0, 0, 0, 0); // 시간 부분을 제거하여 날짜만 비교
+    today.setHours(0, 0, 0, 0);
 
-    for (let i = 1; i < assignmentData.length; i++) {
-      const row = assignmentData[i];
-      const isPublic = row[0] === true || row[0] === 'TRUE' || row[0] === 'Y';
-      
-      if (!isPublic) continue;
+    console.log(`서버 기준 오늘 날짜: ${today.toISOString().split('T')[0]}`);
 
+    // 헤더를 제외한 데이터 행만 처리
+    allRows.slice(1).forEach((row, index) => {
+      const isPublic = (row[0] || '').toString().toUpperCase() === 'TRUE';
+      const assignmentName = row[2] || '이름 없음';
       const startDateStr = row[4];
       const dueDateStr = row[5];
       
-      // ⭐ 수정된 날짜 처리 로직 ⭐
-      const startDate = parseCustomDate(startDateStr);
-      const dueDate = parseCustomDate(dueDateStr);
+      console.log(`\n[${index + 2}번 행 처리중] 과제명: ${assignmentName}`);
+      console.log(`  - 공개 여부 (A열): ${row[0]} -> ${isPublic}`);
+      
+      if (!isPublic) {
+        console.log("  - 결과: 비공개 과제이므로 건너뜁니다.");
+        return;
+      }
 
-      // 날짜 비교
+      const startDate = parseLenientDate(startDateStr);
+      const dueDate = parseLenientDate(dueDateStr);
+
+      console.log(`  - 시작일 (E열): "${startDateStr}" -> ${startDate ? startDate.toISOString().split('T')[0] : '유효하지 않음'}`);
+      console.log(`  - 마감일 (F열): "${dueDateStr}" -> ${dueDate ? dueDate.toISOString().split('T')[0] : '유효하지 않음'}`);
+      
       if (startDate && today < startDate) {
-        continue; // 과제 시작일 전
+        console.log("  - 결과: 과제 시작 전이므로 건너뜁니다.");
+        return;
       }
       if (dueDate && today > dueDate) {
-        continue; // 과제 마감일 지남
+        console.log("  - 결과: 과제 마감일이 지났으므로 건너뜁니다.");
+        return;
       }
 
+      console.log("  - 결과: 모든 조건을 만족하므로 목록에 추가합니다.");
       assignments.push({
         id: row[1],
-        name: row[2],
+        name: assignmentName,
         description: `제출 기한: ${dueDateStr || '기한 없음'}`,
         dueDate: dueDateStr || '기한 없음',
       });
-    }
-
-    return res.status(200).json({ success: true, assignments: assignments });
+    });
+    
+    console.log(`최종 처리 완료. ${assignments.length}개의 과제를 반환합니다.`);
+    return res.status(200).json({ success: true, assignments });
 
   } catch (error) {
-    console.error('Assignments API error:', error);
-    return res.status(500).json({ success: false, message: '과제 목록 조회 실패: ' + error.message });
+    console.error('Assignments API 심각한 오류:', error);
+    return res.status(500).json({ success: false, message: '과제 목록 조회 중 서버 오류가 발생했습니다.' });
   }
 };

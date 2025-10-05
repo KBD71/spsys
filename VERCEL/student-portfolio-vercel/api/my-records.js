@@ -31,7 +31,7 @@ function isClassAllowed(studentClass, targetClass) {
     return studentGrade === targetGrade;
   }
   
-  // '1-6,1-7' 또는 '1-6, 1-7' 과 같은 형식을 모두 처리
+  // '1-1,1-2' 또는 '1-1, 1-2' 과 같은 형식을 모두 처리
   const allowedClasses = trimmedTarget.split(',').map(cls => cls.trim());
   return allowedClasses.includes(studentClass);
 }

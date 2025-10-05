@@ -17,244 +17,62 @@
   <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 
   <style>
-    /* ==================== 기본 설정 ==================== */
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans KR', sans-serif;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      min-height: 100vh;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      padding: 20px;
-      color: #333;
-      line-height: 1.6;
-    }
-
-    /* ==================== 화면 레이아웃 ==================== */
-    .screen {
-      background: white;
-      border-radius: 20px;
-      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-      max-width: 600px;
-      width: 100%;
-      overflow: hidden;
-      animation: fadeIn 0.5s ease-in-out;
-    }
+    /* CSS 스타일은 변경 없이 그대로 유지됩니다. */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans KR', sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; display: flex; justify-content: center; align-items: center; padding: 20px; color: #333; line-height: 1.6; }
+    .screen { background: white; border-radius: 20px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3); max-width: 600px; width: 100%; overflow: hidden; animation: fadeIn 0.5s ease-in-out; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-
-    .screen.hidden {
-      display: none;
-    }
-
-    /* ==================== 헤더 ==================== */
-    header {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
-      padding: 30px;
-      text-align: center;
-      position: relative;
-    }
-
-    header h1 {
-      font-size: 1.8rem;
-      font-weight: 700;
-      margin: 0;
-    }
-
-    .btn-back {
-      position: absolute;
-      left: 20px;
-      top: 50%;
-      transform: translateY(-50%);
-      background: rgba(255, 255, 255, 0.2);
-      color: white;
-      border: none;
-      padding: 8px 16px;
-      border-radius: 8px;
-      cursor: pointer;
-      transition: all 0.3s ease;
-    }
-    .btn-back:hover {
-        background: rgba(255, 255, 255, 0.4);
-    }
-
-    /* ==================== 메인 컨텐츠 ==================== */
-    main {
-      padding: 40px 30px;
-      max-height: 70vh;
-      overflow-y: auto;
-    }
-
-    section {
-      margin-bottom: 30px;
-    }
-    section:last-child {
-        margin-bottom: 0;
-    }
-
-    h2 {
-      font-size: 1.3rem;
-      margin-bottom: 15px;
-      color: #667eea;
-      font-weight: 700;
-      border-bottom: 2px solid #f0f0f0;
-      padding-bottom: 10px;
-    }
-    
-    /* ==================== 폼 스타일 ==================== */
-    .form-group {
-      margin-bottom: 20px;
-    }
-
-    label {
-      display: block;
-      margin-bottom: 8px;
-      font-weight: 600;
-      color: #555;
-    }
-
-    input, textarea {
-      width: 100%;
-      padding: 12px 16px;
-      border: 2px solid #e0e0e0;
-      border-radius: 10px;
-      font-size: 1rem;
-      transition: all 0.3s ease;
-      background: #f9f9f9;
-      font-family: inherit;
-    }
-
-    textarea {
-      resize: vertical;
-      min-height: 100px;
-    }
-
-    input:focus, textarea:focus {
-      outline: none;
-      border-color: #667eea;
-      background: white;
-      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-    }
-
-    /* ==================== 버튼 스타일 ==================== */
-    .btn {
-      padding: 14px 28px;
-      border: none;
-      border-radius: 10px;
-      font-size: 1rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.3s ease;
-      width: 100%;
-      margin-top: 10px;
-    }
-
-    .btn-primary {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
-    }
-    .btn-primary:hover {
-      transform: translateY(-2px);
-    }
-    .btn-secondary {
-      background: #f0f0f0;
-      color: #555;
-    }
-    .btn-secondary:hover {
-        background: #e0e0e0;
-    }
-    .btn:disabled {
-        background: #ccc;
-        cursor: not-allowed;
-    }
-
-    /* ==================== 카드 스타일 ==================== */
-    .info-card {
-      background: #f8f9fa;
-      padding: 20px;
-      border-radius: 12px;
-    }
-    .info-card strong {
-      color: #667eea;
-    }
-
-    .assignment-card {
-      background: #f8f9fa;
-      border: 1px solid #e9ecef;
-      border-radius: 8px;
-      padding: 1rem;
-      margin-bottom: 1rem;
-      transition: all 0.3s ease;
-      cursor: pointer;
-    }
-    .assignment-card:hover {
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-      transform: translateY(-2px);
-    }
+    .screen.hidden { display: none; }
+    header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; position: relative; }
+    header h1 { font-size: 1.8rem; font-weight: 700; margin: 0; }
+    .btn-back { position: absolute; left: 20px; top: 50%; transform: translateY(-50%); background: rgba(255, 255, 255, 0.2); color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; transition: all 0.3s ease; }
+    .btn-back:hover { background: rgba(255, 255, 255, 0.4); }
+    main { padding: 40px 30px; max-height: 70vh; overflow-y: auto; }
+    section { margin-bottom: 30px; }
+    section:last-child { margin-bottom: 0; }
+    h2 { font-size: 1.3rem; margin-bottom: 15px; color: #667eea; font-weight: 700; border-bottom: 2px solid #f0f0f0; padding-bottom: 10px; }
+    .form-group { margin-bottom: 20px; }
+    label { display: block; margin-bottom: 8px; font-weight: 600; color: #555; }
+    input, textarea { width: 100%; padding: 12px 16px; border: 2px solid #e0e0e0; border-radius: 10px; font-size: 1rem; transition: all 0.3s ease; background: #f9f9f9; font-family: inherit; }
+    textarea { resize: vertical; min-height: 100px; }
+    input:focus, textarea:focus { outline: none; border-color: #667eea; background: white; box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1); }
+    .btn { padding: 14px 28px; border: none; border-radius: 10px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: all 0.3s ease; width: 100%; margin-top: 10px; }
+    .btn-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
+    .btn-primary:hover { transform: translateY(-2px); }
+    .btn-secondary { background: #f0f0f0; color: #555; }
+    .btn-secondary:hover { background: #e0e0e0; }
+    .btn:disabled { background: #ccc; cursor: not-allowed; }
+    .info-card { background: #f8f9fa; padding: 20px; border-radius: 12px; }
+    .info-card strong { color: #667eea; }
+    .assignment-card { background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 8px; padding: 1rem; margin-bottom: 1rem; transition: all 0.3s ease; cursor: pointer; }
+    .assignment-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.1); transform: translateY(-2px); }
     .assignment-card h4 { color: #667eea; }
     .assignment-meta { font-size: 0.9rem; color: #666; }
     .status { font-weight: bold; }
     .status.submitted { color: #28a745; }
     .status.not-submitted { color: #dc3545; }
-
-    .record-card {
-        background: #f8f9fa;
-        border-left: 4px solid #667eea;
-        padding: 1rem;
-        margin-bottom: 1rem;
-    }
-    .record-card h3 { color: #667eea; }
-    .data-row {
-      display: flex;
-      margin-bottom: 0.5rem;
-      padding-bottom: 0.5rem;
-      border-bottom: 1px solid #eee;
-    }
-    .data-row:last-child {
-        border-bottom: none;
-        margin-bottom: 0;
-        padding-bottom: 0;
-    }
-    .data-label { font-weight: 500; color: #555; min-width: 100px; flex-shrink: 0; }
+    .record-card { background: #f8f9fa; padding: 1rem; margin-bottom: 1rem; }
+    .record-card.comment { border-left: 4px solid #667eea; }
+    .record-card.notification { border-left: 4px solid #17a2b8; }
+    .record-card h3 { color: #555; font-size: 1.1rem; }
+    .data-row { display: flex; margin: 10px 0; padding-bottom: 10px; border-bottom: 1px solid #eee; }
+    .data-row:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+    .data-label { font-weight: 600; color: #555; min-width: 100px; flex-shrink: 0; }
     .data-value { color: #333; flex: 1; white-space: pre-wrap; }
-
-
-    /* ==================== 모달 스타일 ==================== */
-    .modal {
-      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(0,0,0,0.6);
-      display: flex; justify-content: center; align-items: center;
-      z-index: 1000;
-    }
+    .feedback-box, .suggestion-box { margin-top: 15px; padding: 15px; border-radius: 8px; }
+    .feedback-box { background: #e9ecef; border-left: 4px solid #6c757d; }
+    .suggestion-box { background: #e0f7fa; border-left: 4px solid #007bff; }
+    .suggestion-box strong, .feedback-box strong { display: block; margin-bottom: 8px; }
+    .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); display: flex; justify-content: center; align-items: center; z-index: 1000; }
     .modal.hidden { display: none; }
-    .modal-content {
-      background: white; border-radius: 12px;
-      max-width: 600px; width: 90%;
-      max-height: 90vh; display: flex; flex-direction: column;
-    }
-    .modal-header {
-      padding: 1.5rem; border-bottom: 1px solid #e9ecef;
-    }
+    .modal-content { background: white; border-radius: 12px; max-width: 600px; width: 90%; max-height: 90vh; display: flex; flex-direction: column; }
+    .modal-header { padding: 1.5rem; border-bottom: 1px solid #e9ecef; }
     .modal-header h3 { margin: 0; font-size: 1.5rem; }
     .modal-body { padding: 1.5rem; overflow-y: auto; }
-    .modal-footer {
-        padding: 1rem 1.5rem; border-top: 1px solid #e9ecef;
-        display: flex; justify-content: flex-end; gap: 10px;
-    }
+    .modal-footer { padding: 1rem 1.5rem; border-top: 1px solid #e9ecef; display: flex; justify-content: flex-end; gap: 10px; }
     .modal-footer .btn { width: auto; margin-top: 0; }
-
-    /* ==================== 기타 ==================== */
     .loading-message, .empty-message { text-align: center; color: #888; padding: 2rem; }
-    .message {
-      margin-top: 20px; padding: 12px 16px; border-radius: 10px;
-      display: none;
-    }
+    .message { margin-top: 20px; padding: 12px 16px; border-radius: 10px; display: none; }
     .message.show { display: block; }
     .message.error { background: #f8d7da; color: #721c24; }
     .message.success { background: #d4edda; color: #155724; }
@@ -363,7 +181,6 @@
     const API_BASE = window.location.hostname === 'localhost' ? 'http://localhost:3000/api' : '/api';
     let currentStudentId = '';
     let currentStudentName = '';
-    let assignmentCache = [];
 
     document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('loginForm').addEventListener('submit', handleLogin);
@@ -372,6 +189,7 @@
         document.getElementById('passwordChangeForm').addEventListener('submit', handlePasswordChange);
     });
 
+    // --- 인증 및 화면 전환 ---
     async function handleLogin(event) {
         event.preventDefault();
         const studentId = document.getElementById('studentId').value.trim();
@@ -408,7 +226,6 @@
     function logout() {
         currentStudentId = '';
         currentStudentName = '';
-        assignmentCache = [];
         document.getElementById('loginForm').reset();
         hideMessage('loginMessage');
         document.getElementById('loginScreen').classList.remove('hidden');
@@ -432,9 +249,10 @@
         hideMessage('passwordChangeMessage');
     }
 
+    // --- 데이터 로딩 및 표시 ---
     async function loadAllData() {
-        await loadAssignments();
-        loadMyRecordsAndNotifications();
+        loadAssignments();
+        loadMyRecords();
     }
 
     async function loadAssignments() {
@@ -444,8 +262,7 @@
             const response = await fetch(`${API_BASE}/assignments?studentId=${currentStudentId}`);
             const result = await response.json();
             if (result.success) {
-                assignmentCache = result.assignments || [];
-                displayAssignments(assignmentCache);
+                displayAssignments(result.assignments || []);
             } else {
                 listEl.innerHTML = `<div class="empty-message">${result.message}</div>`;
             }
@@ -464,16 +281,13 @@
             <div class="assignment-card" onclick="showSubmitModal('${assignment.id}', '${escapeHTML(assignment.name)}')">
                 <h4>${escapeHTML(assignment.name)}</h4>
                 <div class="assignment-meta">
-                    <span>마감: ${assignment.dueDate || '상시'}</span> | 
-                    <span class="status ${assignment.submitted ? 'submitted' : 'not-submitted'}">
-                        ${assignment.submitted ? '제출 완료' : '미제출'}
-                    </span>
+                    <span>마감: ${assignment.dueDate || '상시'}</span>
                 </div>
             </div>
         `).join('');
     }
     
-    async function loadMyRecordsAndNotifications() {
+    async function loadMyRecords() {
         const recordsEl = document.getElementById('myRecordsList');
         const notificationsEl = document.getElementById('myNotificationsList');
         recordsEl.innerHTML = '<div class="loading-message">기록을 불러오는 중...</div>';
@@ -482,160 +296,84 @@
             const response = await fetch(`${API_BASE}/my-records?studentId=${currentStudentId}`);
             const result = await response.json();
             if (!result.success) throw new Error(result.message);
+
             const allRecords = result.records || [];
-            const assignmentSheetNames = new Set(assignmentCache.map(a => a.targetSheet));
-            const myRecords = allRecords.filter(r => assignmentSheetNames.has(r.sheetName));
-            const myNotifications = allRecords.filter(r => !assignmentSheetNames.has(r.sheetName));
-            displayMyRecords(myRecords);
-            displayNotifications(myNotifications);
+            
+            // ⭐ 핵심 수정: API가 보내준 type에 따라 데이터를 분류합니다.
+            const comments = allRecords.filter(r => r.type === 'comment');
+            const notifications = allRecords.filter(r => r.type === 'notification');
+
+            displayRecords(recordsEl, comments, "공개된 교사 코멘트가 없습니다.");
+            displayRecords(notificationsEl, notifications, "새로운 알림이 없습니다.");
+
         } catch (error) {
             recordsEl.innerHTML = `<div class="empty-message">${error.message}</div>`;
             notificationsEl.innerHTML = `<div class="empty-message">${error.message}</div>`;
         }
     }
-    
-    <script>
-    // ... (파일의 다른 스크립트 내용은 그대로 둡니다) ...
 
-    /**
-     * 내 기록 표시 (건의사항 기능 추가)
-     * @param {Array} records - 기록 목록
-     */
-    function displayMyRecords(records) {
-      const recordsList = document.getElementById('myRecordsList');
-      
-      if (!records || records.length === 0) {
-        recordsList.innerHTML = '<div class="loading-message">공개된 기록이 없습니다.</div>';
-        return;
-      }
-      
-      recordsList.innerHTML = '';
-      
-      records.forEach((record, index) => {
-        const card = document.createElement('div');
-        card.className = 'record-card';
-        
-        // record.type에 따라 제목을 다르게 표시
-        const title = record.type === 'comment' ? `📝 ${record.sheetName} (교사 코멘트)` : `🔔 ${record.sheetName} (알림)`;
-
-        let html = `<h3>${sanitizeText(title)}</h3>`;
-        
-        html += `
-            <div class="data-row">
-              <div class="data-label">${sanitizeText(record.label)}:</div>
-              <div class="data-value">${sanitizeText(record.value || '-')}</div>
-            </div>
-          `;
-
-        // 질문이 있는 경우(교사 코멘트) 질문 내용 표시
-        if (record.type === 'comment' && record.question) {
-           html += `
-            <div class="feedback-box">
-              <strong>💬 질문:</strong>
-              <p style="margin-top: 8px;">${sanitizeText(record.question)}</p>
-            </div>
-          `;
-        }
-
-        // 건의사항 입력 기능 추가
-        if (record.hasSuggestion) {
-          // 각 건의사항 요소를 고유하게 만들기 위해 index 사용
-          const suggestionId = `suggestion-${index}`; 
-          html += `
-            <div class="suggestion-box">
-              <strong>💡 건의사항:</strong>
-              <div style="margin-top: 8px;">
-                <textarea 
-                  id="${suggestionId}" 
-                  class="suggestion-input"
-                  placeholder="이 기록에 대한 건의사항을 입력하세요..."
-                  rows="3">${sanitizeText(record.suggestion || '')}</textarea>
-                <button 
-                  class="suggestion-save-btn" 
-                  onclick="saveSuggestion('${sanitizeText(record.sheetName)}', '${suggestionId}')">
-                  저장
-                </button>
-              </div>
-            </div>
-          `;
-        }
-
-        card.innerHTML = html;
-        recordsList.appendChild(card);
-      });
-    }
-    
-    /**
-     * 건의사항 저장 (Vercel API 버전)
-     * @param {string} sheetName - 시트명
-     * @param {string} textareaId - 건의사항이 입력된 textarea의 고유 ID
-     */
-    function saveSuggestion(sheetName, textareaId) {
-      const textarea = document.getElementById(textareaId);
-      const suggestion = textarea.value; // trim() 제거하여 공백 저장 허용
-      
-      const saveBtn = textarea.nextElementSibling;
-      const originalText = saveBtn.textContent;
-      
-      saveBtn.disabled = true;
-      saveBtn.textContent = '저장 중...';
-
-      // Vercel API 호출
-      fetch(`${API_BASE}/my-records`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ studentId: currentStudentId, sheetName, suggestion })
-      })
-      .then(res => res.json())
-      .then(function(result) {
-        if (result.success) {
-          saveBtn.style.backgroundColor = '#28a745'; // Green
-          saveBtn.textContent = '저장됨';
-          setTimeout(() => {
-            saveBtn.style.backgroundColor = '';
-            saveBtn.textContent = originalText;
-            saveBtn.disabled = false;
-          }, 3000);
-        } else {
-          alert('저장 실패: ' + result.message);
-          saveBtn.disabled = false;
-          saveBtn.textContent = originalText;
-        }
-      })
-      .catch(function(error) {
-        console.error('건의사항 저장 실패:', error);
-        alert('건의사항 저장 중 오류가 발생했습니다.');
-        saveBtn.disabled = false;
-        saveBtn.textContent = originalText;
-      });
-    }
-
-    // ... (파일의 다른 스크립트 내용은 그대로 둡니다) ...
-</script>
-    function displayNotifications(notifications) {
-        const listEl = document.getElementById('myNotificationsList');
-        if (notifications.length === 0) {
-            listEl.innerHTML = '<div class="empty-message">새로운 알림이 없습니다.</div>';
+    function displayRecords(element, records, emptyMessage) {
+        if (!records || records.length === 0) {
+            element.innerHTML = `<div class="empty-message">${emptyMessage}</div>`;
             return;
         }
-        listEl.innerHTML = notifications.map(record => `
-            <div class="record-card">
-                <h3>${escapeHTML(record.sheetName)}</h3>
-                ${Object.entries(record.data).map(([key, value]) => `
-                    <div class="data-row">
-                        <div class="data-label">${escapeHTML(key)}</div>
-                        <div class="data-value">${escapeHTML(value)}</div>
-                    </div>
-                `).join('')}
-            </div>
-        `).join('');
+        
+        element.innerHTML = ''; // Clear existing content
+        
+        records.forEach((record, index) => {
+            const card = document.createElement('div');
+            card.className = `record-card ${record.type}`;
+            
+            let html = `<h3>${escapeHTML(record.sheetName)}</h3>`;
+            html += `
+                <div class="data-row">
+                  <div class="data-label">${escapeHTML(record.label)}:</div>
+                  <div class="data-value">${escapeHTML(record.value || '-')}</div>
+                </div>
+              `;
+
+            if (record.type === 'comment' && record.question) {
+               html += `
+                <div class="feedback-box">
+                  <strong>💬 질문:</strong>
+                  <p>${escapeHTML(record.question)}</p>
+                </div>
+              `;
+            }
+
+            if (record.hasSuggestion) {
+              const suggestionId = `${record.type}-suggestion-${index}`; 
+              html += `
+                <div class="suggestion-box">
+                  <strong>💡 건의사항:</strong>
+                  <div>
+                    <textarea 
+                      id="${suggestionId}" 
+                      class="suggestion-input"
+                      placeholder="이 기록에 대한 건의사항을 입력하세요..."
+                      rows="3">${escapeHTML(record.suggestion || '')}</textarea>
+                    <button 
+                      class="btn btn-primary" style="width:auto; padding: 8px 16px; margin-top: 8px;"
+                      onclick="saveSuggestion('${escapeHTML(record.sheetName)}', '${suggestionId}')">
+                      저장
+                    </button>
+                  </div>
+                </div>
+              `;
+            }
+
+            card.innerHTML = html;
+            element.appendChild(card);
+        });
     }
 
+    // --- 과제 제출 관련 ---
     async function showSubmitModal(assignmentId, assignmentName) {
         const modal = document.getElementById('submitModal');
         const titleEl = document.getElementById('submitModalTitle');
         const questionsContainer = document.getElementById('questionsContainer');
         const form = document.getElementById('assignmentSubmitForm');
+        
         modal.classList.remove('hidden');
         titleEl.textContent = assignmentName;
         form.dataset.assignmentId = assignmentId;
@@ -645,10 +383,11 @@
             const response = await fetch(`${API_BASE}/assignment-detail?assignmentId=${assignmentId}&studentId=${currentStudentId}`);
             const result = await response.json();
             if (!result.success) throw new Error(result.message);
-            if (result.questions.length > 0) {
+            
+            if (result.questions && result.questions.length > 0) {
                 questionsContainer.innerHTML = result.questions.map(q => `
                     <div class="form-group">
-                        <label for="question-${q.column}">${q.question}</label>
+                        <label for="question-${q.column}">${escapeHTML(q.question)}</label>
                         <textarea id="question-${q.column}" name="${q.column}" rows="4">${escapeHTML(q.answer)}</textarea>
                     </div>
                 `).join('');
@@ -698,7 +437,48 @@
             submitBtn.textContent = '제출하기';
         }
     }
+    
+    // --- 건의사항 저장 ---
+    function saveSuggestion(sheetName, textareaId) {
+      const textarea = document.getElementById(textareaId);
+      const suggestion = textarea.value;
+      
+      const saveBtn = textarea.nextElementSibling;
+      const originalText = saveBtn.textContent;
+      
+      saveBtn.disabled = true;
+      saveBtn.textContent = '저장 중...';
 
+      fetch(`${API_BASE}/my-records`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ studentId: currentStudentId, sheetName, suggestion })
+      })
+      .then(res => res.json())
+      .then(result => {
+        if (result.success) {
+          saveBtn.style.backgroundColor = '#28a745';
+          saveBtn.textContent = '저장됨';
+          setTimeout(() => {
+            saveBtn.style.backgroundColor = '';
+            saveBtn.textContent = originalText;
+            saveBtn.disabled = false;
+          }, 3000);
+        } else {
+          alert('저장 실패: ' + result.message);
+          saveBtn.disabled = false;
+          saveBtn.textContent = originalText;
+        }
+      })
+      .catch(error => {
+        console.error('건의사항 저장 실패:', error);
+        alert('건의사항 저장 중 오류가 발생했습니다.');
+        saveBtn.disabled = false;
+        saveBtn.textContent = originalText;
+      });
+    }
+
+    // --- 비밀번호 변경 ---
     async function handlePasswordChange(event) {
         event.preventDefault();
         const currentPassword = document.getElementById('currentPassword').value;
@@ -738,6 +518,7 @@
         }
     }
 
+    // --- 유틸리티 함수 ---
     function showMessage(elementId, message, type) {
         const el = document.getElementById(elementId);
         el.textContent = message;
@@ -758,4 +539,3 @@
 </script>
 </body>
 </html>
-

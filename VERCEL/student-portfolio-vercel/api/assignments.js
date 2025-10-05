@@ -1,7 +1,8 @@
 /**
- * 과제 목록 조회 API (v5 - 최종 날짜 처리 로직)
+ * 과제 목록 조회 API (v6 - 공개 대상반 필터링 추가)
  * - 'YYYY.MM.DD', 'MM-DD' 등 다양한 날짜 형식을 모두 유연하게 처리
  * - 연도 생략 시 현재 연도를 기준으로 자동 계산
+ * - '공개' 시트의 '대상반' 컬럼을 확인하여 학생별 맞춤 과제 표시
  */
 const { google } = require('googleapis');
 
@@ -15,6 +16,35 @@ async function getSheetsClient() {
   });
   const authClient = await auth.getClient();
   return google.sheets({ version: 'v4', auth: authClient });
+}
+
+/**
+ * 학생의 학번과 대상반을 비교하여 과제 접근 권한 확인
+ * @param {string} studentId - 학생 학번 (예: '10101')
+ * @param {string} targetClass - 대상반 (예: '101, 106' 또는 '전체')
+ * @returns {boolean}
+ */
+function isClassAllowed(studentId, targetClass) {
+  const target = (targetClass || '').trim();
+  // 규칙 1: '전체'이거나 값이 없으면 무조건 허용
+  if (!target || target.toLowerCase() === '전체') {
+    return true;
+  }
+
+  // 규칙 2: 학생 학번이 없거나 너무 짧으면 거부
+  if (!studentId || studentId.length < 3) {
+    return false;
+  }
+
+  // 학생 학번 앞 3자리를 가져옴 (예: '10101' -> '101')
+  const studentPrefix = studentId.substring(0, 3);
+
+  // '대상반' 값을 Prefix 목록으로 변환 (예: '101, 106' -> ['101', '106'])
+  // 쉼표 뒤 공백을 허용하고, 각 항목의 앞뒤 공백을 제거
+  const allowedPrefixes = target.split(',').map(prefix => prefix.trim());
+
+  // 학생의 학번 Prefix가 허용된 Prefix 목록에 있는지 확인
+  return allowedPrefixes.includes(studentPrefix);
 }
 
 /**
@@ -76,10 +106,28 @@ module.exports = async (req, res) => {
     const sheets = await getSheetsClient();
     const spreadsheetId = process.env.SPREADSHEET_ID;
 
+    // '과제설정' 시트 읽기
     const response = await sheets.spreadsheets.values.get({ spreadsheetId, range: '과제설정!A:F' });
     const allRows = response.data.values;
     if (!allRows || allRows.length < 2) {
       return res.status(200).json({ success: true, assignments: [] });
+    }
+
+    // '공개' 시트 읽기
+    const publicSheetResponse = await sheets.spreadsheets.values.get({ spreadsheetId, range: '공개!A:C' });
+    const publicSheetData = publicSheetResponse.data.values || [];
+
+    // '공개' 시트 데이터를 Map으로 변환하여 빠른 조회 가능하도록 함
+    const publicSettingsMap = {};
+    for (let i = 1; i < publicSheetData.length; i++) {
+      const publicRow = publicSheetData[i];
+      const isPublic = publicRow[0] === true || publicRow[0] === 'TRUE';
+      const sheetName = publicRow[1];
+      const targetClass = publicRow[2] || '전체';
+
+      if (isPublic && sheetName) {
+        publicSettingsMap[sheetName] = targetClass;
+      }
     }
 
     const assignments = [];
@@ -90,9 +138,24 @@ module.exports = async (req, res) => {
       const isPublic = (row[0] || '').toString().toUpperCase() === 'TRUE';
       if (!isPublic) return;
 
+      const assignmentName = row[2];
+      const targetSheetName = row[3]; // 대상시트 컬럼
+
+      // '공개' 시트에서 대상반 확인
+      const targetClass = publicSettingsMap[targetSheetName];
+      if (targetClass === undefined) {
+        // '공개' 시트에 없는 과제는 표시하지 않음
+        return;
+      }
+
+      // 학생의 학번과 대상반을 비교하여 필터링
+      if (!isClassAllowed(studentId, targetClass)) {
+        return;
+      }
+
       const startDateStr = row[4];
       const dueDateStr = row[5];
-      
+
       const startDate = parseFlexibleDate(startDateStr);
       const dueDate = parseFlexibleDate(dueDateStr);
 
@@ -101,12 +164,12 @@ module.exports = async (req, res) => {
 
       assignments.push({
         id: row[1],
-        name: row[2],
+        name: assignmentName,
         description: `제출 기한: ${dueDateStr || '기한 없음'}`,
         dueDate: dueDateStr || '기한 없음',
       });
     });
-    
+
     return res.status(200).json({ success: true, assignments });
 
   } catch (error) {

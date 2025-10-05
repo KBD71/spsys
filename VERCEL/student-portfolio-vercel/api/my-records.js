@@ -1,5 +1,5 @@
 /**
- * 내 기록 조회 및 건의사항 저장 API
+ * 내 기록 조회 및 건의사항 저장 API (v3 - 대상반 필터링 유연성 강화)
  * GET: 학생이 열람할 기록을 조회합니다.
  * POST: 학생이 작성한 건의사항을 시트에 저장합니다.
  */
@@ -17,16 +17,32 @@ async function getSheetsClient() {
   return google.sheets({ version: 'v4', auth: authClient });
 }
 
+/**
+ * ⭐ 반별 접근 권한 확인 (유연성이 강화된 최종 버전) ⭐
+ * @param {string} studentClass - 학생의 반 (예: "1-1")
+ * @param {string} targetClass - 대상반 설정 (예: "전체", "1학년", "1-1, 1-6", "2-3")
+ * @returns {boolean} 접근 가능 여부
+ */
 function isClassAllowed(studentClass, targetClass) {
-  if (!targetClass || targetClass === '전체') return true;
-  if (targetClass.includes('학년')) {
-    const targetGrade = targetClass.replace('학년', '');
-    const studentGrade = studentClass.split('-')[0];
+  const trimmedTarget = (targetClass || '').trim();
+
+  // 1. 전체 공개 케이스
+  if (trimmedTarget === '' || trimmedTarget === '전체' || trimmedTarget === '전체반') {
+    return true;
+  }
+
+  // 2. 학년별 공개 케이스
+  if (trimmedTarget.includes('학년')) {
+    const targetGrade = trimmedTarget.replace('학년', '').trim();
+    const studentGrade = (studentClass || '').split('-')[0];
     return studentGrade === targetGrade;
   }
-  const allowedClasses = targetClass.split(',').map(cls => cls.trim());
+
+  // 3. 특정 반 목록 공개 케이스 (쉼표로 구분)
+  const allowedClasses = trimmedTarget.split(',').map(cls => cls.trim());
   return allowedClasses.includes(studentClass);
 }
+
 
 // GET 요청 핸들러 (기록 조회)
 async function handleGetRecords(req, res) {
@@ -45,7 +61,7 @@ async function handleGetRecords(req, res) {
   if (!studentRowData) {
     return res.status(404).json({ success: false, message: '학생을 찾을 수 없습니다.' });
   }
-  const studentClass = studentRowData[2];
+  const studentClass = studentRowData[2]; // 학생 반 정보 (C열)
 
   // '공개' 시트 읽기
   const publicSheetResponse = await sheets.spreadsheets.values.get({ spreadsheetId, range: '공개!A:C' });
@@ -61,9 +77,11 @@ async function handleGetRecords(req, res) {
     const publicRow = publicSheetData[i];
     const isPublic = publicRow[0] === true || publicRow[0] === 'TRUE' || publicRow[0] === 'Y';
     const targetSheetName = publicRow[1];
-    const targetClass = publicRow[2] || '전체';
+    const targetClass = publicRow[2] || '전체'; // 대상반 (C열)
 
-    if (!isPublic || !targetSheetName || !isClassAllowed(studentClass, targetClass)) continue;
+    if (!isPublic || !targetSheetName || !isClassAllowed(studentClass, targetClass)) {
+      continue;
+    }
 
     if (!sheetDataCache[targetSheetName]) {
       try {
@@ -81,7 +99,7 @@ async function handleGetRecords(req, res) {
     const headers = targetSheetData[0];
     const publicColumnIndex = headers.indexOf('공개컬럼');
     const studentIdIndex = headers.indexOf('학번');
-    const suggestionIndex = headers.indexOf('건의사항'); // 건의사항 컬럼 확인
+    const suggestionIndex = headers.indexOf('건의사항');
     const hasQuestionColumn = headers.includes('질문');
 
     if (publicColumnIndex === -1 || studentIdIndex === -1) continue;
@@ -101,8 +119,8 @@ async function handleGetRecords(req, res) {
         label: publicColumnName,
         value: studentRowInTarget[dataColumnIndex] || '',
         type: hasQuestionColumn ? 'comment' : 'notification',
-        hasSuggestion: suggestionIndex !== -1, // 건의사항 입력 가능 여부
-        suggestion: (suggestionIndex !== -1 && studentRowInTarget[suggestionIndex]) ? studentRowInTarget[suggestionIndex] : '' // 기존 건의사항 내용
+        hasSuggestion: suggestionIndex !== -1,
+        suggestion: (suggestionIndex !== -1 && studentRowInTarget[suggestionIndex]) ? studentRowInTarget[suggestionIndex] : ''
       });
     }
   }
@@ -137,7 +155,7 @@ async function handleSaveSuggestion(req, res) {
     return res.status(404).json({ success: false, message: '학생 데이터를 찾을 수 없습니다.' });
   }
 
-  const rowIndex = studentRowIndex + 1; // 1-based index
+  const rowIndex = studentRowIndex + 1;
   const colLetter = String.fromCharCode(65 + suggestionColIndex);
   const range = `${sheetName}!${colLetter}${rowIndex}`;
 

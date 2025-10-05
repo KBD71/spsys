@@ -52,6 +52,9 @@
         /* 카드 */
         .info-card { background: #f8f9fa; padding: 20px; border-radius: 12px; }
         .info-card strong { color: #667eea; }
+        .info-card-actions { margin-top: 15px; display: flex; gap: 10px; }
+        .info-card-actions .btn { width: 100%; margin: 0; }
+
         .assignment-card { background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 8px; padding: 1rem; margin-bottom: 1rem; transition: all 0.3s ease; cursor: pointer; }
         .assignment-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.1); transform: translateY(-2px); }
         .assignment-card h4 { color: #667eea; }
@@ -117,20 +120,23 @@
                 <div class="info-card">
                     <p><strong>이름:</strong> <span id="studentName"></span></p>
                     <p><strong>학번:</strong> <span id="studentIdDisplay"></span></p>
+                    <div class="info-card-actions">
+                        <button id="changePasswordBtn" class="btn btn-secondary">🔑 비밀번호 변경</button>
+                        <button id="logoutBtn" class="btn btn-primary">로그아웃</button>
+                    </div>
                 </div>
             </section>
             <section>
-                <h2>📝 과제 목록 (제출용)</h2>
+                <h2>📝 과제 목록</h2>
                 <div id="assignmentsList"><div class="loading-message">과제 목록을 불러오는 중...</div></div>
             </section>
             <section>
-                <h2>📊 내 기록 및 알림 (열람용)</h2>
-                <div id="recordsGroupList"><div class="loading-message">기록을 불러오는 중...</div></div>
+                <h2>📊 내 기록 (교사 코멘트)</h2>
+                <div id="myRecordsList"><div class="loading-message">기록을 불러오는 중...</div></div>
             </section>
             <section>
-                <h2>⚙️ 설정</h2>
-                <button id="changePasswordBtn" class="btn btn-secondary">🔑 비밀번호 변경</button>
-                <button id="logoutBtn" class="btn btn-primary">로그아웃</button>
+                <h2>📢 알림</h2>
+                <div id="myNotificationsList"><div class="loading-message">알림을 불러오는 중...</div></div>
             </section>
         </main>
     </section>
@@ -305,54 +311,67 @@
         `).join('');
     }
     
+    // ★★★ 핵심 수정: '내 기록'과 '알림'을 분리하여 로드하고 표시하는 로직 ★★★
     async function loadMyRecords() {
-        const groupListEl = document.getElementById('recordsGroupList');
-        groupListEl.innerHTML = '<div class="loading-message">기록 그룹을 불러오는 중...</div>';
+        const recordsEl = document.getElementById('myRecordsList');
+        const notificationsEl = document.getElementById('myNotificationsList');
+        recordsEl.innerHTML = '<div class="loading-message">기록을 불러오는 중...</div>';
+        notificationsEl.innerHTML = '<div class="loading-message">알림을 불러오는 중...</div>';
+        
         try {
             const response = await fetch(`${API_BASE}/my-records?studentId=${currentStudentId}`);
             const result = await response.json();
             if (!result.success) throw new Error(result.message);
 
-            const groupedRecords = (result.records || []).reduce((acc, record) => {
-                const key = `${record.sheetName}|${record.type}`;
-                if (!acc[key]) {
-                    acc[key] = {
-                        sheetName: record.sheetName,
-                        type: record.type,
-                        records: []
-                    };
-                }
-                acc[key].records.push(record);
-                return acc;
-            }, {});
+            const allRecords = result.records || [];
+            
+            // API가 보내준 type에 따라 데이터를 정확히 분류
+            const comments = allRecords.filter(r => r.type === 'comment');
+            const notifications = allRecords.filter(r => r.type === 'notification');
 
-            displayRecordGroups(Object.values(groupedRecords));
+            // 그룹화하여 표시
+            displayRecordGroups(recordsEl, groupRecords(comments), 'comment');
+            displayRecordGroups(notificationsEl, groupRecords(notifications), 'notification');
 
         } catch (error) {
-            groupListEl.innerHTML = `<div class="empty-message">기록을 불러오는 데 실패했습니다: ${error.message}</div>`;
+            recordsEl.innerHTML = `<div class="empty-message">기록 조회 실패: ${error.message}</div>`;
+            notificationsEl.innerHTML = `<div class="empty-message">알림 조회 실패: ${error.message}</div>`;
         }
     }
 
-    function displayRecordGroups(groups) {
-        const groupListEl = document.getElementById('recordsGroupList');
-        if (!groups || groups.length === 0) {
-            groupListEl.innerHTML = '<div class="empty-message">공개된 기록이나 알림이 없습니다.</div>';
+    // sheetName 기준으로 기록들을 그룹화하는 헬퍼 함수
+    function groupRecords(records) {
+        return records.reduce((acc, record) => {
+            if (!acc[record.sheetName]) {
+                acc[record.sheetName] = [];
+            }
+            acc[record.sheetName].push(record);
+            return acc;
+        }, {});
+    }
+
+    function displayRecordGroups(element, groupedRecords, type) {
+        const groups = Object.entries(groupedRecords);
+        
+        if (groups.length === 0) {
+            const message = type === 'comment' ? "공개된 교사 코멘트가 없습니다." : "새로운 알림이 없습니다.";
+            element.innerHTML = `<div class="empty-message">${message}</div>`;
             return;
         }
 
-        groupListEl.innerHTML = groups.map((group) => {
-            const title = group.type === 'comment' ? `📊 ${group.sheetName} (교사 코멘트)` : `📢 ${group.sheetName} (알림)`;
-            const groupData = escapeHTML(JSON.stringify(group));
+        element.innerHTML = groups.map(([sheetName, records]) => {
+            const groupData = escapeHTML(JSON.stringify({ sheetName, records, type }));
             return `
                 <div class="assignment-card" onclick='showRecordsModal(${groupData})'>
-                    <h4>${escapeHTML(title)}</h4>
+                    <h4>${escapeHTML(sheetName)}</h4>
                     <div class="assignment-meta">
-                        <span>총 ${group.records.length}개의 항목 보기</span>
+                        <span>총 ${records.length}개의 항목 보기</span>
                     </div>
                 </div>
             `;
         }).join('');
     }
+
 
     function showRecordsModal(group) {
         const modal = document.getElementById('recordsModal');
@@ -370,13 +389,6 @@
                         <div class="data-value">${escapeHTML(record.value || '-')}</div>
                     </div>
             `;
-            if (record.type === 'comment' && record.question) {
-               cardHtml += `
-                <div class="feedback-box">
-                  <strong>💬 질문:</strong>
-                  <p>${escapeHTML(record.question)}</p>
-                </div>`;
-            }
             if (record.hasSuggestion) {
               const suggestionId = `modal-suggestion-${index}`; 
               cardHtml += `
@@ -401,7 +413,7 @@
     function hideRecordsModal() {
         document.getElementById('recordsModal').classList.add('hidden');
     }
-
+    
     // --- 과제 제출 관련 ---
     async function showSubmitModal(assignmentId, assignmentName) {
         const modal = document.getElementById('submitModal');

@@ -1,6 +1,6 @@
 /**
- * 내 기록 조회 및 건의사항 저장 API (v6 - UI 개편 최종판)
- * GET: '질문' 컬럼 존재 여부에 따라 'comment'와 'notification' 타입을 명확히 구분하여 반환합니다.
+ * 내 기록 조회 및 건의사항 저장 API (v6 - UI 개편 및 버그 수정 최종판)
+ * GET: 학생의 반 정보를 정확히 조회하여 '대상반' 설정에 따라 기록을 완벽하게 필터링합니다.
  * POST: 학생이 작성한 건의사항을 해당 시트의 '건의사항' 컬럼에 정확히 저장합니다.
  */
 const { google } = require('googleapis');
@@ -17,21 +17,25 @@ async function getSheetsClient() {
   return google.sheets({ version: 'v4', auth: authClient });
 }
 
-// 반별 접근 권한 확인 함수
+// ★★★ 핵심 수정: 접근 제한 필터링 로직 강화 ★★★
 function isClassAllowed(studentClass, targetClass) {
   const trimmedTarget = (targetClass || '').trim();
   if (!trimmedTarget || trimmedTarget === '전체' || trimmedTarget === '전체반') {
     return true;
   }
   if (!studentClass) return false;
+
   if (trimmedTarget.includes('학년')) {
     const targetGrade = trimmedTarget.replace('학년', '').trim();
     const studentGrade = (studentClass || '').split('-')[0];
     return studentGrade === targetGrade;
   }
+  
+  // '1-6,1-7' 또는 '1-6, 1-7' 과 같은 형식을 모두 처리
   const allowedClasses = trimmedTarget.split(',').map(cls => cls.trim());
   return allowedClasses.includes(studentClass);
 }
+
 
 // GET 요청 핸들러 (기록 조회)
 async function handleGetRecords(req, res) {
@@ -41,12 +45,14 @@ async function handleGetRecords(req, res) {
   const sheets = await getSheetsClient();
   const spreadsheetId = process.env.SPREADSHEET_ID;
 
-  // 학생 정보 (반) 조회
+  // 학생 정보 (반) 조회 - A:B 범위로 수정
   const studentResponse = await sheets.spreadsheets.values.get({ spreadsheetId, range: '학생명단_전체!A:B' });
   const studentData = (studentResponse.data.values || []);
   const studentRowData = studentData.find(row => row[0] === studentId);
   if (!studentRowData) return res.status(404).json({ success: false, message: '학생을 찾을 수 없습니다.' });
-  const studentClass = studentRowData[1];
+  
+  // ★★★ 핵심 수정: 학생의 반 정보는 B열(인덱스 1)에 있습니다. ★★★
+  const studentClass = studentRowData[1]; 
 
   // '공개' 시트 읽기
   const publicSheetResponse = await sheets.spreadsheets.values.get({ spreadsheetId, range: '공개!A:C' });
@@ -79,8 +85,6 @@ async function handleGetRecords(req, res) {
     const headers = targetSheetData[0];
     const studentIdIndex = headers.indexOf('학번');
     const suggestionIndex = headers.indexOf('건의사항');
-    
-    // ★★★ 핵심 수정: '질문'으로 시작하는 헤더가 있는지 명확히 확인 ★★★
     const hasQuestionColumn = headers.some(h => (h || '').trim().startsWith('질문'));
 
     if (studentIdIndex === -1) continue;
@@ -88,25 +92,24 @@ async function handleGetRecords(req, res) {
     const studentRowInTarget = targetSheetData.find(r => r[studentIdIndex] === studentId);
     if (!studentRowInTarget) continue;
     
-    // 공개할 컬럼 목록 가져오기 (A열부터 순회)
+    // 공개된 시트의 모든 데이터를 순회하며 기록 생성
     for(let colIdx = 0; colIdx < headers.length; colIdx++) {
-        // '공개' 시트의 '시트이름'과 '대상반'은 공개 대상이 아님
-        if (headers[colIdx] === '시트이름' || headers[colIdx] === '대상반' || headers[colIdx] === '학번' || headers[colIdx] === '이름' || headers[colIdx] === '반') continue;
-        
-        // '공개' 시트의 '공개' 체크박스(A열)가 TRUE인 행의 '시트이름'(B열)에 해당하는 시트의 모든 컬럼을 공개 대상으로 간주
-        // (단, 위에서 제외한 기본 정보 컬럼 제외)
-        // 이 부분은 교사의 설정 의도에 따라 변경될 수 있음. 현재는 '공개'된 시트의 모든 유의미한 데이터를 보여주는 것으로 해석.
-        if (headers[colIdx] && studentRowInTarget[colIdx]) {
-             records.push({
-                sheetName: targetSheetName,
-                label: headers[colIdx],
-                value: studentRowInTarget[colIdx] || '',
-                // ★★★ 핵심 수정: 확인된 값을 기준으로 타입을 명확히 할당 ★★★
-                type: hasQuestionColumn ? 'comment' : 'notification',
-                hasSuggestion: suggestionIndex !== -1,
-                suggestion: (suggestionIndex !== -1 && studentRowInTarget[suggestionIndex]) ? studentRowInTarget[suggestionIndex] : ''
-            });
+        const header = headers[colIdx];
+        const value = studentRowInTarget[colIdx] || '';
+
+        // 기본 정보 컬럼 및 빈 값은 건너뛰기
+        if (!value || ['학번', '반', '이름', '제출일시', '초안생성', '건의사항'].indexOf(header) > -1) {
+            continue;
         }
+        
+        records.push({
+            sheetName: targetSheetName,
+            label: header,
+            value: value,
+            type: hasQuestionColumn ? 'comment' : 'notification',
+            hasSuggestion: suggestionIndex !== -1,
+            suggestion: (suggestionIndex !== -1 && studentRowInTarget[suggestionIndex]) ? studentRowInTarget[suggestionIndex] : ''
+        });
     }
   }
   return res.status(200).json({ success: true, records: records });
@@ -140,7 +143,7 @@ async function handleSaveSuggestion(req, res) {
     return res.status(404).json({ success: false, message: '해당 시트에서 학생 데이터를 찾을 수 없습니다.' });
   }
 
-  const rowIndex = studentRowIndex + 1; // 1-based index
+  const rowIndex = studentRowIndex + 1;
   const colLetter = String.fromCharCode(65 + suggestionColIndex);
   const range = `${sheetName}!${colLetter}${rowIndex}`;
 

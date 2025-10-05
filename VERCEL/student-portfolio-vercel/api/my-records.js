@@ -1,5 +1,5 @@
 /**
- * 내 기록 조회 및 건의사항 저장 API (v3 - 대상반 필터링 유연성 강화)
+ * 내 기록 조회 및 건의사항 저장 API (v4 - '질문' 헤더 감지 로직 수정)
  * GET: 학생이 열람할 기록을 조회합니다.
  * POST: 학생이 작성한 건의사항을 시트에 저장합니다.
  */
@@ -17,39 +17,23 @@ async function getSheetsClient() {
   return google.sheets({ version: 'v4', auth: authClient });
 }
 
-/**
- * ⭐ 반별 접근 권한 확인 (유연성이 강화된 최종 버전) ⭐
- * @param {string} studentClass - 학생의 반 (예: "1-1")
- * @param {string} targetClass - 대상반 설정 (예: "전체", "1학년", "1-1, 1-6", "2-3")
- * @returns {boolean} 접근 가능 여부
- */
+// 반별 접근 권한 확인 함수 (유연성 강화 버전)
 function isClassAllowed(studentClass, targetClass) {
   const trimmedTarget = (targetClass || '').trim();
-
-  // 1. 전체 공개 케이스
-  if (trimmedTarget === '' || trimmedTarget === '전체' || trimmedTarget === '전체반') {
-    return true;
-  }
-
-  // 2. 학년별 공개 케이스
+  if (trimmedTarget === '' || trimmedTarget === '전체' || trimmedTarget === '전체반') return true;
   if (trimmedTarget.includes('학년')) {
     const targetGrade = trimmedTarget.replace('학년', '').trim();
     const studentGrade = (studentClass || '').split('-')[0];
     return studentGrade === targetGrade;
   }
-
-  // 3. 특정 반 목록 공개 케이스 (쉼표로 구분)
   const allowedClasses = trimmedTarget.split(',').map(cls => cls.trim());
   return allowedClasses.includes(studentClass);
 }
 
-
-// GET 요청 핸들러 (기록 조회)
+// GET 요청 핸들러 (기록 조회) - 수정된 버전
 async function handleGetRecords(req, res) {
   const { studentId } = req.query;
-  if (!studentId) {
-    return res.status(400).json({ success: false, message: '학번을 입력해주세요.' });
-  }
+  if (!studentId) return res.status(400).json({ success: false, message: '학번이 필요합니다.' });
 
   const sheets = await getSheetsClient();
   const spreadsheetId = process.env.SPREADSHEET_ID;
@@ -58,17 +42,13 @@ async function handleGetRecords(req, res) {
   const studentResponse = await sheets.spreadsheets.values.get({ spreadsheetId, range: '학생명단_전체!A:C' });
   const studentData = studentResponse.data.values;
   const studentRowData = studentData.find((row, idx) => idx > 0 && row[0] === studentId);
-  if (!studentRowData) {
-    return res.status(404).json({ success: false, message: '학생을 찾을 수 없습니다.' });
-  }
-  const studentClass = studentRowData[2]; // 학생 반 정보 (C열)
+  if (!studentRowData) return res.status(404).json({ success: false, message: '학생을 찾을 수 없습니다.' });
+  const studentClass = studentRowData[2];
 
   // '공개' 시트 읽기
   const publicSheetResponse = await sheets.spreadsheets.values.get({ spreadsheetId, range: '공개!A:C' });
   const publicSheetData = publicSheetResponse.data.values;
-  if (!publicSheetData || publicSheetData.length < 2) {
-    return res.status(200).json({ success: true, records: [] });
-  }
+  if (!publicSheetData || publicSheetData.length < 2) return res.status(200).json({ success: true, records: [] });
 
   const records = [];
   const sheetDataCache = {};
@@ -77,20 +57,15 @@ async function handleGetRecords(req, res) {
     const publicRow = publicSheetData[i];
     const isPublic = publicRow[0] === true || publicRow[0] === 'TRUE' || publicRow[0] === 'Y';
     const targetSheetName = publicRow[1];
-    const targetClass = publicRow[2] || '전체'; // 대상반 (C열)
+    const targetClass = publicRow[2] || '전체';
 
-    if (!isPublic || !targetSheetName || !isClassAllowed(studentClass, targetClass)) {
-      continue;
-    }
+    if (!isPublic || !targetSheetName || !isClassAllowed(studentClass, targetClass)) continue;
 
     if (!sheetDataCache[targetSheetName]) {
       try {
         const response = await sheets.spreadsheets.values.get({ spreadsheetId, range: `${targetSheetName}!A:Z` });
         sheetDataCache[targetSheetName] = response.data.values || null;
-      } catch (e) {
-        console.log(`Warning: Cannot read sheet ${targetSheetName}`);
-        sheetDataCache[targetSheetName] = null;
-      }
+      } catch (e) { sheetDataCache[targetSheetName] = null; }
     }
     
     const targetSheetData = sheetDataCache[targetSheetName];
@@ -100,7 +75,9 @@ async function handleGetRecords(req, res) {
     const publicColumnIndex = headers.indexOf('공개컬럼');
     const studentIdIndex = headers.indexOf('학번');
     const suggestionIndex = headers.indexOf('건의사항');
-    const hasQuestionColumn = headers.includes('질문');
+    
+    // ⭐ 수정된 로직: 헤더 중 '질문'으로 시작하는 것이 있는지 확인
+    const hasQuestionColumn = headers.some(h => (h || '').trim().startsWith('질문'));
 
     if (publicColumnIndex === -1 || studentIdIndex === -1) continue;
 
@@ -110,7 +87,6 @@ async function handleGetRecords(req, res) {
     for (let j = 1; j < targetSheetData.length; j++) {
       const publicColumnName = targetSheetData[j][publicColumnIndex];
       if (!publicColumnName) continue;
-
       const dataColumnIndex = headers.indexOf(publicColumnName);
       if (dataColumnIndex === -1) continue;
 
@@ -129,6 +105,7 @@ async function handleGetRecords(req, res) {
 
 // POST 요청 핸들러 (건의사항 저장)
 async function handleSaveSuggestion(req, res) {
+  // ... (이 부분은 변경사항이 없습니다)
   const { studentId, sheetName, suggestion } = req.body;
   if (!studentId || !sheetName || suggestion === undefined) {
     return res.status(400).json({ success: false, message: '필수 정보가 누락되었습니다.' });

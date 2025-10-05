@@ -139,33 +139,61 @@ function createAssignmentSheetFromSidebar(data) {
 
 // ★★★ 핵심 수정 1: onEdit은 원래대로 이벤트 정보(e)만 사용하고, 다른 객체를 전달하지 않음 ★★★
 function onEdit(e) {
-  var range = e.range;
-  var sheet = range.getSheet();
-  var editedRow = range.getRow();
-  var editedCol = range.getColumn();
-  var isChecked = range.isChecked();
-  var requiredSheets = ['메뉴', '학생명단_전체', '과제설정', '공개', 'template', '프롬프트'];
-  if (requiredSheets.indexOf(sheet.getName()) !== -1 || editedRow < 2 || !isChecked) {
-    return;
-  }
+  try {
+    // 파라미터 검증
+    if (!e) {
+      Logger.log("onEdit: 이벤트 객체(e)가 없습니다.");
+      return;
+    }
+    if (!e.range) {
+      Logger.log("onEdit: e.range가 없습니다.");
+      return;
+    }
 
-  var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-  var targetColName = String(headers[editedCol - 1] || '');
-  
-  if (targetColName === '초안생성') {
-    var ui = SpreadsheetApp.getUi();
-    var opinionColIndex = headers.indexOf('종합의견');
-    if (opinionColIndex > -1) {
-      var opinionCell = sheet.getRange(editedRow, opinionColIndex + 1);
-      if (opinionCell.getValue()) {
-        var response = ui.alert('덮어쓰기 확인', '이미 작성된 종합의견이 있습니다. AI 초안으로 덮어쓰시겠습니까?', ui.ButtonSet.YES_NO);
-        if (response !== ui.Button.YES) {
-          range.uncheck();
-          return;
+    var range = e.range;
+    var sheet = range.getSheet();
+
+    if (!sheet) {
+      Logger.log("onEdit: sheet를 가져올 수 없습니다.");
+      return;
+    }
+
+    var editedRow = range.getRow();
+    var editedCol = range.getColumn();
+    var isChecked = range.isChecked();
+
+    Logger.log("onEdit 트리거 실행 - 시트: " + sheet.getName() + ", 행: " + editedRow + ", 열: " + editedCol + ", 체크됨: " + isChecked);
+
+    var requiredSheets = ['메뉴', '학생명단_전체', '과제설정', '공개', 'template', '프롬프트'];
+    if (requiredSheets.indexOf(sheet.getName()) !== -1 || editedRow < 2 || !isChecked) {
+      return;
+    }
+
+    var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    var targetColName = String(headers[editedCol - 1] || '');
+
+    Logger.log("편집된 컬럼명: " + targetColName);
+
+    if (targetColName === '초안생성') {
+      var ui = SpreadsheetApp.getUi();
+      var opinionColIndex = headers.indexOf('종합의견');
+      if (opinionColIndex > -1) {
+        var opinionCell = sheet.getRange(editedRow, opinionColIndex + 1);
+        if (opinionCell.getValue()) {
+          var response = ui.alert('덮어쓰기 확인', '이미 작성된 종합의견이 있습니다. AI 초안으로 덮어쓰시겠습니까?', ui.ButtonSet.YES_NO);
+          if (response !== ui.Button.YES) {
+            range.uncheck();
+            return;
+          }
         }
       }
+      Logger.log("generateAiSummary 호출 시작");
+      generateAiSummary(sheet, editedRow, headers);
     }
-    generateAiSummary(sheet, editedRow, headers);
+  } catch (error) {
+    Logger.log("onEdit 오류: " + error.message);
+    Logger.log("스택: " + error.stack);
+    SpreadsheetApp.getUi().alert('오류', 'onEdit 트리거 실행 중 오류가 발생했습니다:\n' + error.message, SpreadsheetApp.getUi().ButtonSet.OK);
   }
 }
 
@@ -174,6 +202,19 @@ function generateAiSummary(sheet, row, headers) {
   var ui = SpreadsheetApp.getUi();
 
   try {
+    // 파라미터 검증
+    if (!sheet) {
+      throw new Error("sheet 파라미터가 전달되지 않았습니다.\n\n이는 onEdit 트리거가 제대로 작동하지 않았을 가능성이 있습니다.");
+    }
+    if (!row || row < 2) {
+      throw new Error("유효하지 않은 행 번호입니다: " + row);
+    }
+    if (!headers || !Array.isArray(headers) || headers.length === 0) {
+      throw new Error("headers 파라미터가 유효하지 않습니다.");
+    }
+
+    Logger.log("generateAiSummary 시작 - 시트: " + sheet.getName() + ", 행: " + row);
+
     var ss = SpreadsheetApp.getActiveSpreadsheet(); // 함수 내부에서 직접 스프레드시트 객체 획득
 
     // 필수 시트 존재 확인
@@ -270,10 +311,16 @@ function generateAiSummary(sheet, row, headers) {
 
     ui.alert('❌ AI 초안 생성 실패', e.message, ui.ButtonSet.OK);
 
-    // 체크박스 해제
-    var draftColIndexOnError = headers.indexOf('초안생성');
-    if (draftColIndexOnError > -1) {
-      sheet.getRange(row, draftColIndexOnError + 1).uncheck();
+    // 체크박스 해제 (파라미터가 유효한 경우에만)
+    try {
+      if (sheet && headers && Array.isArray(headers) && row) {
+        var draftColIndexOnError = headers.indexOf('초안생성');
+        if (draftColIndexOnError > -1) {
+          sheet.getRange(row, draftColIndexOnError + 1).uncheck();
+        }
+      }
+    } catch (uncheckError) {
+      Logger.log("체크박스 해제 중 오류: " + uncheckError.message);
     }
   }
 }

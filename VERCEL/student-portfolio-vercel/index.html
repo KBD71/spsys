@@ -494,25 +494,124 @@
         }
     }
     
+    <script>
+    // ... (파일의 다른 스크립트 내용은 그대로 둡니다) ...
+
+    /**
+     * 내 기록 표시 (건의사항 기능 추가)
+     * @param {Array} records - 기록 목록
+     */
     function displayMyRecords(records) {
-        const listEl = document.getElementById('myRecordsList');
-        if (records.length === 0) {
-            listEl.innerHTML = '<div class="empty-message">교사 코멘트가 없습니다.</div>';
-            return;
-        }
-        listEl.innerHTML = records.map(record => `
-            <div class="record-card">
-                <h3>${escapeHTML(record.sheetName)}</h3>
-                ${Object.entries(record.data).map(([key, value]) => `
-                    <div class="data-row">
-                        <div class="data-label">${escapeHTML(key)}</div>
-                        <div class="data-value">${escapeHTML(value)}</div>
-                    </div>
-                `).join('')}
+      const recordsList = document.getElementById('myRecordsList');
+      
+      if (!records || records.length === 0) {
+        recordsList.innerHTML = '<div class="loading-message">공개된 기록이 없습니다.</div>';
+        return;
+      }
+      
+      recordsList.innerHTML = '';
+      
+      records.forEach((record, index) => {
+        const card = document.createElement('div');
+        card.className = 'record-card';
+        
+        // record.type에 따라 제목을 다르게 표시
+        const title = record.type === 'comment' ? `📝 ${record.sheetName} (교사 코멘트)` : `🔔 ${record.sheetName} (알림)`;
+
+        let html = `<h3>${sanitizeText(title)}</h3>`;
+        
+        html += `
+            <div class="data-row">
+              <div class="data-label">${sanitizeText(record.label)}:</div>
+              <div class="data-value">${sanitizeText(record.value || '-')}</div>
             </div>
-        `).join('');
+          `;
+
+        // 질문이 있는 경우(교사 코멘트) 질문 내용 표시
+        if (record.type === 'comment' && record.question) {
+           html += `
+            <div class="feedback-box">
+              <strong>💬 질문:</strong>
+              <p style="margin-top: 8px;">${sanitizeText(record.question)}</p>
+            </div>
+          `;
+        }
+
+        // 건의사항 입력 기능 추가
+        if (record.hasSuggestion) {
+          // 각 건의사항 요소를 고유하게 만들기 위해 index 사용
+          const suggestionId = `suggestion-${index}`; 
+          html += `
+            <div class="suggestion-box">
+              <strong>💡 건의사항:</strong>
+              <div style="margin-top: 8px;">
+                <textarea 
+                  id="${suggestionId}" 
+                  class="suggestion-input"
+                  placeholder="이 기록에 대한 건의사항을 입력하세요..."
+                  rows="3">${sanitizeText(record.suggestion || '')}</textarea>
+                <button 
+                  class="suggestion-save-btn" 
+                  onclick="saveSuggestion('${sanitizeText(record.sheetName)}', '${suggestionId}')">
+                  저장
+                </button>
+              </div>
+            </div>
+          `;
+        }
+
+        card.innerHTML = html;
+        recordsList.appendChild(card);
+      });
+    }
+    
+    /**
+     * 건의사항 저장 (Vercel API 버전)
+     * @param {string} sheetName - 시트명
+     * @param {string} textareaId - 건의사항이 입력된 textarea의 고유 ID
+     */
+    function saveSuggestion(sheetName, textareaId) {
+      const textarea = document.getElementById(textareaId);
+      const suggestion = textarea.value; // trim() 제거하여 공백 저장 허용
+      
+      const saveBtn = textarea.nextElementSibling;
+      const originalText = saveBtn.textContent;
+      
+      saveBtn.disabled = true;
+      saveBtn.textContent = '저장 중...';
+
+      // Vercel API 호출
+      fetch(`${API_BASE}/my-records`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ studentId: currentStudentId, sheetName, suggestion })
+      })
+      .then(res => res.json())
+      .then(function(result) {
+        if (result.success) {
+          saveBtn.style.backgroundColor = '#28a745'; // Green
+          saveBtn.textContent = '저장됨';
+          setTimeout(() => {
+            saveBtn.style.backgroundColor = '';
+            saveBtn.textContent = originalText;
+            saveBtn.disabled = false;
+          }, 3000);
+        } else {
+          alert('저장 실패: ' + result.message);
+          saveBtn.disabled = false;
+          saveBtn.textContent = originalText;
+        }
+      })
+      .catch(function(error) {
+        console.error('건의사항 저장 실패:', error);
+        alert('건의사항 저장 중 오류가 발생했습니다.');
+        saveBtn.disabled = false;
+        saveBtn.textContent = originalText;
+      });
     }
 
+    // ... (파일의 다른 스크립트 내용은 그대로 둡니다) ...
+</script>
     function displayNotifications(notifications) {
         const listEl = document.getElementById('myNotificationsList');
         if (notifications.length === 0) {
@@ -659,3 +758,4 @@
 </script>
 </body>
 </html>
+

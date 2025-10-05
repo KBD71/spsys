@@ -6,49 +6,255 @@
   <meta name="description" content="학생 포트폴리오 시스템">
   <title>학생 포트폴리오 시스템</title>
 
+  <script>
+    MathJax = {
+      tex: {
+        inlineMath: [['$', '$'], ['\\(', '\\)']],
+        displayMath: [['$$', '$$'], ['\\[', '\\]']]
+      }
+    };
+  </script>
+  <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
   <style>
-    /* 이전과 동일한 CSS 스타일, 생략 */
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans KR', sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; display: flex; justify-content: center; align-items: center; padding: 20px; color: #333; }
-    .screen { background: white; border-radius: 20px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3); max-width: 600px; width: 100%; overflow: hidden; animation: fadeIn 0.5s ease-in-out; }
+    /* ==================== 기본 설정 ==================== */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans KR', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+      color: #333;
+      line-height: 1.6;
+    }
+
+    /* ==================== 화면 레이아웃 ==================== */
+    .screen {
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      max-width: 600px;
+      width: 100%;
+      overflow: hidden;
+      animation: fadeIn 0.5s ease-in-out;
+    }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-    .screen.hidden { display: none; }
-    header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; position: relative; }
-    header h1 { font-size: 1.8rem; font-weight: 700; margin: 0; }
-    .btn-back { position: absolute; left: 20px; top: 50%; transform: translateY(-50%); background: rgba(255, 255, 255, 0.2); color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; transition: all 0.3s ease; }
-    main { padding: 40px 30px; max-height: 70vh; overflow-y: auto; }
-    section { margin-bottom: 30px; }
-    h2 { font-size: 1.3rem; margin-bottom: 15px; color: #667eea; font-weight: 700; border-bottom: 2px solid #f0f0f0; padding-bottom: 10px; }
-    .form-group { margin-bottom: 20px; }
-    label { display: block; margin-bottom: 8px; font-weight: 600; color: #555; }
-    input, textarea { width: 100%; padding: 12px 16px; border: 2px solid #e0e0e0; border-radius: 10px; font-size: 1rem; transition: all 0.3s ease; background: #f9f9f9; font-family: inherit; }
-    textarea { resize: vertical; min-height: 100px; }
-    input:focus, textarea:focus { outline: none; border-color: #667eea; background: white; box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1); }
-    .btn { padding: 14px 28px; border: none; border-radius: 10px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: all 0.3s ease; width: 100%; margin-top: 10px; }
-    .btn-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
-    .btn-secondary { background: #f0f0f0; color: #555; }
-    .btn:disabled { background: #ccc; cursor: not-allowed; }
-    .info-card { background: #f8f9fa; padding: 20px; border-radius: 12px; }
-    .info-card strong { color: #667eea; }
-    .assignment-card { background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 8px; padding: 1rem; margin-bottom: 1rem; cursor: pointer; }
-    .assignment-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.1); transform: translateY(-2px); }
+
+    .screen.hidden {
+      display: none;
+    }
+
+    /* ==================== 헤더 ==================== */
+    header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 30px;
+      text-align: center;
+      position: relative;
+    }
+
+    header h1 {
+      font-size: 1.8rem;
+      font-weight: 700;
+      margin: 0;
+    }
+
+    .btn-back {
+      position: absolute;
+      left: 20px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: rgba(255, 255, 255, 0.2);
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    .btn-back:hover {
+        background: rgba(255, 255, 255, 0.4);
+    }
+
+    /* ==================== 메인 컨텐츠 ==================== */
+    main {
+      padding: 40px 30px;
+      max-height: 70vh;
+      overflow-y: auto;
+    }
+
+    section {
+      margin-bottom: 30px;
+    }
+    section:last-child {
+        margin-bottom: 0;
+    }
+
+    h2 {
+      font-size: 1.3rem;
+      margin-bottom: 15px;
+      color: #667eea;
+      font-weight: 700;
+      border-bottom: 2px solid #f0f0f0;
+      padding-bottom: 10px;
+    }
+    
+    /* ==================== 폼 스타일 ==================== */
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 600;
+      color: #555;
+    }
+
+    input, textarea {
+      width: 100%;
+      padding: 12px 16px;
+      border: 2px solid #e0e0e0;
+      border-radius: 10px;
+      font-size: 1rem;
+      transition: all 0.3s ease;
+      background: #f9f9f9;
+      font-family: inherit;
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 100px;
+    }
+
+    input:focus, textarea:focus {
+      outline: none;
+      border-color: #667eea;
+      background: white;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    /* ==================== 버튼 스타일 ==================== */
+    .btn {
+      padding: 14px 28px;
+      border: none;
+      border-radius: 10px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      width: 100%;
+      margin-top: 10px;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+    .btn-primary:hover {
+      transform: translateY(-2px);
+    }
+    .btn-secondary {
+      background: #f0f0f0;
+      color: #555;
+    }
+    .btn-secondary:hover {
+        background: #e0e0e0;
+    }
+    .btn:disabled {
+        background: #ccc;
+        cursor: not-allowed;
+    }
+
+    /* ==================== 카드 스타일 ==================== */
+    .info-card {
+      background: #f8f9fa;
+      padding: 20px;
+      border-radius: 12px;
+    }
+    .info-card strong {
+      color: #667eea;
+    }
+
+    .assignment-card {
+      background: #f8f9fa;
+      border: 1px solid #e9ecef;
+      border-radius: 8px;
+      padding: 1rem;
+      margin-bottom: 1rem;
+      transition: all 0.3s ease;
+      cursor: pointer;
+    }
+    .assignment-card:hover {
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      transform: translateY(-2px);
+    }
     .assignment-card h4 { color: #667eea; }
     .assignment-meta { font-size: 0.9rem; color: #666; }
-    .status { font-weight: bold; } .status.submitted { color: #28a745; } .status.not-submitted { color: #dc3545; }
-    .record-card { background: #f8f9fa; border-left: 4px solid #667eea; padding: 1rem; margin-bottom: 1rem; }
+    .status { font-weight: bold; }
+    .status.submitted { color: #28a745; }
+    .status.not-submitted { color: #dc3545; }
+
+    .record-card {
+        background: #f8f9fa;
+        border-left: 4px solid #667eea;
+        padding: 1rem;
+        margin-bottom: 1rem;
+    }
     .record-card h3 { color: #667eea; }
-    .data-row { display: flex; margin-bottom: 0.5rem; padding-bottom: 0.5rem; border-bottom: 1px solid #eee; }
-    .data-label { font-weight: 500; color: #555; min-width: 100px; }
+    .data-row {
+      display: flex;
+      margin-bottom: 0.5rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid #eee;
+    }
+    .data-row:last-child {
+        border-bottom: none;
+        margin-bottom: 0;
+        padding-bottom: 0;
+    }
+    .data-label { font-weight: 500; color: #555; min-width: 100px; flex-shrink: 0; }
     .data-value { color: #333; flex: 1; white-space: pre-wrap; }
-    .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); display: flex; justify-content: center; align-items: center; z-index: 1000; }
+
+
+    /* ==================== 모달 스타일 ==================== */
+    .modal {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.6);
+      display: flex; justify-content: center; align-items: center;
+      z-index: 1000;
+    }
     .modal.hidden { display: none; }
-    .modal-content { background: white; border-radius: 12px; max-width: 600px; width: 90%; max-height: 90vh; display: flex; flex-direction: column; }
-    .modal-header { padding: 1.5rem; border-bottom: 1px solid #e9ecef; }
+    .modal-content {
+      background: white; border-radius: 12px;
+      max-width: 600px; width: 90%;
+      max-height: 90vh; display: flex; flex-direction: column;
+    }
+    .modal-header {
+      padding: 1.5rem; border-bottom: 1px solid #e9ecef;
+    }
     .modal-header h3 { margin: 0; font-size: 1.5rem; }
     .modal-body { padding: 1.5rem; overflow-y: auto; }
-    .modal-footer { padding: 1rem 1.5rem; border-top: 1px solid #e9ecef; display: flex; justify-content: flex-end; gap: 10px; }
-    .modal-footer .btn { width: auto; }
+    .modal-footer {
+        padding: 1rem 1.5rem; border-top: 1px solid #e9ecef;
+        display: flex; justify-content: flex-end; gap: 10px;
+    }
+    .modal-footer .btn { width: auto; margin-top: 0; }
+
+    /* ==================== 기타 ==================== */
     .loading-message, .empty-message { text-align: center; color: #888; padding: 2rem; }
-    .message { margin-top: 20px; padding: 12px 16px; border-radius: 10px; display: none; }
+    .message {
+      margin-top: 20px; padding: 12px 16px; border-radius: 10px;
+      display: none;
+    }
     .message.show { display: block; }
     .message.error { background: #f8d7da; color: #721c24; }
     .message.success { background: #d4edda; color: #155724; }
@@ -59,7 +265,22 @@
 <body>
 
   <section id="loginScreen" class="screen">
-    </section>
+    <header><h1>🎓 학생 포트폴리오</h1></header>
+    <main>
+      <form id="loginForm">
+        <div class="form-group">
+          <label for="studentId">학번</label>
+          <input type="text" id="studentId" placeholder="5자리 숫자" required>
+        </div>
+        <div class="form-group">
+          <label for="password">비밀번호</label>
+          <input type="password" id="password" required>
+        </div>
+        <button type="submit" class="btn btn-primary">로그인</button>
+        <div id="loginMessage" class="message"></div>
+      </form>
+    </main>
+  </section>
 
   <section id="menuScreen" class="screen hidden">
     <header><h1>🎓 학생 포트폴리오</h1></header>
@@ -120,7 +341,23 @@
   </section>
 
   <div id="submitModal" class="modal hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="submitModalTitle">과제 제출</h3>
+      </div>
+      <div class="modal-body">
+        <form id="assignmentSubmitForm">
+          <div id="questionsContainer">
+            <div class="loading-message">질문을 불러오는 중...</div>
+          </div>
+        </form>
+      </div>
+       <div class="modal-footer">
+          <button type="button" onclick="submitAssignment()" class="btn btn-primary submit-btn">제출하기</button>
+          <button type="button" onclick="hideSubmitModal()" class="btn">취소</button>
+      </div>
     </div>
+  </div>
 
 <script>
     const API_BASE = window.location.hostname === 'localhost' ? 'http://localhost:3000/api' : '/api';
@@ -128,29 +365,66 @@
     let currentStudentName = '';
     let assignmentCache = [];
 
-    // ==================== 초기화 및 이벤트 리스너 ====================
     document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('loginForm').addEventListener('submit', handleLogin);
         document.getElementById('logoutBtn').addEventListener('click', logout);
-        // ★★★ 비밀번호 변경 이벤트 리스너 추가 ★★★
         document.getElementById('changePasswordBtn').addEventListener('click', showPasswordChangeScreen);
         document.getElementById('passwordChangeForm').addEventListener('submit', handlePasswordChange);
     });
 
-    // ==================== 로그인/로그아웃 ====================
-    // ... 이전과 동일 ...
+    async function handleLogin(event) {
+        event.preventDefault();
+        const studentId = document.getElementById('studentId').value.trim();
+        const password = document.getElementById('password').value.trim();
+        if (!/^[0-9]{5}$/.test(studentId)) {
+            showMessage('loginMessage', '학번은 5자리 숫자여야 합니다.', 'error');
+            return;
+        }
+        const loginBtn = event.target.querySelector('button[type="submit"]');
+        loginBtn.disabled = true;
+        loginBtn.textContent = '로그인 중...';
+        try {
+            const response = await fetch(`${API_BASE}/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ studentId, password })
+            });
+            const result = await response.json();
+            if (result.success) {
+                currentStudentId = result.studentId;
+                currentStudentName = result.name;
+                showMenu();
+            } else {
+                showMessage('loginMessage', result.message, 'error');
+            }
+        } catch (error) {
+            showMessage('loginMessage', '서버에 연결할 수 없습니다.', 'error');
+        } finally {
+            loginBtn.disabled = false;
+            loginBtn.textContent = '로그인';
+        }
+    }
 
-    // ==================== 화면 전환 및 데이터 로딩 ====================
+    function logout() {
+        currentStudentId = '';
+        currentStudentName = '';
+        assignmentCache = [];
+        document.getElementById('loginForm').reset();
+        hideMessage('loginMessage');
+        document.getElementById('loginScreen').classList.remove('hidden');
+        document.getElementById('menuScreen').classList.add('hidden');
+        document.getElementById('passwordChangeScreen').classList.add('hidden');
+    }
+
     function showMenu() {
         document.getElementById('studentName').textContent = currentStudentName;
         document.getElementById('studentIdDisplay').textContent = currentStudentId;
         document.getElementById('loginScreen').classList.add('hidden');
         document.getElementById('menuScreen').classList.remove('hidden');
-        document.getElementById('passwordChangeScreen').classList.add('hidden'); // 비밀번호 화면 숨기기
+        document.getElementById('passwordChangeScreen').classList.add('hidden');
         loadAllData();
     }
     
-    // ★★★ 비밀번호 변경 화면 표시 함수 추가 ★★★
     function showPasswordChangeScreen() {
         document.getElementById('menuScreen').classList.add('hidden');
         document.getElementById('passwordChangeScreen').classList.remove('hidden');
@@ -158,23 +432,179 @@
         hideMessage('passwordChangeMessage');
     }
 
-    async function loadAllData() { /* ... 이전과 동일 ... */ }
-    async function loadAssignments() { /* ... 이전과 동일 ... */ }
-    function displayAssignments(assignments) { /* ... 이전과 동일 ... */ }
-    async function loadMyRecordsAndNotifications() { /* ... 이전과 동일 ... */ }
-    function displayMyRecords(records) { /* ... 이전과 동일 ... */ }
-    function displayNotifications(notifications) { /* ... 이전과 동일 ... */ }
-    async function showSubmitModal(assignmentId, assignmentName) { /* ... 이전과 동일 ... */ }
-    function hideSubmitModal() { /* ... 이전과 동일 ... */ }
-    async function submitAssignment() { /* ... 이전과 동일 ... */ }
+    async function loadAllData() {
+        await loadAssignments();
+        loadMyRecordsAndNotifications();
+    }
 
-    // ==================== ★★★ 비밀번호 변경 관련 함수 추가 ★★★ ====================
+    async function loadAssignments() {
+        const listEl = document.getElementById('assignmentsList');
+        listEl.innerHTML = '<div class="loading-message">과제 목록을 불러오는 중...</div>';
+        try {
+            const response = await fetch(`${API_BASE}/assignments?studentId=${currentStudentId}`);
+            const result = await response.json();
+            if (result.success) {
+                assignmentCache = result.assignments || [];
+                displayAssignments(assignmentCache);
+            } else {
+                listEl.innerHTML = `<div class="empty-message">${result.message}</div>`;
+            }
+        } catch (error) {
+            listEl.innerHTML = '<div class="empty-message">과제 목록을 불러오지 못했습니다.</div>';
+        }
+    }
+
+    function displayAssignments(assignments) {
+        const listEl = document.getElementById('assignmentsList');
+        if (assignments.length === 0) {
+            listEl.innerHTML = '<div class="empty-message">진행 중인 과제가 없습니다.</div>';
+            return;
+        }
+        listEl.innerHTML = assignments.map(assignment => `
+            <div class="assignment-card" onclick="showSubmitModal('${assignment.id}', '${escapeHTML(assignment.name)}')">
+                <h4>${escapeHTML(assignment.name)}</h4>
+                <div class="assignment-meta">
+                    <span>마감: ${assignment.dueDate || '상시'}</span> | 
+                    <span class="status ${assignment.submitted ? 'submitted' : 'not-submitted'}">
+                        ${assignment.submitted ? '제출 완료' : '미제출'}
+                    </span>
+                </div>
+            </div>
+        `).join('');
+    }
+    
+    async function loadMyRecordsAndNotifications() {
+        const recordsEl = document.getElementById('myRecordsList');
+        const notificationsEl = document.getElementById('myNotificationsList');
+        recordsEl.innerHTML = '<div class="loading-message">기록을 불러오는 중...</div>';
+        notificationsEl.innerHTML = '<div class="loading-message">알림을 불러오는 중...</div>';
+        try {
+            const response = await fetch(`${API_BASE}/my-records?studentId=${currentStudentId}`);
+            const result = await response.json();
+            if (!result.success) throw new Error(result.message);
+            const allRecords = result.records || [];
+            const assignmentSheetNames = new Set(assignmentCache.map(a => a.targetSheet));
+            const myRecords = allRecords.filter(r => assignmentSheetNames.has(r.sheetName));
+            const myNotifications = allRecords.filter(r => !assignmentSheetNames.has(r.sheetName));
+            displayMyRecords(myRecords);
+            displayNotifications(myNotifications);
+        } catch (error) {
+            recordsEl.innerHTML = `<div class="empty-message">${error.message}</div>`;
+            notificationsEl.innerHTML = `<div class="empty-message">${error.message}</div>`;
+        }
+    }
+    
+    function displayMyRecords(records) {
+        const listEl = document.getElementById('myRecordsList');
+        if (records.length === 0) {
+            listEl.innerHTML = '<div class="empty-message">교사 코멘트가 없습니다.</div>';
+            return;
+        }
+        listEl.innerHTML = records.map(record => `
+            <div class="record-card">
+                <h3>${escapeHTML(record.sheetName)}</h3>
+                ${Object.entries(record.data).map(([key, value]) => `
+                    <div class="data-row">
+                        <div class="data-label">${escapeHTML(key)}</div>
+                        <div class="data-value">${escapeHTML(value)}</div>
+                    </div>
+                `).join('')}
+            </div>
+        `).join('');
+    }
+
+    function displayNotifications(notifications) {
+        const listEl = document.getElementById('myNotificationsList');
+        if (notifications.length === 0) {
+            listEl.innerHTML = '<div class="empty-message">새로운 알림이 없습니다.</div>';
+            return;
+        }
+        listEl.innerHTML = notifications.map(record => `
+            <div class="record-card">
+                <h3>${escapeHTML(record.sheetName)}</h3>
+                ${Object.entries(record.data).map(([key, value]) => `
+                    <div class="data-row">
+                        <div class="data-label">${escapeHTML(key)}</div>
+                        <div class="data-value">${escapeHTML(value)}</div>
+                    </div>
+                `).join('')}
+            </div>
+        `).join('');
+    }
+
+    async function showSubmitModal(assignmentId, assignmentName) {
+        const modal = document.getElementById('submitModal');
+        const titleEl = document.getElementById('submitModalTitle');
+        const questionsContainer = document.getElementById('questionsContainer');
+        const form = document.getElementById('assignmentSubmitForm');
+        modal.classList.remove('hidden');
+        titleEl.textContent = assignmentName;
+        form.dataset.assignmentId = assignmentId;
+        questionsContainer.innerHTML = '<div class="loading-message">질문을 불러오는 중...</div>';
+
+        try {
+            const response = await fetch(`${API_BASE}/assignment-detail?assignmentId=${assignmentId}&studentId=${currentStudentId}`);
+            const result = await response.json();
+            if (!result.success) throw new Error(result.message);
+            if (result.questions.length > 0) {
+                questionsContainer.innerHTML = result.questions.map(q => `
+                    <div class="form-group">
+                        <label for="question-${q.column}">${q.question}</label>
+                        <textarea id="question-${q.column}" name="${q.column}" rows="4">${escapeHTML(q.answer)}</textarea>
+                    </div>
+                `).join('');
+                if (window.MathJax) {
+                    MathJax.typesetPromise([questionsContainer]);
+                }
+            } else {
+                questionsContainer.innerHTML = '<div class="empty-message">이 과제에는 설정된 질문이 없습니다.</div>';
+            }
+        } catch (error) {
+            questionsContainer.innerHTML = `<div class="empty-message">질문을 불러오는 데 실패했습니다: ${error.message}</div>`;
+        }
+    }
+
+    function hideSubmitModal() {
+        document.getElementById('submitModal').classList.add('hidden');
+    }
+    
+    async function submitAssignment() {
+        const form = document.getElementById('assignmentSubmitForm');
+        const assignmentId = form.dataset.assignmentId;
+        const answers = {};
+        form.querySelectorAll('textarea').forEach(ta => {
+            answers[ta.name] = ta.value;
+        });
+        const submitBtn = document.querySelector('#submitModal .submit-btn');
+        submitBtn.disabled = true;
+        submitBtn.textContent = '제출 중...';
+        try {
+            const response = await fetch(`${API_BASE}/submit-assignment`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ studentId: currentStudentId, assignmentId, answers })
+            });
+            const result = await response.json();
+            if (result.success) {
+                alert('과제가 성공적으로 제출되었습니다.');
+                hideSubmitModal();
+                loadAssignments();
+            } else {
+                alert(`제출 실패: ${result.message}`);
+            }
+        } catch (error) {
+            alert('제출 중 오류가 발생했습니다.');
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.textContent = '제출하기';
+        }
+    }
+
     async function handlePasswordChange(event) {
         event.preventDefault();
         const currentPassword = document.getElementById('currentPassword').value;
         const newPassword = document.getElementById('newPassword').value;
         const confirmPassword = document.getElementById('confirmPassword').value;
-
         if (newPassword !== confirmPassword) {
             showMessage('passwordChangeMessage', '새 비밀번호가 일치하지 않습니다.', 'error');
             return;
@@ -183,12 +613,10 @@
             showMessage('passwordChangeMessage', '새 비밀번호는 4자 이상이어야 합니다.', 'error');
             return;
         }
-
         const changeBtn = event.target.querySelector('button[type="submit"]');
         changeBtn.disabled = true;
         changeBtn.textContent = '변경 중...';
         showMessage('passwordChangeMessage', '비밀번호를 변경하고 있습니다...', 'info');
-
         try {
             const response = await fetch(`${API_BASE}/change-password`, {
                 method: 'POST',
@@ -211,8 +639,6 @@
         }
     }
 
-
-    // ==================== 유틸리티 함수 ====================
     function showMessage(elementId, message, type) {
         const el = document.getElementById(elementId);
         el.textContent = message;
@@ -224,8 +650,12 @@
         el.className = 'message';
     }
 
-    function escapeHTML(str) { /* ... 이전과 동일 ... */ }
-
+    function escapeHTML(str) {
+        if (str === null || str === undefined) return '';
+        return str.toString().replace(/[&<>"']/g, match => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+        }[match]));
+    }
 </script>
 </body>
 </html>

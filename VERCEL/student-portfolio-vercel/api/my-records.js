@@ -93,10 +93,17 @@ async function handleGetRecords(req, res) {
         const header = headers[colIdx];
         const value = studentRowInTarget[colIdx] || '';
 
-        if (!value || ['학번', '반', '이름', '제출일시', '초안생성', '건의사항'].indexOf(header) > -1) {
+        // 제외할 컬럼 리스트 (시스템 컬럼, 질문 컬럼)
+        const excludedColumns = ['학번', '반', '이름', '제출일시', '초안생성', '건의사항'];
+
+        // 값이 없거나, 제외 대상 컬럼이거나, '질문'으로 시작하는 컬럼은 건너뛰기
+        if (!value ||
+            excludedColumns.indexOf(header) > -1 ||
+            (header && header.toString().trim().startsWith('질문'))) {
             continue;
         }
-        
+
+        // '종합의견' 등 교사가 작성한 평가 컬럼만 표시
         records.push({
             sheetName: targetSheetName,
             label: header,

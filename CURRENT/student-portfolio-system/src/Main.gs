@@ -29,6 +29,7 @@ function onOpen() {
       .addSeparator()
       .addSubMenu(SpreadsheetApp.getUi().createMenu('🤖 AI 기능')
         .addItem('🔑 AI API 키 설정', 'setApiKey')
+        .addItem('✍️ 선택한 행에 AI 초안 생성', 'generateAiSummaryManual')
       )
       .addSeparator()
       .addItem('⚙️ 필수 시트 생성/초기화', 'initializeMinimalSystem')
@@ -136,6 +137,53 @@ function createAssignmentSheetFromSidebar(data) {
 // ==============================================
 //  AI 자동 초안 생성 (핵심 기능)
 // ==============================================
+
+/**
+ * 메뉴에서 수동으로 AI 초안 생성하는 함수
+ * 현재 선택된 행에 대해 AI 초안을 생성합니다.
+ */
+function generateAiSummaryManual() {
+  var ui = SpreadsheetApp.getUi();
+  var sheet = SpreadsheetApp.getActiveSheet();
+  var activeCell = sheet.getActiveCell();
+
+  if (!activeCell) {
+    ui.alert('오류', '셀을 선택해주세요.', ui.ButtonSet.OK);
+    return;
+  }
+
+  var row = activeCell.getRow();
+
+  if (row < 2) {
+    ui.alert('오류', '학생 데이터 행을 선택해주세요. (2행 이상)', ui.ButtonSet.OK);
+    return;
+  }
+
+  var requiredSheets = ['메뉴', '학생명단_전체', '과제설정', '공개', 'template', '프롬프트'];
+  if (requiredSheets.indexOf(sheet.getName()) !== -1) {
+    ui.alert('오류', '이 시트에서는 AI 초안 생성을 사용할 수 없습니다.\n과제 시트를 열고 학생 데이터 행을 선택한 후 다시 시도해주세요.', ui.ButtonSet.OK);
+    return;
+  }
+
+  var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  var opinionColIndex = headers.indexOf('종합의견');
+
+  if (opinionColIndex === -1) {
+    ui.alert('오류', '이 시트에는 \'종합의견\' 컬럼이 없습니다.\n과제 시트에서만 AI 초안을 생성할 수 있습니다.', ui.ButtonSet.OK);
+    return;
+  }
+
+  var opinionCell = sheet.getRange(row, opinionColIndex + 1);
+  if (opinionCell.getValue()) {
+    var response = ui.alert('덮어쓰기 확인', '이미 작성된 종합의견이 있습니다. AI 초안으로 덮어쓰시겠습니까?', ui.ButtonSet.YES_NO);
+    if (response !== ui.Button.YES) {
+      return;
+    }
+  }
+
+  Logger.log("수동 AI 초안 생성 - 시트: " + sheet.getName() + ", 행: " + row);
+  generateAiSummary(sheet, row, headers);
+}
 
 // ★★★ 핵심 수정 1: onEdit은 원래대로 이벤트 정보(e)만 사용하고, 다른 객체를 전달하지 않음 ★★★
 function onEdit(e) {

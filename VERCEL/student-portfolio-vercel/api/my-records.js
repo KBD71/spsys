@@ -1,5 +1,5 @@
 /**
- * 내 기록 조회 및 건의사항 저장 API (v4 - '질문' 헤더 감지 로직 수정)
+ * 내 기록 조회 및 건의사항 저장 API (v5 - 20251005 버그 수정 최종판)
  * GET: 학생이 열람할 기록을 조회합니다.
  * POST: 학생이 작성한 건의사항을 시트에 저장합니다.
  */
@@ -17,44 +17,35 @@ async function getSheetsClient() {
   return google.sheets({ version: 'v4', auth: authClient });
 }
 
-// 반별 접근 권한 확인 함수 (강화된 버전)
+// ==============================================
+// ★★★ 핵심 수정: 접근 제한 필터링 로직 수정 ★★★
+// ==============================================
 function isClassAllowed(studentClass, targetClass) {
   const trimmedTarget = (targetClass || '').trim();
+  // 1. '전체' 이거나 값이 없으면 무조건 허용
   if (!trimmedTarget || trimmedTarget === '전체' || trimmedTarget === '전체반') {
     return true;
   }
   
-  // 학생의 학년 정보 (예: '1-6' -> '1')
-  const studentGrade = (studentClass || '').split('-')[0];
-  if (!studentGrade) return false;
-
-  // '1학년' 과 같은 형식 처리
-  if (trimmedTarget.includes('학년')) {
-    const targetGrade = trimmedTarget.replace('학년', '').trim();
-    return studentGrade === targetGrade;
+  // 2. 학생의 반 정보가 없으면 무조건 거부
+  if (!studentClass) {
+    return false;
   }
 
-  // '1-6,7' 또는 '1-6, 1-7' 과 같은 형식 처리
-  const allowedClasses = trimmedTarget.split(',').reduce((acc, cls) => {
-    let currentCls = cls.trim();
-    if (currentCls) {
-      // '7'과 같이 숫자만 있는 경우, 앞서 나온 반의 학년을 붙여줌 (예: '1-7')
-      if (!currentCls.includes('-') && acc.length > 0) {
-        const lastClass = acc[acc.length - 1];
-        const lastGrade = lastClass.split('-')[0];
-        if(lastGrade) {
-            currentCls = `${lastGrade}-${currentCls}`;
-        }
-      }
-      acc.push(currentCls);
-    }
-    return acc;
-  }, []);
-
+  // 3. '1학년' 과 같은 형식 처리
+  if (trimmedTarget.includes('학년')) {
+    const targetGrade = trimmedTarget.replace('학년', '').trim();
+    const studentGrade = (studentClass || '').split('-')[0];
+    return studentGrade === targetGrade;
+  }
+  
+  // 4. '1-6,1-7' 과 같은 형식 처리 (쉼표 기준 분리)
+  const allowedClasses = trimmedTarget.split(',').map(cls => cls.trim());
   return allowedClasses.includes(studentClass);
 }
 
-// GET 요청 핸들러 (기록 조회) - 수정된 버전
+
+// GET 요청 핸들러 (기록 조회)
 async function handleGetRecords(req, res) {
   const { studentId } = req.query;
   if (!studentId) return res.status(400).json({ success: false, message: '학번이 필요합니다.' });
@@ -65,9 +56,13 @@ async function handleGetRecords(req, res) {
   // 학생 정보 (반) 조회
   const studentResponse = await sheets.spreadsheets.values.get({ spreadsheetId, range: '학생명단_전체!A:C' });
   const studentData = studentResponse.data.values;
+  if (!studentData) return res.status(404).json({ success: false, message: '학생 명단 시트를 찾을 수 없습니다.'});
+
   const studentRowData = studentData.find((row, idx) => idx > 0 && row[0] === studentId);
   if (!studentRowData) return res.status(404).json({ success: false, message: '학생을 찾을 수 없습니다.' });
-  const studentClass = studentRowData[2];
+  
+  // ★★★ 핵심 수정: 학생의 반 정보는 B열(인덱스 1)에 있습니다. ★★★
+  const studentClass = studentRowData[1]; 
 
   // '공개' 시트 읽기
   const publicSheetResponse = await sheets.spreadsheets.values.get({ spreadsheetId, range: '공개!A:C' });
@@ -81,15 +76,20 @@ async function handleGetRecords(req, res) {
     const publicRow = publicSheetData[i];
     const isPublic = publicRow[0] === true || publicRow[0] === 'TRUE' || publicRow[0] === 'Y';
     const targetSheetName = publicRow[1];
-    const targetClass = publicRow[2] || '전체';
+    const targetClass = publicRow[2] || '전체'; // C열(인덱스 2)의 대상반 정보
 
-    if (!isPublic || !targetSheetName || !isClassAllowed(studentClass, targetClass)) continue;
+    // ★★★ 핵심 수정: isClassAllowed 함수를 사용하여 여기서 필터링합니다. ★★★
+    if (!isPublic || !targetSheetName || !isClassAllowed(studentClass, targetClass)) {
+      continue;
+    }
 
     if (!sheetDataCache[targetSheetName]) {
       try {
         const response = await sheets.spreadsheets.values.get({ spreadsheetId, range: `${targetSheetName}!A:Z` });
         sheetDataCache[targetSheetName] = response.data.values || null;
-      } catch (e) { sheetDataCache[targetSheetName] = null; }
+      } catch (e) { 
+        sheetDataCache[targetSheetName] = null; 
+      }
     }
     
     const targetSheetData = sheetDataCache[targetSheetName];
@@ -99,29 +99,54 @@ async function handleGetRecords(req, res) {
     const publicColumnIndex = headers.indexOf('공개컬럼');
     const studentIdIndex = headers.indexOf('학번');
     const suggestionIndex = headers.indexOf('건의사항');
+    const questionIndex = headers.findIndex(h => (h || '').trim().startsWith('질문'));
     
-    // ⭐ 수정된 로직: 헤더 중 '질문'으로 시작하는 것이 있는지 확인
-    const hasQuestionColumn = headers.some(h => (h || '').trim().startsWith('질문'));
-
     if (publicColumnIndex === -1 || studentIdIndex === -1) continue;
 
     const studentRowInTarget = targetSheetData.find((r, idx) => idx > 0 && r[studentIdIndex] === studentId);
     if (!studentRowInTarget) continue;
     
+    // 공개할 컬럼 목록 가져오기
+    const publicColumns = [];
+    // '공개' 시트가 아닌, 대상 시트의 '공개컬럼'을 기준으로 공개할 데이터를 찾습니다.
     for (let j = 1; j < targetSheetData.length; j++) {
-      const publicColumnName = targetSheetData[j][publicColumnIndex];
-      if (!publicColumnName) continue;
-      const dataColumnIndex = headers.indexOf(publicColumnName);
-      if (dataColumnIndex === -1) continue;
+        if(targetSheetData[j][publicColumnIndex]) {
+            publicColumns.push(targetSheetData[j][publicColumnIndex]);
+        }
+    }
+    
+    // 학생 데이터에서 공개할 컬럼의 값만 추출하여 records 배열에 추가
+    for (const publicColumnName of publicColumns) {
+        const dataColumnIndex = headers.indexOf(publicColumnName);
+        if (dataColumnIndex === -1) continue;
 
-      records.push({
-        sheetName: targetSheetName,
-        label: publicColumnName,
-        value: studentRowInTarget[dataColumnIndex] || '',
-        type: hasQuestionColumn ? 'comment' : 'notification',
-        hasSuggestion: suggestionIndex !== -1,
-        suggestion: (suggestionIndex !== -1 && studentRowInTarget[suggestionIndex]) ? studentRowInTarget[suggestionIndex] : ''
-      });
+        let recordType = questionIndex !== -1 ? 'comment' : 'notification';
+        let questionText = null;
+
+        // 질문 내용 찾기
+        if(recordType === 'comment') {
+            const questionHeader = headers[questionIndex];
+            const qResponse = await sheets.spreadsheets.values.get({spreadsheetId, range: `과제설정!A:K`});
+            const qData = qResponse.data.values || [];
+            const qHeaders = qData[0] || [];
+            const qTargetSheetCol = qHeaders.indexOf('대상시트');
+            const qCol = qHeaders.indexOf(questionHeader);
+
+            if(qTargetSheetCol > -1 && qCol > -1) {
+                const qRow = qData.find(r => r[qTargetSheetCol] === targetSheetName);
+                if(qRow) questionText = qRow[qCol];
+            }
+        }
+        
+        records.push({
+            sheetName: targetSheetName,
+            label: publicColumnName,
+            value: studentRowInTarget[dataColumnIndex] || '',
+            type: recordType,
+            question: questionText,
+            hasSuggestion: suggestionIndex !== -1,
+            suggestion: (suggestionIndex !== -1 && studentRowInTarget[suggestionIndex]) ? studentRowInTarget[suggestionIndex] : ''
+        });
     }
   }
   return res.status(200).json({ success: true, records: records });
@@ -129,7 +154,6 @@ async function handleGetRecords(req, res) {
 
 // POST 요청 핸들러 (건의사항 저장)
 async function handleSaveSuggestion(req, res) {
-  // ... (이 부분은 변경사항이 없습니다)
   const { studentId, sheetName, suggestion } = req.body;
   if (!studentId || !sheetName || suggestion === undefined) {
     return res.status(400).json({ success: false, message: '필수 정보가 누락되었습니다.' });
@@ -190,4 +214,3 @@ module.exports = async (req, res) => {
     return res.status(500).json({ success: false, message: '서버 오류가 발생했습니다: ' + error.message });
   }
 };
-

@@ -1,6 +1,6 @@
 /**
  * @OnlyCurrentDoc
- * 학생 포트폴리오 시스템 - 교사 관리 기능 (Vercel 하이브리드 - 최종 안정화 버전)
+ * 학생 포트폴리오 시스템 - 교사 관리 기능 (Vercel 하이브리드 - AI 자동 초안 생성 최종 버전)
  */
 
 // ==============================================
@@ -18,6 +18,7 @@ function onOpen() {
         .addItem('🧑‍🎓 학생명단', 'goToStudents')
         .addItem('📝 과제설정', 'goToAssignments')
         .addItem('📢 공개설정', 'goToPublic')
+        .addItem('🤖 프롬프트', 'goToPrompts')
       )
       .addSeparator()
       .addItem('🔄 대시보드 새로고침', 'refreshDashboard')
@@ -34,6 +35,7 @@ function goToMenu() { goToSheet('메뉴'); }
 function goToStudents() { goToSheet('학생명단_전체'); }
 function goToAssignments() { goToSheet('과제설정'); }
 function goToPublic() { goToSheet('공개'); }
+function goToPrompts() { goToSheet('프롬프트'); }
 
 function goToSheet(sheetName) {
   try {
@@ -54,7 +56,108 @@ function refreshDashboard() {
 }
 
 // ==============================================
-//  2. 시트 생성 및 삭제
+//  2. AI 자동 초안 생성 (핵심 기능)
+// ==============================================
+
+function onEdit(e) {
+  const range = e.range;
+  const sheet = range.getSheet();
+  const editedRow = range.getRow();
+  const editedCol = range.getColumn();
+  const isChecked = range.isChecked();
+
+  const requiredSheets = ['메뉴', '학생명단_전체', '과제설정', '공개', 'template', '프롬프트'];
+  if (requiredSheets.includes(sheet.getName()) || editedRow < 2 || !isChecked) {
+    return;
+  }
+
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const targetColName = headers[editedCol - 1];
+
+  if (targetColName === '초안생성') {
+    const ui = SpreadsheetApp.getUi();
+    const opinionColIndex = headers.indexOf('종합의견');
+    if (opinionColIndex > -1) {
+      const opinionCell = sheet.getRange(editedRow, opinionColIndex + 1);
+      if (opinionCell.getValue()) {
+        const response = ui.alert('덮어쓰기 확인', '이미 작성된 종합의견이 있습니다. AI 초안으로 덮어쓰시겠습니까?', ui.ButtonSet.YES_NO);
+        if (response !== ui.Button.YES) {
+          range.uncheck();
+          return;
+        }
+      }
+    }
+    generateAiSummary(sheet, editedRow, headers);
+  }
+}
+
+function generateAiSummary(sheet, row, headers) {
+  const ui = SpreadsheetApp.getUi();
+  try {
+    const studentRowData = sheet.getRange(row, 1, 1, headers.length).getValues()[0];
+    
+    let context = "";
+    const studentIdIndex = headers.indexOf('학번');
+    const studentId = studentIdIndex > -1 ? studentRowData[studentIdIndex] : '알 수 없음';
+    
+    headers.forEach((header, index) => {
+      if (header.startsWith('질문') && studentRowData[index]) {
+        const questionText = getQuestionText(sheet.getName(), header);
+        context += `[질문: ${questionText}]\n- 학생 답변: ${studentRowData[index]}\n\n`;
+      }
+    });
+
+    const lastQuestionIndex = headers.lastIndexOf(headers.find(h => h.startsWith('질문5')));
+    const draftColIndex = headers.indexOf('초안생성');
+    if (lastQuestionIndex > -1 && draftColIndex > -1 && lastQuestionIndex < draftColIndex - 1) {
+      context += "[교사 추가 평가]\n";
+      for (let i = lastQuestionIndex + 1; i < draftColIndex; i++) {
+        if (studentRowData[i]) {
+          context += `- ${headers[i]}: ${studentRowData[i]}\n`;
+        }
+      }
+      context += "\n";
+    }
+
+    if (!context) throw new Error("요약할 학생의 답변 내용이 없습니다.");
+
+    const promptTemplate = getPromptTemplate('종합의견');
+    const finalPrompt = `
+      ${promptTemplate.persona}
+      ${promptTemplate.task}
+      
+      ## 학생 정보:
+      - 학번: ${studentId}
+      - 과제명: ${sheet.getName()}
+      
+      ## 학생 제출 내용 및 교사 평가:
+      ${context}
+      
+      ## 지시사항:
+      ${promptTemplate.instructions}
+    `;
+
+    const opinionColIndex = headers.indexOf('종합의견');
+    if (opinionColIndex === -1) throw new Error("'종합의견' 컬럼을 찾을 수 없습니다.");
+    
+    const opinionCell = sheet.getRange(row, opinionColIndex + 1);
+    opinionCell.setValue("🤖 AI가 초안을 작성 중입니다...");
+    SpreadsheetApp.flush();
+
+    const summary = callGeminiAPI(finalPrompt);
+    opinionCell.setValue(summary);
+
+  } catch (e) {
+    ui.alert('❌ AI 초안 생성 실패', e.message, ui.ButtonSet.OK);
+    const draftColIndex = headers.indexOf('초안생성');
+    if (draftColIndex > -1) {
+      sheet.getRange(row, draftColIndex + 1).uncheck();
+    }
+  }
+}
+
+// ==============================================
+//  3. 시트 생성 및 삭제
 // ==============================================
 
 function createAssignmentSheet() {
@@ -117,7 +220,7 @@ function createAssignmentSheet() {
 
 function promptToDeleteSheet() {
   const ui = SpreadsheetApp.getUi();
-  const requiredSheets = ['메뉴', '학생명단_전체', '과제설정', '공개', 'template'];
+  const requiredSheets = ['메뉴', '학생명단_전체', '과제설정', '공개', 'template', '프롬프트'];
   const response = ui.prompt('🗑️ 시트 삭제', '삭제할 시트의 전체 이름을 정확히 입력하세요:', ui.ButtonSet.OK_CANCEL);
   if (response.getSelectedButton() == ui.Button.OK) {
     const sheetName = response.getResponseText().trim();
@@ -169,7 +272,7 @@ function deleteRowBySheetName(ss, targetSheetName, columnName, valueToDelete) {
 }
 
 // ==============================================
-//  3. 시스템 초기화 및 대시보드 관리
+//  4. 시스템 초기화 및 대시보드 관리
 // ==============================================
 
 function initializeMinimalSystem() {
@@ -181,7 +284,8 @@ function initializeMinimalSystem() {
             '학생명단_전체': ['학번', '반', '번호', '이름', '비밀번호'],
             '과제설정': ['공개', '과제ID', '과제명', '대상시트', '시작일', '마감일', '질문1', '질문2', '질문3', '질문4', '질문5'],
             '공개': ['공개', '시트이름', '대상반'],
-            'template': ['학번', '반', '이름', '질문1', '질문2', '질문3', '질문4', '질문5', '제출일시', '공개컬럼']
+            'template': ['학번', '반', '이름', '질문1', '질문2', '질문3', '질문4', '질문5', '제출일시', '초안생성', '종합의견'],
+            '프롬프트': ['요약 종류', '역할 (Persona)', '작업 (Task)', '지시사항 (Instructions)']
         };
         let createdCount = 0;
         for (const sheetName in requiredSheets) {
@@ -194,6 +298,17 @@ function initializeMinimalSystem() {
                 createdCount++;
             }
         }
+        
+        const promptSheet = ss.getSheetByName('프롬프트');
+        if (promptSheet.getLastRow() < 2) {
+          promptSheet.appendRow([
+            '종합의견',
+            "학생의 1년간 활동을 종합하여 '행동특성 및 종합의견'을 작성하는 대한민국 고등학교 담임 교사입니다.",
+            "학생의 답변과 교사의 평가를 종합하여, 학생의 인성, 학업 태도, 성장 가능성 등이 드러나는 종합의견 초안을 작성해주세요.",
+            "- 객관적 사실 기반 서술 ('~함', '~음' 체 사용)\n- 2~3개 문장으로 구성\n- 학생의 잠재력과 발전 가능성 포함"
+          ]);
+        }
+
         if (createdCount > 0) ui.alert('✅ 필수 시트 생성 완료', `${createdCount}개의 시트가 생성되었습니다.`, ui.ButtonSet.OK);
         else ui.alert('✅ 시스템 확인 완료', '모든 필수 시트가 이미 존재합니다.', ui.ButtonSet.OK);
         
@@ -210,18 +325,15 @@ function createDashboardLayout() {
     sheet.clear();
     sheet.setFrozenRows(1);
     sheet.getRange('A:D').setFontFamily('Google Sans').setVerticalAlignment('middle');
-
     sheet.getRange('A1:D1').merge().setValue('🎓 학생 포트폴리오 대시보드')
         .setFontSize(18).setFontWeight('bold').setHorizontalAlignment('center')
         .setBackground('#667eea').setFontColor('white');
-
     let currentRow = 3;
     const createSection = (title) => {
       sheet.getRange(currentRow, 1, 1, 4).merge().setValue(title)
         .setFontSize(14).setFontWeight('bold').setBackground('#f3f3f3').setHorizontalAlignment('center');
       currentRow++;
     };
-
     createSection('📊 시스템 현황');
     currentRow += 5; 
     createSection('🧑‍🎓 반별 학생 현황');
@@ -231,31 +343,22 @@ function createDashboardLayout() {
     currentRow += 5; 
     createSection('🧭 시트 내비게이터');
     sheet.getRange(currentRow, 1, 1, 4).setValues([['분류', '시트 이름', '바로가기', '데이터 수']]).setFontWeight('bold');
-
     sheet.setColumnWidth(1, 150);
     sheet.setColumnWidth(2, 250);
     sheet.setColumnWidth(3, 120);
     sheet.setColumnWidth(4, 120);
 }
 
-
 function updateDashboard() {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const ui = SpreadsheetApp.getUi();
     const sheet = ss.getSheetByName('메뉴');
-    if (!sheet) {
-      ui.alert('오류', "'메뉴' 시트를 찾을 수 없습니다. 초기화를 먼저 실행해주세요.", ui.ButtonSet.OK);
-      return;
-    }
-
+    if (!sheet) return;
     try {
       sheet.getRange('A4:D' + sheet.getMaxRows()).clearContent();
-      
       let currentRow = 4;
-
       const stats = getSystemStats();
       if (!stats) throw new Error("시스템 통계(stats)를 가져올 수 없습니다.");
-
       const statsData = [
         ['총 학생 수', `${stats.totalStudents} 명`],
         ['총 과제 수', `${stats.totalAssignments} 개`],
@@ -266,7 +369,6 @@ function updateDashboard() {
       sheet.getRange(currentRow, 1, statsData.length, 2).setValues(statsData);
       sheet.getRange(currentRow, 1, statsData.length, 1).setFontWeight('bold');
       currentRow += statsData.length + 2;
-
       sheet.getRange(currentRow - 1, 1).setValue('🧑‍🎓 반별 학생 현황');
       const studentCountByClass = getStudentCountByClass();
       const classData = Object.entries(studentCountByClass);
@@ -280,7 +382,6 @@ function updateDashboard() {
         currentRow++;
       }
       currentRow += 2;
-
       sheet.getRange(currentRow - 1, 1).setValue('📈 과제별 제출 현황');
       sheet.getRange(currentRow, 1, 1, 3).setValues([['과제명', '제출 현황', '제출률']]).setFontWeight('bold');
       currentRow++;
@@ -294,12 +395,11 @@ function updateDashboard() {
         currentRow++;
       }
       currentRow += 2;
-
       sheet.getRange(currentRow - 1, 1).setValue('🧭 시트 내비게이터');
       sheet.getRange(currentRow, 1, 1, 4).setValues([['분류', '시트 이름', '바로가기', '데이터 수']]).setFontWeight('bold');
       currentRow++;
       const allSheets = ss.getSheets();
-      const requiredSheets = ['메뉴', '학생명단_전체', '과제설정', '공개', 'template'];
+      const requiredSheets = ['메뉴', '학생명단_전체', '과제설정', '공개', 'template', '프롬프트'];
       const sheetData = [];
       allSheets.forEach(s => {
           const sheetName = s.getName();
@@ -312,62 +412,104 @@ function updateDashboard() {
       });
       if (sheetData.length > 0) {
         sheet.getRange(currentRow, 1, sheetData.length, 4).setValues(sheetData);
+        sheet.getRange(currentRow, 4, sheetData.length, 1).setHorizontalAlignment('center');
       }
       SpreadsheetApp.flush();
-
     } catch(e) {
       ui.alert('❌ 대시보드 업데이트 실패', `데이터를 표시하는 중 오류가 발생했습니다: ${e.message}`, ui.ButtonSet.OK);
     }
 }
 
 // ==============================================
-//  4. 헬퍼 함수 (모든 함수 포함)
+//  5. 헬퍼 함수
 // ==============================================
 
-/**
- * 시스템의 상세 통계를 계산합니다.
- */
+function getApiKey() {
+  const apiKey = PropertiesService.getUserProperties().getProperty('GEMINI_API_KEY');
+  if (!apiKey) {
+    SpreadsheetApp.getUi().alert('API 키 필요', '먼저 "AI 기능 > AI API 키 설정" 메뉴에서 API 키를 설정해주세요.', SpreadsheetApp.getUi().ButtonSet.OK);
+    return null;
+  }
+  return apiKey;
+}
+
+function callGeminiAPI(prompt) {
+  const apiKey = getApiKey();
+  if (!apiKey) return "API 키가 설정되지 않았습니다.";
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro-latest:generateContent?key=${apiKey}`;
+  const payload = {"contents": [{"parts": [{"text": prompt}]}]};
+  const options = {'method': 'post', 'contentType': 'application/json', 'payload': JSON.stringify(payload), 'muteHttpExceptions': true};
+  const response = UrlFetchApp.fetch(url, options);
+  const responseCode = response.getResponseCode();
+  const responseBody = response.getContentText();
+  if (responseCode === 200) {
+    const data = JSON.parse(responseBody);
+    try {
+      return data.candidates[0].content.parts[0].text;
+    } catch (e) {
+      throw new Error("AI 응답을 해석하는 데 실패했습니다.");
+    }
+  } else {
+    throw new Error(`AI API 호출에 실패했습니다. (HTTP ${responseCode})`);
+  }
+}
+
+function getQuestionText(sheetName, questionHeader) {
+    try {
+        const settingsSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('과제설정');
+        if (!settingsSheet) return questionHeader;
+        const data = settingsSheet.getDataRange().getValues();
+        const headers = data[0];
+        const targetSheetColIndex = headers.indexOf('대상시트');
+        const questionColIndex = headers.indexOf(questionHeader);
+        if (targetSheetColIndex === -1 || questionColIndex === -1) return questionHeader;
+        const assignmentRow = data.find(row => row[targetSheetColIndex] === sheetName);
+        return assignmentRow && assignmentRow[questionColIndex] ? assignmentRow[questionColIndex] : questionHeader;
+    } catch (e) {
+        return questionHeader;
+    }
+}
+
+function getPromptTemplate(summaryType) {
+    const promptSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('프롬프트');
+    if (!promptSheet) throw new Error("'프롬프트' 시트를 찾을 수 없습니다.");
+    const data = promptSheet.getDataRange().getValues();
+    data.shift(); 
+    const templateRow = data.find(row => row[0] === summaryType);
+    if (!templateRow) throw new Error(`'프롬프트' 시트에서 '${summaryType}' 종류를 찾을 수 없습니다.`);
+    return { persona: templateRow[1], task: templateRow[2], instructions: templateRow[3] };
+}
+
 function getSystemStats() {
   try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const allSheets = ss.getSheets();
-    const requiredSheets = ['메뉴', '학생명단_전체', '과제설정', '공개', 'template'];
-    
+    const requiredSheets = ['메뉴', '학생명단_전체', '과제설정', '공개', 'template', '프롬프트'];
     let totalStudents = 0, totalAssignments = 0, assignmentSheets = 0, otherSheets = 0;
-
     const studentSheet = ss.getSheetByName('학생명단_전체');
     if (studentSheet) totalStudents = Math.max(0, studentSheet.getLastRow() - 1);
-
     const assignmentSettingsSheet = ss.getSheetByName('과제설정');
     if (assignmentSettingsSheet) totalAssignments = Math.max(0, assignmentSettingsSheet.getLastRow() - 1);
-
     const assignmentSheetNames = assignmentSettingsSheet ? assignmentSettingsSheet.getRange('D2:D' + assignmentSettingsSheet.getLastRow()).getValues().flat().filter(String) : [];
-
     allSheets.forEach(sheet => {
       const name = sheet.getName();
       if (requiredSheets.includes(name)) return;
       if (assignmentSheetNames.includes(name)) assignmentSheets++;
       else otherSheets++;
     });
-
     return { totalStudents, totalAssignments, totalSheets: allSheets.length, assignmentSheets, otherSheets };
   } catch(e) {
     Logger.log(`getSystemStats Error: ${e.message}`);
-    return null; // 오류 발생 시 null 반환
+    return null;
   }
 }
 
-/**
- * 반별 학생 수를 '학번' 기준으로 계산합니다.
- */
 function getStudentCountByClass() {
     try {
       const studentSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('학생명단_전체');
       if (!studentSheet || studentSheet.getLastRow() < 2) return {};
-
       const studentIdRange = studentSheet.getRange("A2:A" + studentSheet.getLastRow());
       const studentIds = studentIdRange.getValues().flat().filter(String);
-      
       const counts = {};
       studentIds.forEach(id => {
           const idStr = String(id).trim();
@@ -383,29 +525,22 @@ function getStudentCountByClass() {
       return counts;
     } catch(e) {
       Logger.log(`getStudentCountByClass Error: ${e.message}`);
-      return {}; 
+      return {};
     }
 }
 
-
-/**
- * 공개된 과제의 제출 현황을 계산합니다.
- */
 function getSubmissionStatus(totalStudents) {
   try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const assignmentSettingsSheet = ss.getSheetByName('과제설정');
     if (!assignmentSettingsSheet || totalStudents === 0) return [];
-    
     const data = assignmentSettingsSheet.getDataRange().getValues();
     const status = [];
-
     for (let i = 1; i < data.length; i++) {
       const row = data[i];
       const isPublic = row[0] === true;
       const assignmentName = row[2];
       const targetSheetName = row[3];
-      
       if (isPublic && targetSheetName) {
         const targetSheet = ss.getSheetByName(targetSheetName);
         if (targetSheet) {

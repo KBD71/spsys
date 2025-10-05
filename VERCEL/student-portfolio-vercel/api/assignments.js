@@ -1,6 +1,6 @@
 /**
- * 과제 목록 조회 API (학생 답변 입력용)
- * '과제설정' 시트의 '공개' 여부와 날짜를 기준으로 학생이 "응답해야 할" 과제 목록을 반환합니다.
+ * 과제 목록 조회 API (v3 - 날짜 형식 처리 강화)
+ * 'YYYY. MM. DD' 형식의 날짜를 인식하도록 수정하여 날짜 비교 오류를 해결합니다.
  */
 const { google } = require('googleapis');
 
@@ -14,6 +14,32 @@ async function getSheetsClient() {
   });
   const authClient = await auth.getClient();
   return google.sheets({ version: 'v4', auth: authClient });
+}
+
+/**
+ * 'YYYY. MM. DD' 형식의 날짜 문자열을 Date 객체로 변환하는 함수
+ * @param {string} dateString - '2025. 10. 1'과 같은 형식의 날짜 문자열
+ * @returns {Date|null} 변환된 Date 객체 또는 null
+ */
+function parseCustomDate(dateString) {
+  if (!dateString || typeof dateString !== 'string') return null;
+  
+  const parts = dateString.split('.').map(part => part.trim());
+  if (parts.length === 3) {
+    const year = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10) - 1; // JavaScript의 월은 0부터 시작
+    const day = parseInt(parts[2], 10);
+    if (!isNaN(year) && !isNaN(month) && !isNaN(day)) {
+      return new Date(year, month, day);
+    }
+  }
+  // 표준 형식도 시도
+  const standardDate = new Date(dateString);
+  if (!isNaN(standardDate.getTime())) {
+      return standardDate;
+  }
+  
+  return null;
 }
 
 module.exports = async (req, res) => {
@@ -40,7 +66,7 @@ module.exports = async (req, res) => {
     // '과제설정' 시트 읽기
     const assignmentResponse = await sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: '과제설정!A:F'
+      range: '과제설정!A:G' // 질문1까지 읽도록 범위 확장
     });
     const assignmentData = assignmentResponse.data.values;
     if (!assignmentData || assignmentData.length < 2) {
@@ -49,7 +75,7 @@ module.exports = async (req, res) => {
 
     const assignments = [];
     const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    today.setHours(0, 0, 0, 0); // 시간 부분을 제거하여 날짜만 비교
 
     for (let i = 1; i < assignmentData.length; i++) {
       const row = assignmentData[i];
@@ -59,13 +85,17 @@ module.exports = async (req, res) => {
 
       const startDateStr = row[4];
       const dueDateStr = row[5];
-      const startDate = startDateStr ? new Date(startDateStr) : null;
-      const dueDate = dueDateStr ? new Date(dueDateStr) : null;
-      if (startDate) startDate.setHours(0, 0, 0, 0);
-      if (dueDate) dueDate.setHours(0, 0, 0, 0);
+      
+      // ⭐ 수정된 날짜 처리 로직 ⭐
+      const startDate = parseCustomDate(startDateStr);
+      const dueDate = parseCustomDate(dueDateStr);
 
-      if ((startDate && today < startDate) || (dueDate && today > dueDate)) {
-        continue;
+      // 날짜 비교
+      if (startDate && today < startDate) {
+        continue; // 과제 시작일 전
+      }
+      if (dueDate && today > dueDate) {
+        continue; // 과제 마감일 지남
       }
 
       assignments.push({

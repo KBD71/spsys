@@ -1,9 +1,9 @@
 /**
- * 과제 제출 API
- * POST /api/submit-assignment
- * 학생의 답변을 저장하고, '초안생성' 컬럼에 체크박스(FALSE)를 생성합니다.
+ * 과제 제출 API (v2 - '초안생성' 체크박스 유효성 검사 오류 해결)
+ * 1. 학생의 답변을 시트에 저장(업데이트 또는 추가)합니다.
+ * 2. 성공적으로 저장된 후, 해당 학생의 '초안생성' 컬럼 셀을 찾아
+ * 기존 유효성 검사를 제거하고 새로운 체크박스를 강제로 생성합니다.
  */
-
 const { google } = require('googleapis');
 
 async function getSheetsClient() {
@@ -19,19 +19,15 @@ async function getSheetsClient() {
 }
 
 module.exports = async (req, res) => {
+  // CORS 헤더 및 기본 요청 처리
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
-  if (req.method !== 'POST') {
-    return res.status(405).json({ success: false, message: 'Method not allowed' });
-  }
+  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (req.method !== 'POST') return res.status(405).json({ success: false, message: 'Method not allowed' });
 
   try {
     const { studentId, assignmentId, answers } = req.body;
-
     if (!studentId || !assignmentId || !answers) {
       return res.status(400).json({ success: false, message: '필수 정보가 누락되었습니다.' });
     }
@@ -39,62 +35,92 @@ module.exports = async (req, res) => {
     const sheets = await getSheetsClient();
     const spreadsheetId = process.env.SPREADSHEET_ID;
 
-    const [studentResponse, assignmentResponse] = await Promise.all([
-      sheets.spreadsheets.values.get({ spreadsheetId, range: '학생명단_전체!A:D' }),
-      sheets.spreadsheets.values.get({ spreadsheetId, range: '과제설정!A:F' })
-    ]);
+    // 1. 학생 및 과제 정보 조회
+    const studentResponse = await sheets.spreadsheets.values.get({ spreadsheetId, range: '학생명단_전체!A:D' });
+    const studentData = studentResponse.data.values;
+    const studentRowData = studentData.find((row, idx) => idx > 0 && row[0] === studentId);
+    if (!studentRowData) return res.status(404).json({ success: false, message: '학생을 찾을 수 없습니다.' });
+    const [ , studentClass, , studentName] = studentRowData;
 
-    const studentRow = studentResponse.data.values.find((row, idx) => idx > 0 && row[0] === studentId);
-    if (!studentRow) return res.status(404).json({ success: false, message: '학생을 찾을 수 없습니다.' });
-    const [ , studentClass, , studentName] = studentRow;
+    const assignmentResponse = await sheets.spreadsheets.values.get({ spreadsheetId, range: '과제설정!A:F' });
+    const assignmentData = assignmentResponse.data.values;
+    const assignmentRowData = assignmentData.find((row, idx) => idx > 0 && row[1] === assignmentId);
+    if (!assignmentRowData) return res.status(404).json({ success: false, message: '과제를 찾을 수 없습니다.' });
+    const targetSheet = assignmentRowData[3];
 
-    const assignmentRow = assignmentResponse.data.values.find((row, idx) => idx > 0 && row[1] === assignmentId);
-    if (!assignmentRow) return res.status(404).json({ success: false, message: '과제를 찾을 수 없습니다.' });
-    const targetSheet = assignmentRow[3];
+    // 2. 대상 시트 정보 읽기 및 데이터 준비
+    const targetSheetResponse = await sheets.spreadsheets.values.get({ spreadsheetId, range: `${targetSheet}!A:Z` });
+    const targetSheetData = targetSheetResponse.data.values || [];
+    const headers = targetSheetData[0] || [];
+    const studentIdColIndex = headers.indexOf('학번');
 
-    const targetHeaderResponse = await sheets.spreadsheets.values.get({ spreadsheetId, range: `${targetSheet}!1:1` });
-    const headers = targetHeaderResponse.data.values ? targetHeaderResponse.data.values[0] : [];
-    if (headers.length < 1) throw new Error('대상 시트의 헤더를 읽을 수 없습니다.');
-
-    const newRowData = {};
-    newRowData['학번'] = studentId;
-    newRowData['반'] = studentClass;
-    newRowData['이름'] = studentName;
-    newRowData['제출일시'] = new Date().toISOString();
-    newRowData['초안생성'] = 'FALSE'; // 체크박스를 FALSE 상태로 생성
-
-    for (const header of headers) {
-        if (answers[header]) {
-            newRowData[header] = answers[header];
-        }
+    const newRow = [studentId, studentClass, studentName];
+    for (let i = 3; i < headers.length; i++) {
+        const header = headers[i];
+        if (header === '제출일시') newRow.push(new Date().toISOString());
+        else newRow.push(answers[header] || '');
     }
 
-    const newRowArray = headers.map(header => newRowData[header] || '');
+    // 3. 학생 데이터 업데이트 또는 추가
+    const existingRowIndex = targetSheetData.findIndex((row, idx) => idx > 0 && row[studentIdColIndex] === studentId);
+    let updatedRowIndex;
 
-    const targetDataResponse = await sheets.spreadsheets.values.get({ spreadsheetId, range: `${targetSheet}!A:A` });
-    const existingRowIndex = (targetDataResponse.data.values || []).findIndex((row, idx) => idx > 0 && row[0] === studentId);
-
-    if (existingRowIndex >= 0) {
-      const rowNumber = existingRowIndex + 2; // 데이터는 A2부터 시작하므로 +2
+    if (existingRowIndex !== -1) {
+      updatedRowIndex = existingRowIndex + 1; // 1-based index
       await sheets.spreadsheets.values.update({
         spreadsheetId,
-        range: `${targetSheet}!A${rowNumber}`,
+        range: `${targetSheet}!A${updatedRowIndex}`,
         valueInputOption: 'USER_ENTERED',
-        requestBody: { values: [newRowArray] }
+        requestBody: { values: [newRow] }
       });
     } else {
-      await sheets.spreadsheets.values.append({
+      const appendResult = await sheets.spreadsheets.values.append({
         spreadsheetId,
-        range: targetSheet,
+        range: `${targetSheet}!A:A`,
         valueInputOption: 'USER_ENTERED',
-        requestBody: { values: [newRowArray] }
+        requestBody: { values: [newRow] }
       });
+      const updatedRange = appendResult.data.updates.updatedRange;
+      const match = updatedRange.match(/!A(\d+):/);
+      if (match) updatedRowIndex = parseInt(match[1], 10);
+    }
+
+    // 4. ⭐ '초안생성' 컬럼에 체크박스 강제 생성 (오류 해결 로직) ⭐
+    if (updatedRowIndex) {
+        const draftColumnIndex = headers.indexOf('초안생성');
+        if (draftColumnIndex !== -1) {
+            const sheetIdResponse = await sheets.spreadsheets.get({ spreadsheetId });
+            const sheet = sheetIdResponse.data.sheets.find(s => s.properties.title === targetSheet);
+            if (sheet) {
+                const sheetId = sheet.properties.sheetId;
+                await sheets.spreadsheets.batchUpdate({
+                    spreadsheetId,
+                    requestBody: {
+                        requests: [{
+                            setDataValidation: {
+                                range: {
+                                    sheetId: sheetId,
+                                    startRowIndex: updatedRowIndex - 1,
+                                    endRowIndex: updatedRowIndex,
+                                    startColumnIndex: draftColumnIndex,
+                                    endColumnIndex: draftColumnIndex + 1
+                                },
+                                rule: {
+                                    condition: { type: 'BOOLEAN' },
+                                    strict: true
+                                }
+                            }
+                        }]
+                    }
+                });
+            }
+        }
     }
 
     return res.status(200).json({ success: true, message: '과제가 제출되었습니다.' });
 
   } catch (error) {
     console.error('Submit assignment API error:', error);
-    return res.status(500).json({ success: false, message: '과제 제출 실패: ' + error.message });
+    return res.status(500).json({ success: false, message: '과제 제출 실패: ' + error.message, stack: error.stack });
   }
 };

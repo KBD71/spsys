@@ -1,8 +1,7 @@
 /**
- * 과제 제출 API (v2 - '초안생성' 체크박스 유효성 검사 오류 해결)
- * 1. 학생의 답변을 시트에 저장(업데이트 또는 추가)합니다.
- * 2. 성공적으로 저장된 후, 해당 학생의 '초안생성' 컬럼 셀을 찾아
- * 기존 유효성 검사를 제거하고 새로운 체크박스를 강제로 생성합니다.
+ * 과제 제출 API (v3 - 체크박스 유효성 검사 오류 최종 해결)
+ * 1. '초안생성' 열에 빈 텍스트('') 대신 boolean(false) 값을 명시적으로 저장합니다.
+ * 2. 행 추가 후, 해당 셀에 체크박스 유효성 검사를 강제로 다시 적용하여 UI가 깨지지 않도록 보장합니다.
  */
 const { google } = require('googleapis');
 
@@ -54,12 +53,17 @@ module.exports = async (req, res) => {
     const headers = targetSheetData[0] || [];
     const studentIdColIndex = headers.indexOf('학번');
 
-    const newRow = [studentId, studentClass, studentName];
-    for (let i = 3; i < headers.length; i++) {
-        const header = headers[i];
-        if (header === '제출일시') newRow.push(new Date().toISOString());
-        else newRow.push(answers[header] || '');
-    }
+    // ★★★ 핵심 수정: 헤더 순서에 맞춰 새 행을 만들고 '초안생성'에 false 값 명시 ★★★
+    const newRow = headers.map((header) => {
+        switch(header) {
+            case '학번': return studentId;
+            case '반': return studentClass;
+            case '이름': return studentName;
+            case '제출일시': return new Date().toISOString();
+            case '초안생성': return false; // 빈 텍스트 대신 boolean false 값 사용
+            default: return answers[header] || '';
+        }
+    });
 
     // 3. 학생 데이터 업데이트 또는 추가
     const existingRowIndex = targetSheetData.findIndex((row, idx) => idx > 0 && row[studentIdColIndex] === studentId);
@@ -81,11 +85,12 @@ module.exports = async (req, res) => {
         requestBody: { values: [newRow] }
       });
       const updatedRange = appendResult.data.updates.updatedRange;
+      // 정규식으로 추가된 행의 인덱스 추출
       const match = updatedRange.match(/!A(\d+):/);
       if (match) updatedRowIndex = parseInt(match[1], 10);
     }
 
-    // 4. ⭐ '초안생성' 컬럼에 체크박스 강제 생성 (오류 해결 로직) ⭐
+    // 4. '초안생성' 컬럼에 체크박스 UI 강제 적용 (안정성 확보)
     if (updatedRowIndex) {
         const draftColumnIndex = headers.indexOf('초안생성');
         if (draftColumnIndex !== -1) {

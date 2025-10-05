@@ -1,6 +1,9 @@
 /**
- * @OnlyCurrentDoc
  * 학생 포트폴리오 시스템 - 교사 관리 기능 (onEdit 트리거 안정성 최종 강화판)
+ *
+ * 필요한 권한:
+ * - https://www.googleapis.com/auth/spreadsheets (스프레드시트 읽기/쓰기)
+ * - https://www.googleapis.com/auth/script.external_request (외부 API 호출 - Gemini AI)
  */
 
 // ==============================================

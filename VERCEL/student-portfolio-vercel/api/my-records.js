@@ -17,16 +17,40 @@ async function getSheetsClient() {
   return google.sheets({ version: 'v4', auth: authClient });
 }
 
-// 반별 접근 권한 확인 함수 (유연성 강화 버전)
+// 반별 접근 권한 확인 함수 (강화된 버전)
 function isClassAllowed(studentClass, targetClass) {
   const trimmedTarget = (targetClass || '').trim();
-  if (trimmedTarget === '' || trimmedTarget === '전체' || trimmedTarget === '전체반') return true;
+  if (!trimmedTarget || trimmedTarget === '전체' || trimmedTarget === '전체반') {
+    return true;
+  }
+  
+  // 학생의 학년 정보 (예: '1-6' -> '1')
+  const studentGrade = (studentClass || '').split('-')[0];
+  if (!studentGrade) return false;
+
+  // '1학년' 과 같은 형식 처리
   if (trimmedTarget.includes('학년')) {
     const targetGrade = trimmedTarget.replace('학년', '').trim();
-    const studentGrade = (studentClass || '').split('-')[0];
     return studentGrade === targetGrade;
   }
-  const allowedClasses = trimmedTarget.split(',').map(cls => cls.trim());
+
+  // '1-6,7' 또는 '1-6, 1-7' 과 같은 형식 처리
+  const allowedClasses = trimmedTarget.split(',').reduce((acc, cls) => {
+    let currentCls = cls.trim();
+    if (currentCls) {
+      // '7'과 같이 숫자만 있는 경우, 앞서 나온 반의 학년을 붙여줌 (예: '1-7')
+      if (!currentCls.includes('-') && acc.length > 0) {
+        const lastClass = acc[acc.length - 1];
+        const lastGrade = lastClass.split('-')[0];
+        if(lastGrade) {
+            currentCls = `${lastGrade}-${currentCls}`;
+        }
+      }
+      acc.push(currentCls);
+    }
+    return acc;
+  }, []);
+
   return allowedClasses.includes(studentClass);
 }
 
@@ -166,3 +190,4 @@ module.exports = async (req, res) => {
     return res.status(500).json({ success: false, message: '서버 오류가 발생했습니다: ' + error.message });
   }
 };
+

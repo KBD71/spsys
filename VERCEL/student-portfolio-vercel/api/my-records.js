@@ -1,7 +1,7 @@
 /**
- * 내 기록 조회 및 건의사항 저장 API (v7 - 학번 기준 필터링 로직 적용)
- * GET: '대상반' 설정을 학번 앞 3자리와 직접 비교하여 공개 여부를 결정합니다.
- * POST: 학생이 작성한 건의사항을 해당 시트의 '건의사항' 컬럼에 정확히 저장합니다.
+ * 내 기록 조회 및 건의사항 저장 API (v8 - 단순 학번 Prefix 비교 최종판)
+ * GET: '대상반'에 입력된 '101, 106'과 같은 값을 학생 학번 앞 3자리와 직접 비교하여 필터링합니다.
+ * POST: 건의사항을 저장합니다.
  */
 const { google } = require('googleapis');
 
@@ -17,11 +17,11 @@ async function getSheetsClient() {
   return google.sheets({ version: 'v4', auth: authClient });
 }
 
-// ★★★ 핵심 수정: 학번 기준으로 공개 여부를 판별하는 새로운 로직 ★★★
+// ★★★ 핵심 수정: 요청하신 단순 학번 Prefix 비교 로직 ★★★
 function isClassAllowed(studentId, targetClass) {
-  const trimmedTarget = (targetClass || '').trim();
+  const target = (targetClass || '').trim();
   // 규칙 1: '전체'이거나 값이 없으면 무조건 허용
-  if (!trimmedTarget || trimmedTarget === '전체' || trimmedTarget === '전체반') {
+  if (!target || target.toLowerCase() === '전체') {
     return true;
   }
   
@@ -33,21 +33,9 @@ function isClassAllowed(studentId, targetClass) {
   // 학생 학번 앞 3자리를 가져옴 (예: '10101' -> '101')
   const studentPrefix = studentId.substring(0, 3);
 
-  // '대상반' 값을 학번 Prefix 목록으로 변환 (예: '1-1, 1-10' -> ['101', '110'])
-  const allowedPrefixes = trimmedTarget.split(',').map(cls => {
-    const parts = cls.trim().split('-');
-    if (parts.length !== 2) return null; // '1-1' 형식이 아니면 무시
-
-    const grade = parts[0];
-    const classNum = parseInt(parts[1], 10);
-
-    if (isNaN(classNum)) return null; // 반 번호가 숫자가 아니면 무시
-
-    // 반 번호를 두 자리 문자열로 변환 (예: 1 -> '01', 10 -> '10')
-    const classNumStr = classNum < 10 ? '0' + classNum : String(classNum);
-    
-    return grade + classNumStr;
-  }).filter(p => p); // null 값 제거
+  // '대상반' 값을 Prefix 목록으로 변환 (예: '101, 106' -> ['101', '106'])
+  // 쉼표 뒤 공백을 허용하고, 각 항목의 앞뒤 공백을 제거
+  const allowedPrefixes = target.split(',').map(prefix => prefix.trim());
 
   // 학생의 학번 Prefix가 허용된 Prefix 목록에 있는지 확인
   return allowedPrefixes.includes(studentPrefix);
@@ -76,7 +64,7 @@ async function handleGetRecords(req, res) {
     const targetSheetName = publicRow[1];
     const targetClass = publicRow[2] || '전체';
 
-    // ★★★ 핵심 수정: isClassAllowed 함수에 'studentClass' 대신 'studentId'를 전달 ★★★
+    // ★★★ 핵심 수정: isClassAllowed 함수에 'studentId'를 전달하여 필터링 ★★★
     if (!isPublic || !targetSheetName || !isClassAllowed(studentId, targetClass)) {
       continue;
     }

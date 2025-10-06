@@ -385,19 +385,19 @@
             let cardHtml = `
                 <div class="record-card ${record.type}">
                     <div class="data-row">
-                        <div class="data-label">${escapeHTML(record.label)}:</div>
-                        <div class="data-value">${escapeHTML(record.value || '-')}</div>
+                        <div class="data-label">${record.label}:</div>
+                        <div class="data-value">${record.value || '-'}</div>
                     </div>
             `;
             if (record.hasSuggestion) {
-              const suggestionId = `modal-suggestion-${index}`; 
+              const suggestionId = `modal-suggestion-${index}`;
               cardHtml += `
                 <div class="suggestion-box">
                   <strong>💡 건의사항:</strong>
                   <div>
                     <textarea id="${suggestionId}" class="suggestion-input" rows="3" placeholder="이 기록에 대한 건의사항을 입력하세요...">${escapeHTML(record.suggestion || '')}</textarea>
                     <button class="btn btn-primary" style="width:auto; padding: 8px 16px; margin-top: 8px;"
-                      onclick="saveSuggestion('${escapeHTML(record.sheetName)}', '${suggestionId}')">
+                      onclick="saveSuggestion('${record.sheetName}', '${suggestionId}')">
                       저장
                     </button>
                   </div>
@@ -408,6 +408,11 @@
         }).join('');
 
         modal.classList.remove('hidden');
+
+        // MathJax로 수식 렌더링
+        if (window.MathJax) {
+            MathJax.typesetPromise([bodyEl]).catch(err => console.error('MathJax 렌더링 오류:', err));
+        }
     }
 
     function hideRecordsModal() {
@@ -434,12 +439,12 @@
             if (result.questions && result.questions.length > 0) {
                 questionsContainer.innerHTML = result.questions.map(q => `
                     <div class="form-group">
-                        <label for="question-${q.column}">${escapeHTML(q.question)}</label>
+                        <label for="question-${q.column}">${q.question}</label>
                         <textarea id="question-${q.column}" name="${q.column}" rows="4">${escapeHTML(q.answer)}</textarea>
                     </div>
                 `).join('');
                 if (window.MathJax) {
-                    MathJax.typesetPromise([questionsContainer]);
+                    MathJax.typesetPromise([questionsContainer]).catch(err => console.error('MathJax 렌더링 오류:', err));
                 }
             } else {
                 questionsContainer.innerHTML = '<div class="empty-message">이 과제에는 설정된 질문이 없습니다.</div>';

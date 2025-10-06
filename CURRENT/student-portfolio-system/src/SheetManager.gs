@@ -1,0 +1,108 @@
+/**
+ * ==============================================
+ * SheetManager.gs - 시트 관리
+ * ==============================================
+ * 시트 생성, 삭제, 초기화 등 범용적인 시트 관리 기능을 담당합니다.
+ */
+
+/**
+ * 시스템에 필요한 필수 시트들을 생성하고 기본 헤더를 설정합니다.
+ */
+function initializeMinimalSystem() {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var ui = ss.getUi();
+    try {
+        var requiredSheets = {
+            '메뉴': [],
+            '학생명단_전체': ['학번', '반', '번호', '이름', '비밀번호'],
+            '과제설정': ['공개', '과제ID', '과제명', '대상시트', '시작일', '마감일', '질문1', '질문2', '질문3', '질문4', '질문5'],
+            '공개': ['공개', '시트이름', '대상반'],
+            'template': ['학번', '반', '이름', '질문1', '질문2', '질문3', '질문4', '질문5', '제출일시', '초안생성', '종합의견'],
+            '프롬프트': ['요약종류', '역할 (Persona)', '작업 (Task)', '지시사항 (Instructions)']
+        };
+        var createdCount = 0;
+        for (var sheetName in requiredSheets) {
+            if (!ss.getSheetByName(sheetName)) {
+                var sheet = ss.insertSheet(sheetName);
+                if (requiredSheets[sheetName].length > 0) {
+                    sheet.getRange(1, 1, 1, requiredSheets[sheetName].length).setValues([requiredSheets[sheetName]])
+                        .setBackground('#667eea').setFontColor('white').setFontWeight('bold');
+                }
+                createdCount++;
+            }
+        }
+        
+        var promptSheet = ss.getSheetByName('프롬프트');
+        if (promptSheet.getLastRow() < 2) {
+          promptSheet.appendRow([
+            '종합의견',
+            "학생의 1년간 활동을 종합하여 '행동특성 및 종합의견'을 작성하는 대한민국 고등학교 담임 교사입니다.",
+            "학생의 답변과 교사의 평가를 종합하여, 학생의 인성, 학업 태도, 성장 가능성 등이 드러나는 종합의견 초안을 작성해주세요.",
+            "- 객관적 사실 기반 서술 ('~함', '~음' 체 사용)\n- 2~3개 문장으로 구성\n- 학생의 잠재력과 발전 가능성 포함"
+          ]);
+        }
+        
+        if (createdCount > 0) {
+          ui.alert('✅ 필수 시트 생성 완료', `${createdCount}개의 시트가 생성되었습니다.`);
+        } else {
+          ui.alert('✅ 시스템 확인 완료', '모든 필수 시트가 이미 존재합니다.');
+        }
+
+        createDashboardLayout(); // Dashboard.gs
+        updateDashboard(); // Dashboard.gs
+    } catch (e) {
+        ui.alert('❌ 초기화 실패', e.message);
+    }
+}
+
+/**
+ * 이름으로 시트를 찾아 삭제하고, 관련 설정 시트의 정보도 함께 제거합니다.
+ * @param {string} sheetName - 삭제할 시트의 이름
+ */
+function deleteSheetByName(sheetName) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var ui = ss.getUi();
+  var sheet = ss.getSheetByName(sheetName);
+
+  if (!sheet) {
+    ui.alert('오류', `"${sheetName}" 시트를 찾을 수 없습니다.`);
+    return;
+  }
+  
+  var confirm = ui.alert('삭제 확인', `정말로 '${sheetName}' 시트를 삭제하시겠습니까?`, ui.ButtonSet.YES_NO);
+  if (confirm !== ui.Button.YES) return;
+
+  try {
+    deleteRowBySheetName(ss, '과제설정', '대상시트', sheetName);
+    deleteRowBySheetName(ss, '공개', '시트이름', sheetName);
+    ss.deleteSheet(sheet);
+    updateDashboard(); // Dashboard.gs
+    ui.alert('✅ 삭제 완료', `"${sheetName}" 시트가 삭제되었습니다.`);
+  } catch (e) {
+    ui.alert('❌ 삭제 실패', e.message);
+  }
+}
+
+/**
+ * 특정 시트에서 주어진 값과 일치하는 행을 찾아 삭제합니다.
+ * @param {Spreadsheet} ss - 현재 스프레드시트 객체
+ * @param {string} targetSheetName - 작업할 시트 이름
+ * @param {string} columnName - 값을 비교할 컬럼의 헤더 이름
+ * @param {string} valueToDelete - 삭제할 행을 식별하는 값
+ */
+function deleteRowBySheetName(ss, targetSheetName, columnName, valueToDelete) {
+    var sheet = ss.getSheetByName(targetSheetName);
+    if (!sheet || sheet.getLastRow() < 2) return;
+    
+    var data = sheet.getDataRange().getValues();
+    var headers = data[0];
+    var colIndex = headers.indexOf(columnName);
+    if (colIndex === -1) return;
+    
+    // 아래에서부터 순회해야 행 삭제 시 인덱스 문제가 발생하지 않음
+    for (var i = data.length - 1; i > 0; i--) {
+        if (data[i][colIndex] === valueToDelete) {
+            sheet.deleteRow(i + 1);
+        }
+    }
+}

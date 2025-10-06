@@ -56,7 +56,7 @@
             background: var(--surface-color);
             border-radius: 16px;
             box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
-            max-width: 900px; /* --- [수정] 너비 1.5배 증가 --- */
+            max-width: 70vw; /* --- [수정] 너비를 전체 화면의 70%로 설정 --- */
             width: 100%;
             overflow: hidden;
             animation: fadeIn 0.5s ease-in-out;
@@ -181,7 +181,6 @@
             background: white;
             border-radius: 12px;
             max-width: 95vw; /* 모바일 우선 */
-            width: 600px; /* 기본 너비 */
             max-height: 90vh;
             display: flex;
             flex-direction: column;
@@ -190,7 +189,7 @@
         /* 노트북/데스크탑 화면에서 모달 너비 확장 */
         @media (min-width: 768px) {
             #submitModal .modal-content, #recordsModal .modal-content {
-                width: 1000px; /* --- [수정] 메인 화면 너비에 맞춰 모달 너비도 증가 --- */
+                width: 70vw; /* --- [수정] 너비를 전체 화면의 70%로 설정 --- */
             }
         }
         .modal-header { padding: 1.5rem; border-bottom: 1px solid var(--border-color); }

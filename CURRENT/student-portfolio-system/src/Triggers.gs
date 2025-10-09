@@ -1,12 +1,12 @@
 /**
  * ==============================================
- * Triggers.gs - 자동 실행 트리거 (v3.1 - 설치형 트리거 적용)
+ * Triggers.gs - 자동 실행 트리거 (v3.2 - AI 메뉴 통합)
  * ==============================================
  */
 
 /**
  * 스프레드시트가 열릴 때 '포트폴리오 관리' 메뉴를 생성합니다.
- * '트리거 설치' 메뉴를 추가합니다.
+ * 'AI 기능' 메뉴를 서브메뉴로 통합하여 관리합니다.
  */
 function onOpen() {
   try {
@@ -25,10 +25,15 @@ function onOpen() {
       .addItem('🔄 대시보드 새로고침', 'refreshDashboard') // Dashboard.gs
       .addItem('🗑️ 시트 삭제', 'promptToDeleteSheet') // UI.gs
       .addSeparator()
+      // ★★★ 시작: AI 기능 메뉴를 이곳으로 통합하고 표절 검사 기능 추가 ★★★
       .addSubMenu(SpreadsheetApp.getUi().createMenu('🤖 AI 기능')
+        .addItem('✍️ 선택된 행에 AI 초안 생성', 'generateAiSummaryManual') // AI.gs
+        .addSeparator()
+        .addItem('🕵️ 선택된 행 AI 사용 검사', 'runAiDetectionManual') // AI.gs
+        .addSeparator()
         .addItem('🔑 AI API 키 설정', 'setApiKey') // AI.gs
-        .addItem('✍️ 선택한 행에 AI 초안 생성', 'generateAiSummaryManual') // AI.gs
       )
+      // ★★★ 종료: AI 메뉴 통합 완료 ★★★
       .addSeparator()
       .addSubMenu(SpreadsheetApp.getUi().createMenu('⚙️ 시스템 설정')
         .addItem('초기화: 필수 시트 생성', 'initializeMinimalSystem') // SheetManager.gs

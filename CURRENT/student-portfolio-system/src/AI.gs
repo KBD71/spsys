@@ -1,13 +1,13 @@
 /**
  * =================================================================
- * AI Draft Generator Module (Refactored)
+ * AI Draft Generator & Detector Module (v2.0)
  * =================================================================
- * Google Sheets에서 Gemini API를 호출하여 학생 종합 의견 초안을 생성하는 모듈입니다.
- * 복잡한 데이터 취합 로직을 안정적으로 처리하기 위해 메뉴 기반/체크박스 기반 실행에 최적화되었습니다.
+ * 1. (기존) 학생 종합 의견 초안을 생성합니다.
+ * 2. (추가) 학생의 답변이 AI에 의해 작성되었는지 검사하는 기능을 제공합니다.
+ * 두 기능은 비용 효율성과 결과의 안정성을 위해 별도의 API 호출로 분리되었습니다.
  */
 
-// --- Firebase Global Variable Placeholder (GAS 환경에서는 사용되지 않으나, 플랫폼 일관성을 위해 유지) ---
-const apiKey = ""; // API 키는 PropertiesService에서 관리됩니다.
+// API 키는 PropertiesService에서 관리됩니다.
 
 /**
  * Google Sheets에 AI 기능 메뉴를 추가합니다.
@@ -15,7 +15,10 @@ const apiKey = ""; // API 키는 PropertiesService에서 관리됩니다.
 function onOpen() {
   SpreadsheetApp.getUi()
       .createMenu('🤖 AI 기능')
-      .addItem('📝 선택된 행 초안 생성 (수동)', 'generateAiSummaryManual')
+      .addItem('📝 선택된 행 초안 생성', 'generateAiSummaryManual')
+      .addSeparator()
+      .addItem('🕵️ 선택된 행 AI 사용 검사', 'runAiDetectionManual') // ★★★ 표절 검사 메뉴 추가 ★★★
+      .addSeparator()
       .addItem('🔑 AI API 키 설정', 'setApiKey')
       .addToUi();
 }
@@ -36,6 +39,10 @@ function setApiKey() {
   }
 }
 
+// ================================================================
+// 기능 1: 종합의견 초안 생성 (기존 코드와 동일)
+// ================================================================
+
 /**
  * 메뉴에서 수동으로 AI 초안 생성을 시작하는 함수입니다.
  */
@@ -49,7 +56,6 @@ function generateAiSummaryManual() {
     const row = activeCell.getRow();
     if (row < 2) throw new Error('데이터 행(2행 이상)을 선택해주세요.');
 
-    // AI 기능 실행
     runAiGeneration(sheet, row);
 
   } catch (e) {
@@ -59,13 +65,10 @@ function generateAiSummaryManual() {
 
 /**
  * AI 초안 생성의 전체 과정을 조율하는 메인 함수입니다.
- * @param {GoogleAppsScript.Spreadsheet.Sheet} sheet - 현재 작업 중인 시트 객체
- * @param {number} row - AI 초안을 생성할 행 번호
  */
 function runAiGeneration(sheet, row) {
   const ui = SpreadsheetApp.getUi();
-  let draftCheckCell; // '초안생성' 체크박스 셀
-
+  let draftCheckCell, opinionCell;
   try {
     const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
     const draftColIndex = headers.indexOf('초안생성');
@@ -77,9 +80,8 @@ function runAiGeneration(sheet, row) {
 
     const opinionColIndex = headers.indexOf('종합의견');
     if (opinionColIndex === -1) throw new Error("'종합의견' 컬럼을 찾을 수 없습니다.");
-    const opinionCell = sheet.getRange(row, opinionColIndex + 1);
+    opinionCell = sheet.getRange(row, opinionColIndex + 1);
 
-    // 덮어쓰기 확인 로직 (체크박스/수동 실행 모두 적용)
     if (opinionCell.getValue() && String(opinionCell.getValue()).trim() !== "") {
       const response = ui.alert('덮어쓰기 확인', '이미 작성된 종합의견이 있습니다. AI 초안으로 덮어쓰시겠습니까?', ui.ButtonSet.YES_NO);
       if (response !== ui.Button.YES) {
@@ -88,122 +90,204 @@ function runAiGeneration(sheet, row) {
       }
     }
 
-    opinionCell.setValue("⏳ 데이터 수집 중...");
+    opinionCell.setValue("⏳ 데이터 수집 중...").setHorizontalAlignment('center');
     SpreadsheetApp.flush();
-    const aiData = getAiData(sheet, row, headers);
+    const aiData = getAiDataForSummary(sheet, row, headers);
 
     opinionCell.setValue("🤖 AI가 초안을 작성 중입니다...");
     SpreadsheetApp.flush();
     
-    // API 호출 및 결과 반환 (재시도 로직 추가)
     const summary = retryCallGeminiApi(aiData.prompt, 3);
     
-    opinionCell.setValue(summary.trim());
+    opinionCell.setValue(summary.trim()).setHorizontalAlignment('left');
     Logger.log(`AI 초안 생성 완료 - 학번: ${aiData.studentId}, 시트: ${sheet.getName()}`);
 
   } catch (e) {
     Logger.log(`❌ AI 초안 생성 실패 (시트: ${sheet.getName()}, 행: ${row}): ${e.message}\n${e.stack}`);
+    if(opinionCell) opinionCell.setValue(`❌ 오류: ${e.message.split('\n')[0]}`).setHorizontalAlignment('left');
+    if (draftCheckCell && draftCheckCell.isChecked()) draftCheckCell.uncheck();
     ui.alert('❌ AI 초안 생성 실패', e.message, ui.ButtonSet.OK);
-    // 실패 시 체크박스를 해제하여 재실행 방지
-    if (draftCheckCell && draftCheckCell.isChecked()) {
-      draftCheckCell.uncheck();
-    }
-    // 상태 셀 초기화 (에러 메시지로)
-    opinionCell.setValue(`❌ 오류: ${e.message.split('\n')[0]}`);
   }
 }
 
 /**
- * AI 호출에 필요한 모든 데이터를 수집하고 프롬프트를 구성합니다.
- * @param {GoogleAppsScript.Spreadsheet.Sheet} sheet - 현재 시트
- * @param {number} row - 대상 행 번호
- * @param {Array<string>} headers - 시트의 헤더 배열
- * @returns {{prompt: string, studentId: string}} 최종 프롬프트와 학생 ID
+ * (이름 변경) AI 초안 생성에 필요한 데이터를 수집하고 프롬프트를 구성합니다.
  */
-function getAiData(sheet, row, headers) {
+function getAiDataForSummary(sheet, row, headers) {
+  // ... (기존 getAiData 함수의 내용과 동일)
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheetName = sheet.getName();
-
-  // 1. 과제설정 시트에서 과제별 질문 목록 가져오기
   const assignmentSettingsSheet = ss.getSheetByName('과제설정');
   if (!assignmentSettingsSheet) throw new Error("'과제설정' 시트를 찾을 수 없습니다.");
   const assignmentData = assignmentSettingsSheet.getDataRange().getValues();
   const assignmentHeaders = assignmentData[0];
   const targetSheetCol = assignmentHeaders.indexOf('대상시트');
   const assignmentRow = assignmentData.find(r => r[targetSheetCol] === sheetName);
-  
-  // 2. 프롬프트 시트에서 AI 설정 값 가져오기
   const promptSheet = ss.getSheetByName('프롬프트');
   if (!promptSheet) throw new Error("'프롬프트' 시트를 찾을 수 없습니다.");
   const promptData = promptSheet.getDataRange().getValues();
-  // 현재 시트명 또는 '종합의견'을 기준으로 프롬프트 로드
   const promptRow = promptData.find(r => r[0] === sheetName) || promptData.find(r => r[0] === '종합의견');
   if (!promptRow) throw new Error(`'프롬프트' 시트에서 '${sheetName}' 또는 '종합의견' 항목을 찾을 수 없습니다.`);
   const [ , persona, task, instructions] = promptRow;
   if (!persona || !task || !instructions) throw new Error(`'프롬프트' 시트의 '${promptRow[0]}' 항목 내용(페르소나/태스크/지시사항)이 비어있습니다.`);
-
-  // 3. 학생 데이터 수집 및 컨텍스트 조립
   const studentRowData = sheet.getRange(row, 1, 1, headers.length).getValues()[0];
   let context = "";
   let lastQuestionIndex = -1;
-
   headers.forEach((header, index) => {
     const headerStr = String(header || '').trim();
     const cellValue = studentRowData[index];
-    
-    // '질문'으로 시작하고, 값이 비어있지 않은 경우
     if (headerStr.startsWith('질문') && cellValue && String(cellValue).trim() !== '') {
       lastQuestionIndex = index;
-      let questionText = headerStr; // 기본값은 헤더 이름
-      
-      // '과제설정' 시트에서 실제 질문 내용 찾기
+      let questionText = headerStr;
       if (assignmentRow) {
           const questionIndexInAssignment = assignmentHeaders.findIndex(h => h === headerStr);
           if (questionIndexInAssignment > -1) {
               questionText = assignmentRow[questionIndexInAssignment] || headerStr;
           }
       }
-      
       context += `[질문: ${questionText}]\n- 학생 답변: ${cellValue}\n\n`;
     }
   });
-
-  // 4. '질문'과 '초안생성' 사이의 '교사 추가 평가' 데이터 수집
   const draftColIndex = headers.indexOf('초안생성');
   if (lastQuestionIndex !== -1 && draftColIndex > lastQuestionIndex + 1) {
     let teacherFeedback = "";
     for (let j = lastQuestionIndex + 1; j < draftColIndex; j++) {
-      // 교사 평가 헤더와 값이 존재하는 경우에만 포함
       if (studentRowData[j] && String(studentRowData[j]).trim() !== "") {
         teacherFeedback += `- ${headers[j]}: ${studentRowData[j]}\n`;
       }
     }
     if (teacherFeedback) context += `[교사 추가 평가]\n${teacherFeedback}\n\n`;
   }
-
   if (!context.trim()) throw new Error("요약할 학생의 답변 또는 평가 내용이 없습니다. '질문' 컬럼의 내용을 확인해주세요.");
-
   const studentIdIndex = headers.indexOf('학번');
   const studentId = studentIdIndex > -1 ? studentRowData[studentIdIndex] : '알 수 없음';
-  
-  // 5. 최종 프롬프트 구성
   const finalPrompt = 
       `${persona}\n\n` +
       `**주요 작업:** ${task}\n\n` +
       `## 학생 정보:\n- 학번: ${studentId}\n- 과제명: ${sheetName}\n\n` +
       `## 학생 제출 내용 및 교사 평가:\n${context.trim()}\n\n` +
       `## AI 초안 작성 지시사항:\n${instructions}`;
-
   Logger.log(`프롬프트 생성 완료 (학번: ${studentId}, 길이: ${finalPrompt.length})`);
   return { prompt: finalPrompt, studentId: studentId };
 }
 
 
+// ================================================================
+// ★★★ 기능 2: AI 사용 검사 (새로 추가된 기능) ★★★
+// ================================================================
+
 /**
- * Gemini API 호출을 재시도합니다. (최대 횟수: 3회)
- * @param {string} prompt - AI에게 보낼 최종 프롬프트
- * @param {number} maxRetries - 최대 재시도 횟수
- * @returns {string} AI가 생성한 텍스트
+ * 메뉴에서 수동으로 AI 사용 검사를 시작하는 함수입니다.
+ */
+function runAiDetectionManual() {
+  const ui = SpreadsheetApp.getUi();
+  try {
+    const sheet = SpreadsheetApp.getActiveSheet();
+    const activeCell = sheet.getActiveCell();
+
+    if (!activeCell) throw new Error('셀을 선택해주세요.');
+    const row = activeCell.getRow();
+    if (row < 2) throw new Error('데이터 행(2행 이상)을 선택해주세요.');
+
+    runAiDetection(sheet, row);
+
+  } catch (e) {
+    ui.alert('❌ AI 검사 실패', e.message, ui.ButtonSet.OK);
+  }
+}
+
+/**
+ * AI 사용 검사의 전체 과정을 조율하는 메인 함수입니다.
+ */
+function runAiDetection(sheet, row) {
+  const ui = SpreadsheetApp.getUi();
+  let resultCell;
+  try {
+    let headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    let resultColIndex = headers.indexOf('AI 검사 결과');
+
+    // 'AI 검사 결과' 열이 없으면 맨 마지막에 자동으로 추가
+    if (resultColIndex === -1) {
+      const lastCol = sheet.getLastColumn();
+      sheet.insertColumnsAfter(lastCol, 1);
+      sheet.getRange(1, lastCol + 1).setValue('AI 검사 결과').setFontWeight('bold');
+      headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0]; // 헤더 다시 읽기
+      resultColIndex = headers.length - 1;
+      SpreadsheetApp.flush();
+    }
+    resultCell = sheet.getRange(row, resultColIndex + 1);
+
+    resultCell.setValue("⏳ 답변 분석 중...").setHorizontalAlignment('center');
+    SpreadsheetApp.flush();
+
+    const detectionData = getAiDataForDetection(sheet, row, headers);
+
+    resultCell.setValue("🤖 AI가 검사 중입니다...");
+    SpreadsheetApp.flush();
+    
+    const detectionResult = retryCallGeminiApi(detectionData.prompt, 3);
+    
+    resultCell.setValue(detectionResult.trim()).setHorizontalAlignment('left').setWrap(true);
+    Logger.log(`AI 사용 검사 완료 - 학번: ${detectionData.studentId}, 시트: ${sheet.getName()}`);
+    ui.alert('✅ AI 검사 완료', `'${sheet.getName()}' 시트의 ${row}행에 검사 결과를 기록했습니다.`, ui.ButtonSet.OK);
+
+  } catch (e) {
+    Logger.log(`❌ AI 사용 검사 실패 (시트: ${sheet.getName()}, 행: ${row}): ${e.message}\n${e.stack}`);
+    if(resultCell) resultCell.setValue(`❌ 오류: ${e.message.split('\n')[0]}`).setHorizontalAlignment('left');
+    ui.alert('❌ AI 검사 실패', e.message, ui.ButtonSet.OK);
+  }
+}
+
+
+/**
+ * AI 사용 검사에 필요한 데이터를 수집하고 전용 프롬프트를 구성합니다.
+ */
+function getAiDataForDetection(sheet, row, headers) {
+  const studentRowData = sheet.getRange(row, 1, 1, headers.length).getValues()[0];
+  let studentAnswers = "";
+
+  headers.forEach((header, index) => {
+    const headerStr = String(header || '').trim();
+    const cellValue = studentRowData[index];
+    if (headerStr.startsWith('질문') && cellValue && String(cellValue).trim() !== '') {
+      studentAnswers += `- 학생 답변 (${headerStr}): ${cellValue}\n`;
+    }
+  });
+
+  if (!studentAnswers.trim()) {
+    throw new Error("검사할 학생의 답변 내용이 없습니다. '질문' 컬럼의 내용을 확인해주세요.");
+  }
+
+  const studentIdIndex = headers.indexOf('학번');
+  const studentId = studentIdIndex > -1 ? studentRowData[studentIdIndex] : '알 수 없음';
+  
+  // AI 사용 검사를 위한 전용 프롬프트
+  const finalPrompt = `
+    **역할**: 당신은 AI가 생성한 텍스트의 특징을 분석하는 전문가입니다.
+    
+    **주요 작업**: 아래에 주어진 학생의 답변이 AI(예: ChatGPT, Gemini 등)에 의해 생성되었을 확률이 얼마나 되는지 분석하고, 그 근거를 설명해주세요. 특히 '단순 복사-붙여넣기'처럼 성의 없는 AI 사용에 초점을 맞춰주세요.
+    
+    **출력 형식**:
+    1.  **AI 작성 확률**: [0% ~ 100%] 형태로 명확하게 백분율만 표시해주세요.
+    2.  **판단 근거**: 문체의 일관성, 어휘 선택의 독창성, 개인적인 경험이나 주장의 유무, 정보의 깊이 등을 바탕으로 2~3 문장으로 간결하게 서술해주세요.
+    
+    ---
+    **[분석할 학생 답변]**
+    ${studentAnswers.trim()}
+    ---
+  `;
+
+  Logger.log(`AI 검사 프롬프트 생성 완료 (학번: ${studentId}, 길이: ${finalPrompt.length})`);
+  return { prompt: finalPrompt, studentId: studentId };
+}
+
+
+// ================================================================
+// 공통 API 호출 함수 (기존 코드와 동일)
+// ================================================================
+
+/**
+ * Gemini API 호출을 재시도합니다.
  */
 function retryCallGeminiApi(prompt, maxRetries) {
   let attempt = 0;
@@ -213,20 +297,18 @@ function retryCallGeminiApi(prompt, maxRetries) {
     } catch (e) {
       if (attempt < maxRetries - 1) {
         Logger.log(`API 호출 실패 (시도 ${attempt + 1}/${maxRetries}): ${e.message}. 2초 후 재시도...`);
-        Utilities.sleep(2000 * (attempt + 1)); // 지수 백오프
+        Utilities.sleep(2000 * (attempt + 1));
         attempt++;
       } else {
-        throw e; // 마지막 시도도 실패하면 최종 오류 발생
+        throw e;
       }
     }
   }
-  return ""; // Unreachable, but for type safety
+  return "";
 }
 
 /**
  * Gemini API를 호출하여 콘텐츠를 생성합니다.
- * @param {string} prompt - AI에게 보낼 최종 프롬프트
- * @returns {string} AI가 생성한 텍스트
  */
 function callGeminiApi(prompt) {
   const apiKey = PropertiesService.getUserProperties().getProperty('GEMINI_API_KEY');
@@ -234,14 +316,19 @@ function callGeminiApi(prompt) {
     throw new Error("API 키가 설정되지 않았습니다.\n\n메뉴에서 '🤖 AI 기능 > 🔑 AI API 키 설정'을 실행해주세요.");
   }
 
-  // 💡 Note: 더 복잡하고 긴 프롬프트 처리를 위해 'gemini-2.5-pro' 모델을 사용합니다.
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=${apiKey}`;
-  const payload = { "contents": [{"parts": [{"text": prompt}]}] };
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro-latest:generateContent?key=${apiKey}`;
+  const payload = { 
+    "contents": [{"parts": [{"text": prompt}]}],
+    "generationConfig": {
+        "temperature": 0.5,
+        "topP": 0.95,
+    }
+  };
   const options = {
     'method': 'post',
     'contentType': 'application/json',
     'payload': JSON.stringify(payload),
-    'muteHttpExceptions': true // HTTP 오류 시에도 응답 본문을 읽기 위해 설정
+    'muteHttpExceptions': true
   };
 
   const response = UrlFetchApp.fetch(url, options);
@@ -250,19 +337,14 @@ function callGeminiApi(prompt) {
 
   if (responseCode === 200) {
     const data = JSON.parse(responseBody);
-    
-    // 응답 텍스트를 안전하게 추출
     const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-    
     if (text) {
       return text;
     } else {
-      // API 호출 성공, 하지만 텍스트 응답이 비어있음 (e.g., 안전 필터링)
-      throw new Error(`AI가 응답을 생성하지 않았습니다. (콘텐츠 필터링 가능성 또는 API 응답 구조 오류)\n응답: ${responseBody}`);
+      throw new Error(`AI가 응답을 생성하지 않았습니다. (콘텐츠 필터링 등)\n응답: ${responseBody}`);
     }
   } else {
-    // API 호출 자체가 실패한 경우
-    let errorMessage = `AI API 호출에 실패했습니다. (HTTP ${responseCode})`;
+    let errorMessage = `AI API 호출 실패 (HTTP ${responseCode})`;
     try {
       const errorData = JSON.parse(responseBody);
       errorMessage += `\n오류 상세: ${errorData.error.message || '알 수 없는 오류'}`;

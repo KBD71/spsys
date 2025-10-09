@@ -2,7 +2,7 @@
  * 과제 제출 API (v4 - 헤더 기반 동적 처리 리팩토링)
  * 1. 관련된 모든 시트('학생명단_전체', '과제설정', 대상 과제 시트)의 헤더를 동적으로 분석합니다.
  * 2. 열 순서 변경에 관계없이 학생 정보와 답변을 정확한 컬럼에 저장합니다.
- * 3. '초안생성' 체크박스 UI 깨짐 방지 로직은 그대로 유지하여 안정성을 보장합니다.
+ * 3. '초안생성' 체크박스 UI 깨짐 방지 로직을 그대로 유지하여 안정성을 보장합니다.
  */
 const { google } = require('googleapis');
 
@@ -66,7 +66,6 @@ module.exports = async (req, res) => {
     const targetSheetData = targetSheetResponse.data.values || [];
     const targetHeaders = targetSheetData.length > 0 ? targetSheetData[0] : [];
     
-    // ★★★ 핵심 변경점: 대상 시트의 헤더 순서에 맞춰 제출할 행(newRow)을 동적으로 구성 ★★★
     const newRow = targetHeaders.map((header) => {
         const trimmedHeader = header.trim();
         switch(trimmedHeader) {
@@ -74,9 +73,8 @@ module.exports = async (req, res) => {
             case '반': return studentClass;
             case '이름': return studentName;
             case '제출일시': return new Date().toISOString();
-            case '초안생성': return false; // 체크박스 UI를 위해 boolean false 명시
+            case '초안생성': return false;
             default:
-                // 웹에서 받은 answers 객체에서 현재 헤더와 일치하는 답변을 찾아 반환
                 return answers[trimmedHeader] || '';
         }
     });
@@ -106,7 +104,8 @@ module.exports = async (req, res) => {
       if (match) updatedRowIndex = parseInt(match[1], 10);
     }
 
-    // 5. '초안생성' 컬럼에 체크박스 UI 강제 적용 (기존 안정성 로직 유지)
+    // ★★★ 시작: 이전에 주석으로 생략되었던 부분입니다 ★★★
+    // 5. '초안생성' 컬럼에 체크박스 UI 강제 적용 (안정성 확보)
     if (updatedRowIndex) {
         const draftColumnIndex = targetHeaders.indexOf('초안생성');
         if (draftColumnIndex !== -1) {
@@ -115,11 +114,29 @@ module.exports = async (req, res) => {
             if (sheet) {
                 const sheetId = sheet.properties.sheetId;
                 await sheets.spreadsheets.batchUpdate({
-                    // ... (기존 체크박스 적용 로직과 동일)
+                    spreadsheetId,
+                    requestBody: {
+                        requests: [{
+                            setDataValidation: {
+                                range: {
+                                    sheetId: sheetId,
+                                    startRowIndex: updatedRowIndex - 1,
+                                    endRowIndex: updatedRowIndex,
+                                    startColumnIndex: draftColumnIndex,
+                                    endColumnIndex: draftColumnIndex + 1
+                                },
+                                rule: {
+                                    condition: { type: 'BOOLEAN' },
+                                    strict: true
+                                }
+                            }
+                        }]
+                    }
                 });
             }
         }
     }
+    // ★★★ 종료: 생략되었던 부분 끝 ★★★
 
     return res.status(200).json({ success: true, message: '과제가 제출되었습니다.' });
 

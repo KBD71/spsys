@@ -3,6 +3,7 @@
  * SheetManager.gs - 시트 관리
  * ==============================================
  * 시트 생성, 삭제, 초기화 등 범용적인 시트 관리 기능을 담당합니다.
+ * (수정: '과제설정' 시트에 '재제출허용' 열 추가)
  */
 
 /**
@@ -17,6 +18,7 @@ function initializeMinimalSystem() {
       학생명단_전체: ["학번", "반", "번호", "이름", "비밀번호"],
       과제설정: [
         "공개",
+        "재제출허용", // ★★★ '재제출허용' 컬럼 추가 ★★★
         "과제ID",
         "과제명",
         "대상시트",
@@ -43,45 +45,20 @@ function initializeMinimalSystem() {
         "질문19",
         "질문20",
       ],
-      // '공개' 시트의 헤더를 사용자가 알려준 '공개시트'로 확정할 수 있으나,
-      // 생성 스크립트는 기존의 다른 기능과 연관될 수 있으므로 원본을 유지합니다.
-      // 만약 생성부터 '공개시트'로 해야 한다면 이 부분을 수정해야 합니다.
-      공개: ["공개", "시트이름", "대상반"], 
+      공개: ["공개", "시트이름", "대상반"],
       template: [
-        "학번",
-        "반",
-        "이름",
-        "질문1",
-        "질문2",
-        "질문3",
-        "질문4",
-        "질문5",
-        "질문6",
-        "질문7",
-        "질문8",
-        "질문9",
-        "질문10",
-        "질문11",
-        "질문12",
-        "질문13",
-        "질문14",
-        "질문15",
-        "질문16",
-        "질문17",
-        "질문18",
-        "질문19",
-        "질문20",
-        "제출일시",
-        "초안생성",
-        "종합의견",
+        "학번", "반", "이름",
+        "질문1", "질문2", "질문3", "질문4", "질문5",
+        "질문6", "질문7", "질문8", "질문9", "질문10",
+        "질문11", "질문12", "질문13", "질문14", "질문15",
+        "질문16", "질문17", "질문18", "질문19", "질문20",
+        "제출일시", "초안생성", "종합의견",
       ],
       프롬프트: [
-        "요약종류",
-        "역할 (Persona)",
-        "작업 (Task)",
-        "지시사항 (Instructions)",
+        "요약종류", "역할 (Persona)", "작업 (Task)", "지시사항 (Instructions)",
       ],
     };
+
     var createdCount = 0;
     for (var sheetName in requiredSheets) {
       if (!ss.getSheetByName(sheetName)) {
@@ -94,20 +71,30 @@ function initializeMinimalSystem() {
             .setFontColor("white")
             .setFontWeight("bold");
 
+          // ★★★ '재제출허용' 컬럼에도 체크박스 적용되도록 수정 ★★★
           if (sheetName === '공개' || sheetName === '과제설정') {
-            var firstColRange = sheet.getRange('A2:A1000');
+            var headers = requiredSheets[sheetName];
             var checkboxRule = SpreadsheetApp.newDataValidation()
               .requireCheckbox()
               .setAllowInvalid(false)
               .build();
-            firstColRange.setDataValidation(checkboxRule);
+
+            // 체크박스를 적용할 모든 열의 이름을 배열로 관리
+            var checkboxColumns = ['공개', '재제출허용'];
+            
+            checkboxColumns.forEach(function(colName) {
+              var colIndex = headers.indexOf(colName) + 1;
+              if (colIndex > 0) {
+                sheet.getRange(2, colIndex, sheet.getMaxRows() - 1, 1).setDataValidation(checkboxRule);
+              }
+            });
           }
 
           if (sheetName === 'template') {
             var headers = requiredSheets[sheetName];
             var draftColIndex = headers.indexOf('초안생성');
             if (draftColIndex !== -1) {
-              var draftColRange = sheet.getRange(2, draftColIndex + 1, 999, 1);
+              var draftColRange = sheet.getRange(2, draftColIndex + 1, sheet.getMaxRows() - 1, 1);
               var checkboxRule = SpreadsheetApp.newDataValidation()
                 .requireCheckbox()
                 .setAllowInvalid(false)
@@ -148,7 +135,8 @@ function initializeMinimalSystem() {
 }
 
 /**
- * 이름으로 시트를 찾아 삭제하고, 관련 설정 시트의 정보도 함께 제거합니다. (수정됨)
+ * 이름으로 시트를 찾아 삭제하고, 관련 설정 시트의 정보도 함께 제거합니다.
+ * (수정됨)
  * @param {string} sheetName - 삭제할 시트의 이름
  */
 function deleteSheetByName(sheetName) {
@@ -169,30 +157,15 @@ function deleteSheetByName(sheetName) {
   if (confirm !== ui.Button.YES) return;
 
   try {
-    // 과제설정 시트에서 해당 행 삭제
-    var deletedFromSettings = deleteRowBySheetName(
-      ss,
-      "과제설정",
-      "대상시트",
-      sheetName
-    );
+    var deletedFromSettings = deleteRowBySheetName(ss, "과제설정", "대상시트", sheetName);
     Logger.log(`과제설정 시트에서 ${deletedFromSettings}개 행 삭제`);
 
-    // '공개' 시트에서 해당 행 삭제 (헤더 이름을 '공개시트'로 지정)
-    var deletedFromPublic = deleteRowBySheetName(
-      ss,
-      "공개",
-      "공개시트", // <-- 사용자 요청에 따라 '시트이름'에서 '공개시트'로 수정됨
-      sheetName
-    );
+    var deletedFromPublic = deleteRowBySheetName(ss, "공개", "시트이름", sheetName);
     Logger.log(`공개 시트에서 ${deletedFromPublic}개 행 삭제`);
 
-    // 시트 삭제
     ss.deleteSheet(sheet);
 
-    // 대시보드 업데이트
     updateDashboard();
-
     ui.alert(
       "✅ 삭제 완료",
       `"${sheetName}" 시트가 삭제되었습니다.\n- 과제설정: ${deletedFromSettings}개 항목 제거\n- 공개: ${deletedFromPublic}개 항목 제거`,
@@ -205,7 +178,8 @@ function deleteSheetByName(sheetName) {
 }
 
 /**
- * 특정 시트에서 주어진 값과 일치하는 행을 찾아 삭제합니다. (안정성 강화 버전)
+ * 특정 시트에서 주어진 값과 일치하는 행을 찾아 삭제합니다.
+ * (안정성 강화 버전)
  * @param {Spreadsheet} ss - 현재 스프레드시트 객체
  * @param {string} targetSheetName - 작업할 시트 이름
  * @param {string} columnName - 값을 비교할 컬럼의 헤더 이름
@@ -215,40 +189,27 @@ function deleteSheetByName(sheetName) {
 function deleteRowBySheetName(ss, targetSheetName, columnName, valueToDelete) {
   var sheet = ss.getSheetByName(targetSheetName);
   if (!sheet || sheet.getLastRow() < 2) {
-    Logger.log(
-      `${targetSheetName} 시트가 없거나 데이터가 없습니다.`
-    );
+    Logger.log(`${targetSheetName} 시트가 없거나 데이터가 없습니다.`);
     return 0;
   }
 
   var data = sheet.getDataRange().getValues();
   var headers = data[0];
-  // 헤더의 각 항목에서 공백을 제거하여 정확한 인덱스를 찾습니다.
   var colIndex = headers.map(function(h) { return String(h).trim(); }).indexOf(columnName);
 
   if (colIndex === -1) {
-    Logger.log(
-      `${targetSheetName} 시트에서 "${columnName}" 컬럼을 찾을 수 없습니다. 실제 헤더: ${JSON.stringify(
-        headers
-      )}`
-    );
+    Logger.log(`${targetSheetName} 시트에서 "${columnName}" 컬럼을 찾을 수 없습니다. 실제 헤더: ${JSON.stringify(headers)}`);
     return 0;
   }
 
   var deletedCount = 0;
   var valueToDeleteTrimmed = String(valueToDelete).trim();
-
-  // 아래에서부터 순회해야 행 삭제 시 인덱스 문제가 발생하지 않습니다.
   for (var i = data.length - 1; i > 0; i--) {
-    // 비교할 셀의 값에서도 공백을 제거한 후 비교합니다.
     var cellValue = String(data[i][colIndex]).trim();
-    
     if (cellValue === valueToDeleteTrimmed) {
       sheet.deleteRow(i + 1);
       deletedCount++;
-      Logger.log(
-        `${targetSheetName} 시트의 ${i + 1}번 행 삭제 완료: ${valueToDelete}`
-      );
+      Logger.log(`${targetSheetName} 시트의 ${i + 1}번 행 삭제 완료: ${valueToDelete}`);
     }
   }
 

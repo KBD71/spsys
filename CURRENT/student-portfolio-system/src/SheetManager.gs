@@ -3,7 +3,7 @@
  * SheetManager.gs - 시트 관리
  * ==============================================
  * 시트 생성, 삭제, 초기화 등 범용적인 시트 관리 기능을 담당합니다.
- * (수정: '과제설정' 시트에 '재제출허용' 열 추가)
+ * (수정: 'template' 시트에 'AI 검사 결과' 열 추가)
  */
 
 /**
@@ -18,32 +18,16 @@ function initializeMinimalSystem() {
       학생명단_전체: ["학번", "반", "번호", "이름", "비밀번호"],
       과제설정: [
         "공개",
-        "재제출허용", // ★★★ '재제출허용' 컬럼 추가 ★★★
+        "재제출허용",
         "과제ID",
         "과제명",
         "대상시트",
         "시작일",
         "마감일",
-        "질문1",
-        "질문2",
-        "질문3",
-        "질문4",
-        "질문5",
-        "질문6",
-        "질문7",
-        "질문8",
-        "질문9",
-        "질문10",
-        "질문11",
-        "질문12",
-        "질문13",
-        "질문14",
-        "질문15",
-        "질문16",
-        "질문17",
-        "질문18",
-        "질문19",
-        "질문20",
+        "질문1", "질문2", "질문3", "질문4", "질문5",
+        "질문6", "질문7", "질문8", "질문9", "질문10",
+        "질문11", "질문12", "질문13", "질문14", "질문15",
+        "질문16", "질문17", "질문18", "질문19", "질문20",
       ],
       공개: ["공개", "시트이름", "대상반"],
       template: [
@@ -53,6 +37,7 @@ function initializeMinimalSystem() {
         "질문11", "질문12", "질문13", "질문14", "질문15",
         "질문16", "질문17", "질문18", "질문19", "질문20",
         "제출일시", "초안생성", "종합의견",
+        "AI 검사 결과", // ★★★ 'AI 검사 결과' 항목 추가 ★★★
       ],
       프롬프트: [
         "요약종류", "역할 (Persona)", "작업 (Task)", "지시사항 (Instructions)",
@@ -71,7 +56,6 @@ function initializeMinimalSystem() {
             .setFontColor("white")
             .setFontWeight("bold");
 
-          // ★★★ '재제출허용' 컬럼에도 체크박스 적용되도록 수정 ★★★
           if (sheetName === '공개' || sheetName === '과제설정') {
             var headers = requiredSheets[sheetName];
             var checkboxRule = SpreadsheetApp.newDataValidation()
@@ -79,7 +63,6 @@ function initializeMinimalSystem() {
               .setAllowInvalid(false)
               .build();
 
-            // 체크박스를 적용할 모든 열의 이름을 배열로 관리
             var checkboxColumns = ['공개', '재제출허용'];
             
             checkboxColumns.forEach(function(colName) {
@@ -136,8 +119,6 @@ function initializeMinimalSystem() {
 
 /**
  * 이름으로 시트를 찾아 삭제하고, 관련 설정 시트의 정보도 함께 제거합니다.
- * (수정됨)
- * @param {string} sheetName - 삭제할 시트의 이름
  */
 function deleteSheetByName(sheetName) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -179,12 +160,6 @@ function deleteSheetByName(sheetName) {
 
 /**
  * 특정 시트에서 주어진 값과 일치하는 행을 찾아 삭제합니다.
- * (안정성 강화 버전)
- * @param {Spreadsheet} ss - 현재 스프레드시트 객체
- * @param {string} targetSheetName - 작업할 시트 이름
- * @param {string} columnName - 값을 비교할 컬럼의 헤더 이름
- * @param {string} valueToDelete - 삭제할 행을 식별하는 값
- * @returns {number} 삭제된 행의 개수
  */
 function deleteRowBySheetName(ss, targetSheetName, columnName, valueToDelete) {
   var sheet = ss.getSheetByName(targetSheetName);

@@ -1,6 +1,7 @@
 /**
- * 과제 상세 정보 및 질문 조회 API
- * GET /api/assignment-detail?assignmentId={과제ID}&studentId={학번}
+ * 과제 상세 정보 및 질문 조회 API (v2 - 헤더 기반 동적 처리 리팩토링)
+ * - '과제설정' 시트와 개별 과제 시트의 열 순서 변경에 대응할 수 있도록 개선되었습니다.
+ * - 헤더 이름을 기반으로 필요한 모든 데이터의 위치를 동적으로 찾습니다.
  */
 
 const { google } = require('googleapis');
@@ -19,7 +20,6 @@ async function getSheetsClient() {
 }
 
 module.exports = async (req, res) => {
-  // CORS 헤더
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -29,101 +29,100 @@ module.exports = async (req, res) => {
   }
 
   if (req.method !== 'GET') {
-    return res.status(405).json({
-      success: false,
-      message: 'Method not allowed'
-    });
+    return res.status(405).json({ success: false, message: 'Method not allowed' });
   }
 
   try {
     const { assignmentId, studentId } = req.query;
-
     if (!assignmentId || !studentId) {
-      return res.status(400).json({
-        success: false,
-        message: '과제ID와 학번을 입력해주세요.'
-      });
+      return res.status(400).json({ success: false, message: '과제ID와 학번을 입력해주세요.' });
     }
 
     const sheets = await getSheetsClient();
     const spreadsheetId = process.env.SPREADSHEET_ID;
 
-    // 과제설정에서 과제 정보 가져오기 (질문1~5 포함)
+    // 1. '과제설정' 시트에서 과제 정보 가져오기
     const assignmentResponse = await sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: '과제설정!A:K'  // A부터 K까지 (질문1~5 포함)
+      range: '과제설정!A:Z'
     });
-
     const assignmentData = assignmentResponse.data.values;
     if (!assignmentData || assignmentData.length < 2) {
-      return res.status(404).json({
-        success: false,
-        message: '과제를 찾을 수 없습니다.'
-      });
+      return res.status(404).json({ success: false, message: '과제를 찾을 수 없습니다.' });
     }
 
-    // 과제 찾기
-    const assignmentRow = assignmentData.find((row, idx) => idx > 0 && row[1] === assignmentId);
+    // ★★★ 핵심 변경점: '과제설정' 시트의 헤더 맵 생성 ★★★
+    const assignmentHeaders = assignmentData[0];
+    const assignmentHeaderMap = {};
+    assignmentHeaders.forEach((h, i) => { assignmentHeaderMap[h.trim()] = i; });
+    
+    // '과제ID' 컬럼의 인덱스를 찾음
+    const assignmentIdColIndex = assignmentHeaderMap['과제ID'];
+    if (assignmentIdColIndex === undefined) {
+        return res.status(500).json({ success: false, message: "'과제설정' 시트에서 '과제ID' 컬럼을 찾을 수 없습니다." });
+    }
+
+    // 해당 과제ID를 가진 행을 찾음
+    const assignmentRow = assignmentData.find((row, idx) => idx > 0 && row[assignmentIdColIndex] === assignmentId);
     if (!assignmentRow) {
-      return res.status(404).json({
-        success: false,
-        message: '과제를 찾을 수 없습니다.'
-      });
+      return res.status(404).json({ success: false, message: '해당 과제를 찾을 수 없습니다.' });
     }
 
-    const assignmentName = assignmentRow[2];
-    const targetSheet = assignmentRow[3];
-    const startDate = assignmentRow[4];
-    const dueDate = assignmentRow[5];
+    // ★★★ 핵심 변경점: 헤더맵을 이용해 데이터 추출 ★★★
+    const assignmentName = assignmentRow[assignmentHeaderMap['과제명']];
+    const targetSheet = assignmentRow[assignmentHeaderMap['대상시트']];
+    const startDate = assignmentRow[assignmentHeaderMap['시작일']];
+    const dueDate = assignmentRow[assignmentHeaderMap['마감일']];
 
-    // 질문1~5 추출 (과제설정 시트의 6~10번째 컬럼)
+    // '질문'으로 시작하는 모든 컬럼을 동적으로 추출
     const assignmentQuestions = [];
-    for (let i = 6; i <= 10; i++) {
-      if (assignmentRow[i] && assignmentRow[i].trim()) {
-        assignmentQuestions.push(assignmentRow[i].trim());
-      }
-    }
+    assignmentHeaders.forEach((header, index) => {
+        if (header.trim().startsWith('질문') && assignmentRow[index] && assignmentRow[index].trim()) {
+            assignmentQuestions.push({
+                questionText: assignmentRow[index].trim(), // 실제 질문 내용
+                columnName: header.trim() // 헤더 이름 (예: '질문1')
+            });
+        }
+    });
 
-    // 대상시트의 헤더 읽기
+    // 2. 대상 시트(학생 답변 시트) 정보 처리
     const targetResponse = await sheets.spreadsheets.values.get({
-      spreadsheetId,
-      range: `${targetSheet}!1:1`
+        spreadsheetId,
+        range: `${targetSheet}!A:Z`
     });
-
-    const headers = targetResponse.data.values ? targetResponse.data.values[0] : [];
-    if (headers.length < 4) {
-      return res.status(500).json({
-        success: false,
-        message: '대상시트의 형식이 올바르지 않습니다.'
-      });
+    const targetSheetData = targetResponse.data.values || [];
+    if (targetSheetData.length < 1) {
+        return res.status(500).json({ success: false, message: '대상시트의 헤더를 읽을 수 없습니다.' });
     }
 
-    // 학생의 기존 답변 찾기
-    const studentResponse = await sheets.spreadsheets.values.get({
-      spreadsheetId,
-      range: `${targetSheet}!A:Z`
-    });
+    // ★★★ 핵심 변경점: 대상 시트의 헤더 맵 생성 ★★★
+    const targetHeaders = targetSheetData[0];
+    const targetHeaderMap = {};
+    targetHeaders.forEach((h, i) => { targetHeaderMap[h.trim()] = i; });
 
-    const studentData = studentResponse.data.values || [];
-    const studentRow = studentData.find((row, idx) => idx > 0 && row[0] === studentId);
+    const studentIdColInTarget = targetHeaderMap['학번'];
+    if (studentIdColInTarget === undefined) {
+        return res.status(500).json({ success: false, message: `'${targetSheet}' 시트에서 '학번' 컬럼을 찾을 수 없습니다.` });
+    }
 
-    // 질문과 답변 구성 (과제설정의 질문 사용, 대상시트 헤더와 매핑)
-    const questions = assignmentQuestions.map((question, index) => {
-      const columnIndex = index + 3; // 대상시트의 4번째 컬럼부터 (학번, 반, 이름 다음)
-      const columnName = headers[columnIndex] || `컬럼${index + 1}`;
-      const answer = studentRow ? (studentRow[columnIndex] || '') : '';
+    // 학생의 기존 답변 행 찾기
+    const studentRow = targetSheetData.find((row, idx) => idx > 0 && row[studentIdColInTarget] === studentId);
 
-      return {
-        column: columnName,  // 대상시트 컬럼명 (저장용)
-        question: question,   // 과제설정의 질문 (표시용)
-        answer: answer
-      };
+    // 3. 질문과 답변 최종 구성
+    const questions = assignmentQuestions.map(q => {
+        const answerColumnIndex = targetHeaderMap[q.columnName];
+        const answer = (studentRow && answerColumnIndex !== undefined) ? (studentRow[answerColumnIndex] || '') : '';
+
+        return {
+            column: q.columnName,   // 대상시트 컬럼명 (저장용)
+            question: q.questionText, // 과제설정의 질문 (표시용)
+            answer: answer
+        };
     });
 
     const submitted = !!studentRow;
-    const submittedAt = submitted && studentRow[headers.indexOf('제출일시')]
-      ? studentRow[headers.indexOf('제출일시')]
-      : null;
+    const submittedAtIndex = targetHeaderMap['제출일시'];
+    const submittedAt = (submitted && submittedAtIndex !== undefined) ? studentRow[submittedAtIndex] : null;
 
     return res.status(200).json({
       success: true,

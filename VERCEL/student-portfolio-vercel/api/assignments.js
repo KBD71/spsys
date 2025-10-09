@@ -1,7 +1,8 @@
 /**
- * 과제 목록 조회 API (v7 - 헤더 기반 동적 처리 리팩토링)
- * - '과제설정' 시트의 열 순서가 변경되거나 새 열이 추가되어도 안정적으로 작동합니다.
- * - 헤더 이름을 기반으로 '과제ID', '과제명', '대상시트' 등의 위치를 동적으로 찾습니다.
+ * 과제 목록 조회 API (v8 - 제출 상태 및 재제출 허용 기능 추가)
+ * - 학생의 과제별 제출 여부(submitted)를 확인합니다.
+ * - 교사가 설정한 재제출 허용 여부(resubmissionAllowed)를 확인합니다.
+ * - 이 두 가지 상태를 API 응답에 포함하여 프론트엔드로 전달합니다.
  */
 const { google } = require('googleapis');
 
@@ -17,7 +18,6 @@ async function getSheetsClient() {
   return google.sheets({ version: 'v4', auth: authClient });
 }
 
-// (이전과 동일)
 function isClassAllowed(studentId, targetClass) {
   const target = (targetClass || '').trim();
   if (!target || target.toLowerCase() === '전체') return true;
@@ -27,7 +27,6 @@ function isClassAllowed(studentId, targetClass) {
   return allowedPrefixes.includes(studentPrefix);
 }
 
-// (이전과 동일)
 function parseFlexibleDate(dateString) {
     if (!dateString || typeof dateString !== 'string') return null;
     const parts = dateString.replace(/\s/g, '').split(/[.\-]/).filter(p => p);
@@ -53,7 +52,6 @@ function parseFlexibleDate(dateString) {
     return null;
 }
 
-
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
@@ -70,14 +68,12 @@ module.exports = async (req, res) => {
     const sheets = await getSheetsClient();
     const spreadsheetId = process.env.SPREADSHEET_ID;
 
-    // '과제설정' 시트 전체 데이터 읽기
     const response = await sheets.spreadsheets.values.get({ spreadsheetId, range: '과제설정!A:Z' });
     const allRows = response.data.values;
     if (!allRows || allRows.length < 2) {
       return res.status(200).json({ success: true, assignments: [] });
     }
 
-    // ★★★ 핵심 변경점: 헤더를 기반으로 열의 인덱스를 동적으로 찾기 ★★★
     const headers = allRows[0];
     const headerMap = {};
     headers.forEach((header, index) => {
@@ -91,7 +87,6 @@ module.exports = async (req, res) => {
         }
     }
     
-    // '공개' 시트 데이터 처리 (이전과 동일)
     const publicSheetResponse = await sheets.spreadsheets.values.get({ spreadsheetId, range: '공개!A:C' });
     const publicSheetData = publicSheetResponse.data.values || [];
     const publicSettingsMap = {};
@@ -105,40 +100,57 @@ module.exports = async (req, res) => {
         }
     }
 
-    const assignments = [];
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    // 데이터 행(헤더 제외) 순회
-    allRows.slice(1).forEach((row) => {
-      // ★★★ 핵심 변경점: 고정된 숫자 인덱스 대신, headerMap에서 찾은 인덱스 사용 ★★★
+    const allSheetDataCache = {}; 
+
+    const assignmentsPromises = allRows.slice(1).map(async (row) => {
       const isPublic = (row[headerMap['공개']] || '').toString().toUpperCase() === 'TRUE';
-      if (!isPublic) return;
+      if (!isPublic) return null;
 
       const assignmentName = row[headerMap['과제명']];
       const targetSheetName = row[headerMap['대상시트']];
       
       const targetClass = publicSettingsMap[targetSheetName];
-      if (targetClass === undefined) return;
-      if (!isClassAllowed(studentId, targetClass)) return;
+      if (targetClass === undefined) return null;
+      if (!isClassAllowed(studentId, targetClass)) return null;
 
-      // 시작일, 마감일은 선택적 컬럼이므로 존재 여부 확인
       const startDateStr = headerMap['시작일'] !== undefined ? row[headerMap['시작일']] : null;
       const dueDateStr = headerMap['마감일'] !== undefined ? row[headerMap['마감일']] : null;
 
       const startDate = parseFlexibleDate(startDateStr);
       const dueDate = parseFlexibleDate(dueDateStr);
 
-      if (startDate && today < startDate) return;
-      if (dueDate && today > dueDate) return;
+      if (startDate && today < startDate) return null;
+      if (dueDate && today > dueDate) return null;
+      
+      let isSubmitted = false;
+      if (targetSheetName) {
+          if (!allSheetDataCache[targetSheetName]) {
+              try {
+                  const sheetDataResponse = await sheets.spreadsheets.values.get({ spreadsheetId, range: `${targetSheetName}!A:A` });
+                  allSheetDataCache[targetSheetName] = sheetDataResponse.data.values || [];
+              } catch (e) {
+                  allSheetDataCache[targetSheetName] = [];
+              }
+          }
+          isSubmitted = allSheetDataCache[targetSheetName].some((r, idx) => idx > 0 && r[0] === studentId);
+      }
+      
+      const resubmissionAllowed = (headerMap['재제출허용'] !== undefined && row[headerMap['재제출허용']] || '').toString().toUpperCase() === 'TRUE';
 
-      assignments.push({
-        id: row[headerMap['과제ID']], // '과제ID' 인덱스 사용
+      return {
+        id: row[headerMap['과제ID']],
         name: assignmentName,
-        description: `제출 기한: ${dueDateStr || '기한 없음'}`,
         dueDate: dueDateStr || '기한 없음',
-      });
+        submitted: isSubmitted,
+        resubmissionAllowed: resubmissionAllowed
+      };
     });
+    
+    const assignmentsWithNull = await Promise.all(assignmentsPromises);
+    const assignments = assignmentsWithNull.filter(a => a !== null);
 
     return res.status(200).json({ success: true, assignments });
 

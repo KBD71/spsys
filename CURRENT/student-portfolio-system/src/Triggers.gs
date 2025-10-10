@@ -31,7 +31,10 @@ function onOpen() {
         .addSeparator()
         .addItem('🕵️ 선택된 행 AI 사용 검사', 'runAiDetectionManual') // AI.gs
         .addSeparator()
-        .addItem('🔑 AI API 키 설정', 'setApiKey') // AI.gs
+        .addItem('🔑 Gemini API 키 설정', 'setGeminiApiKey') // AI.gs
+        .addItem('🔑 Claude API 키 설정', 'setClaudeApiKey') // AI.gs
+        .addSeparator()
+        .addItem('⚙️ AI 제공자 선택 (Gemini/Claude)', 'selectAiProvider') // AI.gs
       )
       // ★★★ 종료: AI 메뉴 통합 완료 ★★★
       .addSeparator()

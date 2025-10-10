@@ -12,21 +12,22 @@
 // 지원하는 AI 제공자: 'gemini', 'claude'
 
 /**
- * Google Sheets에 AI 기능 메뉴를 추가합니다.
+ * (참고) AI 기능 메뉴는 Triggers.gs의 onOpen() 함수에서 서브메뉴로 통합되어 있습니다.
+ * 이 onOpen() 함수는 사용되지 않으며, 참고용으로만 남겨둡니다.
  */
-function onOpen() {
-  SpreadsheetApp.getUi()
-    .createMenu("🤖 AI 기능")
-    .addItem("📝 선택된 행 초안 생성", "generateAiSummaryManual")
-    .addSeparator()
-    .addItem("🕵️ 선택된 행 AI 사용 검사", "runAiDetectionManual")
-    .addSeparator()
-    .addItem("🔑 Gemini API 키 설정", "setGeminiApiKey")
-    .addItem("🔑 Claude API 키 설정", "setClaudeApiKey")
-    .addSeparator()
-    .addItem("⚙️ AI 제공자 선택 (Gemini/Claude)", "selectAiProvider")
-    .addToUi();
-}
+// function onOpen() {
+//   SpreadsheetApp.getUi()
+//     .createMenu("🤖 AI 기능")
+//     .addItem("📝 선택된 행 초안 생성", "generateAiSummaryManual")
+//     .addSeparator()
+//     .addItem("🕵️ 선택된 행 AI 사용 검사", "runAiDetectionManual")
+//     .addSeparator()
+//     .addItem("🔑 Gemini API 키 설정", "setGeminiApiKey")
+//     .addItem("🔑 Claude API 키 설정", "setClaudeApiKey")
+//     .addSeparator()
+//     .addItem("⚙️ AI 제공자 선택 (Gemini/Claude)", "selectAiProvider")
+//     .addToUi();
+// }
 
 /**
  * 사용자 속성에 Gemini API 키를 설정합니다.

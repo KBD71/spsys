@@ -82,24 +82,42 @@ async function handleGetRecords(req, res) {
     const headers = targetSheetData[0];
     const studentIdIndex = headers.indexOf('학번');
     const suggestionIndex = headers.indexOf('건의사항');
+    const publicColumnIndex = headers.indexOf('공개컬럼');
     const hasQuestionColumn = headers.some(h => (h || '').trim().startsWith('질문'));
 
     if (studentIdIndex === -1) continue;
 
     const studentRowInTarget = targetSheetData.find(r => r[studentIdIndex] === studentId);
     if (!studentRowInTarget) continue;
-    
+
+    // 과제 시트의 '공개컬럼' 값 읽기 (모든 학생에게 동일하게 적용)
+    // 2행부터 여러 행에 걸쳐 입력된 공개할 컬럼명들을 수집
+    const allowedColumns = [];
+    if (publicColumnIndex !== -1) {
+      for (let rowIdx = 1; rowIdx < targetSheetData.length; rowIdx++) {
+        const colValue = targetSheetData[rowIdx][publicColumnIndex];
+        if (colValue && String(colValue).trim() !== '') {
+          allowedColumns.push(String(colValue).trim());
+        }
+      }
+    }
+
     for(let colIdx = 0; colIdx < headers.length; colIdx++) {
         const header = headers[colIdx];
         const value = studentRowInTarget[colIdx] || '';
 
         // 제외할 컬럼 리스트 (시스템 컬럼, 질문 컬럼)
-        const excludedColumns = ['학번', '반', '이름', '제출일시', '초안생성', '건의사항'];
+        const excludedColumns = ['학번', '반', '이름', '제출일시', '초안생성', '건의사항', '공개컬럼'];
 
         // 값이 없거나, 제외 대상 컬럼이거나, '질문'으로 시작하는 컬럼은 건너뛰기
         if (!value ||
             excludedColumns.indexOf(header) > -1 ||
             (header && header.toString().trim().startsWith('질문'))) {
+            continue;
+        }
+
+        // ★★★ 핵심 로직: '공개컬럼'이 지정되어 있으면 해당 컬럼만 표시 ★★★
+        if (allowedColumns.length > 0 && !allowedColumns.includes(header)) {
             continue;
         }
 

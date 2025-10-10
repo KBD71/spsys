@@ -452,3 +452,247 @@
         try {
             const response = await fetch(`${API_BASE}/assignment-detail?assignmentId=${assignmentId}&studentId=${currentStudentId}`);
             const result = await response.json();
+            if (!result.success) throw new Error(result.message);
+            
+            if (result.questions && result.questions.length > 0) {
+                questionsContainer.innerHTML = result.questions.map(q => {
+                    const draft = loadDraft(assignmentId, currentStudentId, q.column);
+                    const answer = draft || q.answer;
+                    const textareaId = `question-${q.column}`;
+                    return `
+                        <div class="form-group">
+                            <label for="${textareaId}">${escapeHTML(q.question)}</label>
+                            <button type="button" class="btn-math-editor" data-textarea-id="${textareaId}">∑ 수식 입력</button>
+                            <textarea id="${textareaId}" name="${escapeHTML(q.column)}" rows="4" data-assignment-id="${escapeHTML(assignmentId)}" data-student-id="${escapeHTML(currentStudentId)}" data-question-column="${escapeHTML(q.column)}">${escapeHTML(answer)}</textarea>
+                        </div>`;
+                }).join('');
+
+                questionsContainer.querySelectorAll('.btn-math-editor').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        openMathEditor(btn.dataset.textareaId);
+                    });
+                });
+
+                questionsContainer.querySelectorAll('textarea').forEach(ta => {
+                    ta.addEventListener('input', (e) => {
+                        saveDraft(e.target.dataset.assignmentId, e.target.dataset.studentId, e.target.dataset.questionColumn, e.target.value);
+                    });
+                });
+
+                typesetMath(questionsContainer);
+            } else {
+                questionsContainer.innerHTML = '<div class="empty-message">이 과제에는 설정된 질문이 없습니다.</div>';
+            }
+        } catch (error) {
+            questionsContainer.innerHTML = `<div class="empty-message">질문을 불러오는 데 실패했습니다: ${error.message}</div>`;
+        }
+    }
+
+    function hideSubmitModal() { document.getElementById('submitModal').classList.add('hidden'); }
+    
+    async function submitAssignment() {
+        const form = document.getElementById('assignmentSubmitForm');
+        const assignmentId = form.dataset.assignmentId;
+        const answers = {};
+        const questions = [];
+        form.querySelectorAll('textarea').forEach(ta => { answers[ta.name] = ta.value; questions.push({column: ta.name}); });
+        const submitBtn = document.querySelector('#submitModal .submit-btn');
+        submitBtn.disabled = true; submitBtn.textContent = '제출 중...';
+        try {
+            const response = await fetch(`${API_BASE}/submit-assignment`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ studentId: currentStudentId, assignmentId, answers }) });
+            const result = await response.json();
+            if (result.success) {
+                clearDraft(assignmentId, currentStudentId, questions);
+                alert('과제가 성공적으로 제출되었습니다.');
+                hideSubmitModal();
+                loadAssignments();
+            } else { alert(`제출 실패: ${result.message}`); }
+        } catch (error) { alert('제출 중 오류가 발생했습니다.');
+        } finally { submitBtn.disabled = false; submitBtn.textContent = '제출하기'; }
+    }
+    
+    function saveSuggestion(sheetName, textareaId) {
+        const textarea = document.getElementById(textareaId);
+        if (!textarea) {
+            console.error('textarea를 찾을 수 없습니다:', textareaId);
+            return;
+        }
+        const suggestion = textarea.value;
+        const saveBtn = textarea.nextElementSibling;
+        if (!saveBtn) {
+            console.error('저장 버튼을 찾을 수 없습니다.');
+            return;
+        }
+        const originalText = saveBtn.textContent;
+        saveBtn.disabled = true; saveBtn.textContent = '저장 중...';
+        fetch(`${API_BASE}/my-records`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ studentId: currentStudentId, sheetName, suggestion }) })
+        .then(res => res.json()).then(result => {
+            if (result.success) {
+                saveBtn.style.backgroundColor = '#22c55e'; saveBtn.textContent = '저장됨';
+                setTimeout(() => { saveBtn.style.backgroundColor = ''; saveBtn.textContent = originalText; saveBtn.disabled = false; }, 3000);
+            } else { alert('저장 실패: ' + result.message); saveBtn.disabled = false; saveBtn.textContent = originalText; }
+        }).catch(error => { console.error('건의사항 저장 실패:', error); alert('건의사항 저장 중 오류가 발생했습니다.'); saveBtn.disabled = false; saveBtn.textContent = originalText; });
+    }
+
+    async function handlePasswordChange(event) {
+        event.preventDefault();
+        const currentPassword = document.getElementById('currentPassword').value;
+        const newPassword = document.getElementById('newPassword').value;
+        const confirmPassword = document.getElementById('confirmPassword').value;
+        if (newPassword !== confirmPassword) { showMessage('passwordChangeMessage', '새 비밀번호가 일치하지 않습니다.', 'error'); return; }
+        if (newPassword.length < 4) { showMessage('passwordChangeMessage', '새 비밀번호는 4자 이상이어야 합니다.', 'error'); return; }
+        const changeBtn = event.target.querySelector('button[type="submit"]');
+        changeBtn.disabled = true; changeBtn.textContent = '변경 중...';
+        showMessage('passwordChangeMessage', '비밀번호를 변경하고 있습니다...', 'info');
+        try {
+            const response = await fetch(`${API_BASE}/change-password`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ studentId: currentStudentId, currentPassword, newPassword }) });
+            const result = await response.json();
+            if (result.success) {
+                showMessage('passwordChangeMessage', '비밀번호가 성공적으로 변경되었습니다. 3초 후 메뉴로 돌아갑니다.', 'success');
+                setTimeout(() => {
+                    document.getElementById('passwordChangeForm').reset();
+                    showMenu();
+                }, 3000);
+            } else { showMessage('passwordChangeMessage', result.message, 'error'); changeBtn.disabled = false; changeBtn.textContent = '변경하기'; }
+        } catch (error) { showMessage('passwordChangeMessage', '서버에 연결할 수 없습니다.', 'error'); changeBtn.disabled = false; changeBtn.textContent = '변경하기'; }
+    }
+
+    function showMessage(elementId, message, type) { const el = document.getElementById(elementId); el.textContent = message; el.className = `message show ${type}`; }
+    function hideMessage(elementId) { const el = document.getElementById(elementId); el.className = 'message'; }
+    function escapeHTML(str) { if (str === null || str === undefined) return ''; return str.toString().replace(/[&<>"']/g, match => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[match])); }
+
+    function saveDraft(assignmentId, studentId, questionColumn, value) {
+        try { localStorage.setItem(`draft-${assignmentId}-${studentId}-${questionColumn}`, value); } catch (e) { console.error("임시 저장 실패:", e); }
+    }
+    function loadDraft(assignmentId, studentId, questionColumn) {
+        try { return localStorage.getItem(`draft-${assignmentId}-${studentId}-${questionColumn}`) || ''; } catch (e) { console.error("임시 저장 불러오기 실패:", e); return ''; }
+    }
+    function clearDraft(assignmentId, studentId, questions) {
+        try { questions.forEach(q => { localStorage.removeItem(`draft-${assignmentId}-${studentId}-${q.column}`); }); } catch (e) { console.error("임시 저장 삭제 실패:", e); }
+    }
+
+    function openMathEditor(textareaId) {
+        const textarea = document.getElementById(textareaId);
+        if (!textarea) {
+            console.error('textarea를 찾을 수 없습니다:', textareaId);
+            return;
+        }
+        
+        activeTextareaId = textareaId;
+        savedCursorPosition = {
+            start: textarea.selectionStart,
+            end: textarea.selectionEnd
+        };
+        
+        const modal = document.getElementById('mathModal');
+        modal.classList.remove('hidden');
+        
+        const paletteContainer = document.getElementById('mathPaletteContainer');
+        if (paletteContainer.children.length === 0) {
+            populateMathPalette();
+        }
+        
+        document.getElementById('mathInput').value = '';
+        document.getElementById('mathPreview').innerHTML = '<span style="color: #9ca3af;">수식 미리보기</span>';
+    }
+
+    function closeMathEditor() {
+        document.getElementById('mathModal').classList.add('hidden');
+        activeTextareaId = null;
+        savedCursorPosition = { start: 0, end: 0 };
+    }
+
+    function populateMathPalette() {
+        const mathSymbols = [
+            { display: 'x²', code: 'x^2 ', offset: 3 }, { display: 'xⁿ', code: 'x^{}', offset: 2 },
+            { display: 'xₙ', code: 'x_{}', offset: 2 }, { display: '√a', code: '\\sqrt{} ', offset: 6 },
+            { display: 'ⁿ√a', code: '\\sqrt[]{} ', offset: 7 }, { display: '∑', code: '\\sum_{k=1}^{n} ', offset: 14 },
+            { display: '∫', code: '\\int_{a}^{b} ', offset: 11 }, { display: 'a/b', code: '\\frac{}{} ', offset: 6 },
+            { display: 'α', code: '\\alpha ' }, { display: 'β', code: '\\beta ' }, { display: 'π', code: '\\pi ' },
+            { display: 'θ', code: '\\theta ' }, { display: '∞', code: '\\infty ' }, { display: '≠', code: '\\neq ' },
+            { display: '≤', code: '\\leq ' }, { display: '≥', code: '\\geq ' }, { display: '±', code: '\\pm ' },
+        ];
+        
+        const paletteContainer = document.getElementById('mathPaletteContainer');
+        paletteContainer.innerHTML = mathSymbols.map(s => 
+            `<button type="button" title="${escapeHTML(s.code.trim())}" data-symbol='${escapeHTML(JSON.stringify(s))}'>${s.display}</button>`
+        ).join('');
+
+        paletteContainer.querySelectorAll('button').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const symbol = JSON.parse(btn.dataset.symbol);
+                insertMathSymbol(symbol);
+            });
+        });
+    }
+
+    function insertMathSymbol(symbol) {
+        const textarea = document.getElementById('mathInput');
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const text = textarea.value;
+        const textToInsert = symbol.code;
+        const cursorOffset = symbol.offset !== undefined ? symbol.offset : textToInsert.length;
+
+        textarea.value = text.substring(0, start) + textToInsert + text.substring(end);
+        textarea.selectionStart = textarea.selectionEnd = start + cursorOffset;
+        textarea.focus();
+        textarea.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+
+    function updateMathPreview() {
+        clearTimeout(previewTimeout);
+        previewTimeout = setTimeout(() => {
+            const preview = document.getElementById('mathPreview');
+            const latex = document.getElementById('mathInput').value;
+            
+            if (latex.trim() === '') {
+                preview.innerHTML = '<span style="color: #9ca3af;">수식 미리보기</span>';
+                return;
+            }
+            
+            preview.innerHTML = `$${latex}$`;
+            
+            if (window.MathJax && window.MathJax.typesetPromise) {
+                MathJax.typesetPromise([preview]).catch(err => {
+                    console.error('MathJax 렌더링 오류:', err);
+                    preview.innerHTML = '<span style="color: #ef4444;">수식 렌더링 실패</span>';
+                });
+            } else {
+                preview.innerHTML = '<span style="color: #f59e0b;">MathJax 로딩 중...</span>';
+            }
+        }, 300);
+    }
+    
+    function confirmMathInput() {
+        if (!activeTextareaId) {
+            console.error('활성화된 textarea가 없습니다.');
+            return;
+        }
+        
+        const mainTextarea = document.getElementById(activeTextareaId);
+        if (!mainTextarea) {
+            console.error('textarea를 찾을 수 없습니다:', activeTextareaId);
+            closeMathEditor();
+            return;
+        }
+        
+        const latex = document.getElementById('mathInput').value;
+        
+        if (latex.trim()) {
+            const start = savedCursorPosition.start;
+            const end = savedCursorPosition.end;
+            const text = mainTextarea.value;
+            const textToInsert = ` ${latex.trim()}$ `;
+
+            mainTextarea.value = text.substring(0, start) + textToInsert + text.substring(end);
+            mainTextarea.selectionStart = mainTextarea.selectionEnd = start + textToInsert.length;
+            mainTextarea.focus();
+            mainTextarea.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+        
+        closeMathEditor();
+    }
+</script>
+</body>
+</html>

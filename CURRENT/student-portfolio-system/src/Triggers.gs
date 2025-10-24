@@ -2,58 +2,63 @@
  * ==============================================
  * Triggers.gs - 자동 실행 트리거 (v4.0 - 시험 모드 메뉴 추가)
  * ==============================================
+ * 스프레드시트가 열릴 때 메뉴를 생성하고, 편집 이벤트를 처리합니다.
  */
 
 /**
- * 스프레드시트가 열릴 때 '포트폴리오 관리' 메뉴를 생성합니다.
- * 'AI 기능', '시험 감독' 메뉴를 서브메뉴로 통합하여 관리합니다.
+ * 스프레드시트가 열릴 때 자동으로 실행되는 함수입니다.
+ * '포트폴리오 관리' 메뉴를 생성합니다.
  */
 function onOpen() {
   try {
-    SpreadsheetApp.getUi()
-      .createMenu('📋 포트폴리오 관리')
-      .addItem('➕ 새 과제 시트 생성', 'showAssignmentCreatorSidebar') // UI.gs
+    var ui = SpreadsheetApp.getUi();
+    
+    ui.createMenu('📋 포트폴리오 관리')
+      .addItem('➕ 새 과제 시트 생성', 'showAssignmentCreatorSidebar')
       .addSeparator()
-      .addSubMenu(SpreadsheetApp.getUi().createMenu('➡️ 바로가기')
-        .addItem('🏠 대시보드 (메뉴)', 'goToMenu') // UI.gs
-        .addItem('🧑‍🎓 학생명단', 'goToStudents') // UI.gs
-        .addItem('📝 과제설정', 'goToAssignments') // UI.gs
-        .addItem('📢 공개설정', 'goToPublic') // UI.gs
-        .addItem('🤖 프롬프트', 'goToPrompts') // UI.gs
-        .addItem('📊 시험로그', 'goToExamLog') // UI.gs (추가 필요)
+      .addSubMenu(ui.createMenu('➡️ 바로가기')
+        .addItem('🏠 대시보드 (메뉴)', 'goToMenu')
+        .addItem('🧑‍🎓 학생명단', 'goToStudents')
+        .addItem('📝 과제설정', 'goToAssignments')
+        .addItem('📢 공개설정', 'goToPublic')
+        .addItem('🤖 프롬프트', 'goToPrompts')
+        .addItem('📊 시험로그', 'goToExamLog')
       )
       .addSeparator()
-      .addItem('🔄 대시보드 새로고침', 'refreshDashboard') // Dashboard.gs
-      .addItem('🗑️ 시트 삭제', 'promptToDeleteSheet') // UI.gs
+      .addItem('🔄 대시보드 새로고침', 'refreshDashboard')
+      .addItem('🗑️ 시트 삭제', 'promptToDeleteSheet')
       .addSeparator()
-      // AI 기능 메뉴
-      .addSubMenu(SpreadsheetApp.getUi().createMenu('🤖 AI 기능')
-        .addItem('✍️ 선택된 행에 AI 초안 생성', 'generateAiSummaryManual') // AI.gs
+      .addSubMenu(ui.createMenu('🤖 AI 기능')
+        .addItem('✍️ 선택된 행에 AI 초안 생성', 'generateAiSummaryManual')
         .addSeparator()
-        .addItem('🕵️ 선택된 행 AI 사용 검사', 'runAiDetectionManual') // AI.gs
+        .addItem('🕵️ 선택된 행 AI 사용 검사', 'runAiDetectionManual')
         .addSeparator()
-        .addItem('🔑 Gemini API 키 설정', 'setGeminiApiKey') // AI.gs
-        .addItem('🔑 Claude API 키 설정', 'setClaudeApiKey') // AI.gs
+        .addItem('🔑 Gemini API 키 설정', 'setGeminiApiKey')
+        .addItem('🔑 Claude API 키 설정', 'setClaudeApiKey')
         .addSeparator()
-        .addItem('⚙️ AI 제공자 선택 (Gemini/Claude)', 'selectAiProvider') // AI.gs
-      )
-      // ★★★ 시험 감독 메뉴 추가 ★★★
-      .addSubMenu(SpreadsheetApp.getUi().createMenu('🎯 시험 감독')
-        .addItem('📊 현재 시트 시험 로그 요약', 'showExamLogSummary') // ExamMonitor.gs
-        .addItem('⚠️ 의심 학생 목록 보기', 'showSuspiciousStudents') // ExamMonitor.gs
-        .addSeparator()
-        .addItem('📋 시험로그 시트로 이동', 'goToExamLog') // UI.gs
-        .addSeparator()
-        .addItem('🗑️ 시험로그 초기화', 'clearExamLogs') // ExamMonitor.gs
+        .addItem('⚙️ AI 제공자 선택 (Gemini/Claude)', 'selectAiProvider')
       )
       .addSeparator()
-      .addSubMenu(SpreadsheetApp.getUi().createMenu('⚙️ 시스템 설정')
-        .addItem('초기화: 필수 시트 생성', 'initializeMinimalSystem') // SheetManager.gs
+      .addSubMenu(ui.createMenu('🎯 시험 감독')
+        .addItem('📊 현재 시트 시험 로그 요약', 'showExamLogSummary')
+        .addItem('⚠️ 의심 학생 목록 보기', 'showSuspiciousStudents')
+        .addSeparator()
+        .addItem('📋 시험로그 시트로 이동', 'goToExamLog')
+        .addSeparator()
+        .addItem('🗑️ 시험로그 초기화', 'clearExamLogs')
+      )
+      .addSeparator()
+      .addSubMenu(ui.createMenu('⚙️ 시스템 설정')
+        .addItem('🔧 초기화: 필수 시트 생성', 'initializeMinimalSystem')
         .addItem('⚠️ 중요: AI용 트리거 설치', 'createEditTrigger')
       )
       .addToUi();
+      
+    Logger.log('메뉴 생성 완료');
+    
   } catch (e) {
-    Logger.log('onOpen Error: ' + e.message);
+    Logger.log('onOpen 오류: ' + e.message + '\n' + e.stack);
+    // 오류가 발생해도 시트는 정상적으로 열리도록 함
   }
 }
 
@@ -103,7 +108,11 @@ function createEditTrigger() {
   const triggerExists = triggers.some(t => t.getHandlerFunction() === 'handleEditTrigger');
   
   if (triggerExists) {
-    SpreadsheetApp.getUi().alert('✅ 알림', 'AI 초안 생성을 위한 트리거가 이미 설치되어 있습니다.', SpreadsheetApp.getUi().ButtonSet.OK);
+    SpreadsheetApp.getUi().alert(
+      '✅ 알림', 
+      'AI 초안 생성을 위한 트리거가 이미 설치되어 있습니다.', 
+      SpreadsheetApp.getUi().ButtonSet.OK
+    );
     return;
   }
   
@@ -114,10 +123,18 @@ function createEditTrigger() {
       .onEdit()
       .create();
     
-    SpreadsheetApp.getUi().alert('✅ 성공', 'AI 초안 생성을 위한 트리거가 성공적으로 설치되었습니다.\n이제 체크박스로 AI 기능을 사용할 수 있습니다.', SpreadsheetApp.getUi().ButtonSet.OK);
+    SpreadsheetApp.getUi().alert(
+      '✅ 성공', 
+      'AI 초안 생성을 위한 트리거가 성공적으로 설치되었습니다.\n이제 체크박스로 AI 기능을 사용할 수 있습니다.', 
+      SpreadsheetApp.getUi().ButtonSet.OK
+    );
       
   } catch (e) {
     Logger.log(`트리거 설치 실패: ${e.message}`);
-    SpreadsheetApp.getUi().alert('❌ 실패', `트리거 설치에 실패했습니다.\n오류: ${e.message}`, SpreadsheetApp.getUi().ButtonSet.OK);
+    SpreadsheetApp.getUi().alert(
+      '❌ 실패', 
+      `트리거 설치에 실패했습니다.\n오류: ${e.message}`, 
+      SpreadsheetApp.getUi().ButtonSet.OK
+    );
   }
 }

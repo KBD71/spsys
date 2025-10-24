@@ -1,19 +1,20 @@
 /**
  * ==============================================
- * Assignment.gs - 과제 관리
+ * Assignment.gs - 과제 관리 (v2.0 - 시험모드 추가)
  * ==============================================
  * 새 과제 시트를 생성하고 관련 정보를 '과제설정', '공개' 시트에 기록합니다.
+ * 시험모드 관련 설정도 함께 저장합니다.
  */
 
 /**
  * 사이드바에서 전달받은 데이터로 새 과제 시트를 생성합니다.
- * @param {object} data - {name, startDate, endDate, questions}
+ * @param {object} data - {name, startDate, endDate, questions, examMode, maxViolations, forceFullscreen}
  * @returns {string} 성공 메시지
  */
 function createAssignmentSheetFromSidebar(data) {
   try {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
-    var { name: assignmentName, startDate, endDate, questions } = data;
+    var { name: assignmentName, startDate, endDate, questions, examMode, maxViolations, forceFullscreen } = data;
     
     // 유효성 검사
     var templateSheet = ss.getSheetByName('template');
@@ -32,10 +33,32 @@ function createAssignmentSheetFromSidebar(data) {
 
     // '과제설정' 시트에 행 추가
     var headers = assignmentSettingsSheet.getRange(1, 1, 1, assignmentSettingsSheet.getLastColumn()).getValues()[0];
-    var newRowObject = {'공개': false, '과제ID': assignmentId, '과제명': assignmentName, '대상시트': finalSheetName, '시작일': startDate, '마감일': endDate};
-    questions.forEach((q, i) => { newRowObject[`질문${i + 1}`] = q; });
+    
+    // ★★★ 시험모드 정보를 포함한 행 데이터 생성 ★★★
+    var newRowObject = {
+      '공개': false,
+      '재제출허용': false,
+      '과제ID': assignmentId,
+      '과제명': assignmentName,
+      '대상시트': finalSheetName,
+      '시작일': startDate,
+      '마감일': endDate,
+      // 시험모드 관련 정보 추가
+      '시험모드': examMode || false,
+      '이탈허용횟수': maxViolations || 3,
+      '강제전체화면': forceFullscreen || false
+    };
+    
+    // 질문 추가
+    questions.forEach((q, i) => { 
+      newRowObject[`질문${i + 1}`] = q; 
+    });
+    
+    // 헤더 순서에 맞춰 행 데이터 생성
     var newRow = headers.map(header => newRowObject[header] || '');
     assignmentSettingsSheet.appendRow(newRow);
+    
+    Logger.log(`과제 생성: ${assignmentName}, 시험모드: ${examMode}, 이탈허용: ${maxViolations}회, 전체화면: ${forceFullscreen}`);
 
     // '공개' 시트에 행 추가
     ss.getSheetByName('공개').appendRow([false, finalSheetName, '전체']);
@@ -56,9 +79,17 @@ function createAssignmentSheetFromSidebar(data) {
 
     newSheet.activate();
     updateDashboard(); // Dashboard.gs
-    return `'${finalSheetName}' 시트가 생성되었습니다.`;
+    
+    // ★★★ 시험모드 활성화 여부를 포함한 성공 메시지 ★★★
+    var successMessage = `'${finalSheetName}' 시트가 생성되었습니다.`;
+    if (examMode) {
+      successMessage += `\n\n🎯 시험 모드 활성화됨:\n- 이탈 허용: ${maxViolations}회\n- 전체화면: ${forceFullscreen ? 'ON' : 'OFF'}`;
+    }
+    
+    return successMessage;
+    
   } catch (e) {
-    Logger.log(e);
+    Logger.log('createAssignmentSheetFromSidebar 오류: ' + e.message + '\n' + e.stack);
     throw new Error('시트 생성 실패: ' + e.message);
   }
 }

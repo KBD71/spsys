@@ -7,7 +7,7 @@
         .container { padding: 10px; }
         .form-group { margin-bottom: 15px; }
         label { font-weight: bold; display: block; margin-bottom: 5px; }
-        input[type="text"], input[type="date"] { width: 100%; }
+        input[type="text"], input[type="date"], input[type="number"], select { width: 100%; padding: 6px; box-sizing: border-box; }
         #questions-container .question-item {
             display: flex;
             align-items: center;
@@ -26,6 +26,46 @@
             font-weight: bold;
         }
         #status { margin-top: 10px; }
+        
+        /* 시험 모드 섹션 스타일 */
+        .exam-mode-section {
+            background: #f8f9fa;
+            border: 2px solid #667eea;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        .exam-mode-section h4 {
+            color: #667eea;
+            margin-top: 0;
+        }
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .checkbox-group input[type="checkbox"] {
+            width: auto;
+            margin-right: 8px;
+        }
+        .checkbox-group label {
+            margin-bottom: 0;
+            font-weight: normal;
+        }
+        .number-input-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .number-input-group input[type="number"] {
+            width: 80px;
+            text-align: center;
+        }
+        .help-text {
+            font-size: 11px;
+            color: #666;
+            margin-top: 4px;
+        }
     </style>
 </head>
 <body>
@@ -46,9 +86,42 @@
 
         <hr>
 
-        <h4>질문 목록</h4>
-        <div id="questions-container">
+        <!-- ★★★ 시험 모드 섹션 추가 ★★★ -->
+        <div class="exam-mode-section">
+            <h4>🎯 시험 모드 설정</h4>
+            
+            <div class="checkbox-group">
+                <input type="checkbox" id="examMode">
+                <label for="examMode">시험 모드 활성화 (화면 이탈 감지)</label>
             </div>
+            <div class="help-text">
+                ✓ 체크 시: 학생 화면 이탈 감지, 복사/붙여넣기 차단, 로그 기록
+            </div>
+            
+            <div class="form-group" style="margin-top: 15px;">
+                <label for="maxViolations">이탈 허용 횟수</label>
+                <div class="number-input-group">
+                    <input type="number" id="maxViolations" min="0" max="10" value="3">
+                    <span>회</span>
+                </div>
+                <div class="help-text">
+                    화면 이탈을 몇 회까지 허용할지 설정 (권장: 3회)
+                </div>
+            </div>
+            
+            <div class="checkbox-group">
+                <input type="checkbox" id="forceFullscreen">
+                <label for="forceFullscreen">전체화면 강제</label>
+            </div>
+            <div class="help-text">
+                ✓ 체크 시: 과제 시작 시 자동으로 전체화면 전환
+            </div>
+        </div>
+
+        <hr>
+
+        <h4>질문 목록</h4>
+        <div id="questions-container"></div>
         <button id="addQuestionBtn">➕ 질문 추가</button>
 
         <hr style="margin-top: 20px;">
@@ -72,6 +145,23 @@
                     e.target.parentElement.remove();
                 }
             });
+            
+            // 시험 모드 체크박스 상태에 따라 관련 입력 활성화/비활성화
+            document.getElementById('examMode').addEventListener('change', function() {
+                var isExamMode = this.checked;
+                document.getElementById('maxViolations').disabled = !isExamMode;
+                document.getElementById('forceFullscreen').disabled = !isExamMode;
+                
+                // 시험 모드 비활성화 시 기본값으로 리셋
+                if (!isExamMode) {
+                    document.getElementById('maxViolations').value = 3;
+                    document.getElementById('forceFullscreen').checked = false;
+                }
+            });
+            
+            // 초기 상태 설정
+            document.getElementById('maxViolations').disabled = true;
+            document.getElementById('forceFullscreen').disabled = true;
         });
 
         function addQuestionField() {
@@ -99,7 +189,11 @@
                 name: document.getElementById('assignmentName').value.trim(),
                 startDate: document.getElementById('startDate').value,
                 endDate: document.getElementById('endDate').value,
-                questions: []
+                questions: [],
+                // ★★★ 시험 모드 정보 추가 ★★★
+                examMode: document.getElementById('examMode').checked,
+                maxViolations: parseInt(document.getElementById('maxViolations').value) || 3,
+                forceFullscreen: document.getElementById('forceFullscreen').checked
             };
             
             var questionInputs = document.querySelectorAll('#questions-container input[type="text"]');

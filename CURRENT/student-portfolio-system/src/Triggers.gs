@@ -1,12 +1,12 @@
 /**
  * ==============================================
- * Triggers.gs - 자동 실행 트리거 (v3.2 - AI 메뉴 통합)
+ * Triggers.gs - 자동 실행 트리거 (v4.0 - 시험 모드 메뉴 추가)
  * ==============================================
  */
 
 /**
  * 스프레드시트가 열릴 때 '포트폴리오 관리' 메뉴를 생성합니다.
- * 'AI 기능' 메뉴를 서브메뉴로 통합하여 관리합니다.
+ * 'AI 기능', '시험 감독' 메뉴를 서브메뉴로 통합하여 관리합니다.
  */
 function onOpen() {
   try {
@@ -20,12 +20,13 @@ function onOpen() {
         .addItem('📝 과제설정', 'goToAssignments') // UI.gs
         .addItem('📢 공개설정', 'goToPublic') // UI.gs
         .addItem('🤖 프롬프트', 'goToPrompts') // UI.gs
+        .addItem('📊 시험로그', 'goToExamLog') // UI.gs (추가 필요)
       )
       .addSeparator()
       .addItem('🔄 대시보드 새로고침', 'refreshDashboard') // Dashboard.gs
       .addItem('🗑️ 시트 삭제', 'promptToDeleteSheet') // UI.gs
       .addSeparator()
-      // ★★★ 시작: AI 기능 메뉴를 이곳으로 통합하고 표절 검사 기능 추가 ★★★
+      // AI 기능 메뉴
       .addSubMenu(SpreadsheetApp.getUi().createMenu('🤖 AI 기능')
         .addItem('✍️ 선택된 행에 AI 초안 생성', 'generateAiSummaryManual') // AI.gs
         .addSeparator()
@@ -36,11 +37,19 @@ function onOpen() {
         .addSeparator()
         .addItem('⚙️ AI 제공자 선택 (Gemini/Claude)', 'selectAiProvider') // AI.gs
       )
-      // ★★★ 종료: AI 메뉴 통합 완료 ★★★
+      // ★★★ 시험 감독 메뉴 추가 ★★★
+      .addSubMenu(SpreadsheetApp.getUi().createMenu('🎯 시험 감독')
+        .addItem('📊 현재 시트 시험 로그 요약', 'showExamLogSummary') // ExamMonitor.gs
+        .addItem('⚠️ 의심 학생 목록 보기', 'showSuspiciousStudents') // ExamMonitor.gs
+        .addSeparator()
+        .addItem('📋 시험로그 시트로 이동', 'goToExamLog') // UI.gs
+        .addSeparator()
+        .addItem('🗑️ 시험로그 초기화', 'clearExamLogs') // ExamMonitor.gs
+      )
       .addSeparator()
       .addSubMenu(SpreadsheetApp.getUi().createMenu('⚙️ 시스템 설정')
         .addItem('초기화: 필수 시트 생성', 'initializeMinimalSystem') // SheetManager.gs
-        .addItem('⚠️ 중요: AI용 트리거 설치', 'createEditTrigger') // 이 항목 추가
+        .addItem('⚠️ 중요: AI용 트리거 설치', 'createEditTrigger')
       )
       .addToUi();
   } catch (e) {
@@ -66,7 +75,7 @@ function handleEditTrigger(e) {
 
     if (editedRow < 2 || !range.isChecked()) return;
 
-    const requiredSheets = ['메뉴', '학생명단_전체', '과제설정', '공개', 'template', '프롬프트'];
+    const requiredSheets = ['메뉴', '학생명단_전체', '과제설정', '공개', 'template', '프롬프트', '시험로그'];
     if (requiredSheets.includes(sheet.getName())) return;
     
     const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
@@ -79,7 +88,6 @@ function handleEditTrigger(e) {
 
   } catch (error) {
     Logger.log(`handleEditTrigger 오류: ${error.message}\n${error.stack}`);
-    // 사용자에게 직접적인 오류 알림은 혼란을 줄 수 있으므로 로그만 기록합니다.
   }
 }
 

@@ -1,9 +1,9 @@
 /**
  * ==============================================
- * SheetManager.gs - 시트 관리
+ * SheetManager.gs - 시트 관리 (v2.0 - 시험 모드 추가)
  * ==============================================
  * 시트 생성, 삭제, 초기화 등 범용적인 시트 관리 기능을 담당합니다.
- * (수정: 'template' 시트에 'AI 검사 결과' 열 추가)
+ * (수정: 'template' 시트에 '이탈횟수' 열 추가, 과제설정에 시험모드 관련 컬럼 추가)
  */
 
 /**
@@ -24,6 +24,11 @@ function initializeMinimalSystem() {
         "대상시트",
         "시작일",
         "마감일",
+        // ★★★ 시험 모드 관련 컬럼 추가 ★★★
+        "시험모드",
+        "이탈허용횟수",
+        "강제전체화면",
+        // ★★★ 여기까지 추가 ★★★
         "질문1", "질문2", "질문3", "질문4", "질문5",
         "질문6", "질문7", "질문8", "질문9", "질문10",
         "질문11", "질문12", "질문13", "질문14", "질문15",
@@ -36,11 +41,18 @@ function initializeMinimalSystem() {
         "질문6", "질문7", "질문8", "질문9", "질문10",
         "질문11", "질문12", "질문13", "질문14", "질문15",
         "질문16", "질문17", "질문18", "질문19", "질문20",
-        "제출일시", "초안생성", "종합의견",
-        "AI 검사 결과", // ★★★ 'AI 검사 결과' 항목 추가 ★★★
+        "제출일시", "초안생성", 
+        "이탈횟수", // ★★★ 시험 이탈 횟수 추가 ★★★
+        "종합의견",
+        "AI 검사 결과",
       ],
       프롬프트: [
         "요약종류", "역할 (Persona)", "작업 (Task)", "지시사항 (Instructions)",
+      ],
+      // ★★★ 시험로그 시트 추가 ★★★
+      시험로그: [
+        "타임스탬프", "학번", "이름", "반", "과제ID", "과제명", 
+        "이벤트타입", "지속시간(초)", "상세정보"
       ],
     };
 
@@ -56,6 +68,7 @@ function initializeMinimalSystem() {
             .setFontColor("white")
             .setFontWeight("bold");
 
+          // 체크박스 설정
           if (sheetName === '공개' || sheetName === '과제설정') {
             var headers = requiredSheets[sheetName];
             var checkboxRule = SpreadsheetApp.newDataValidation()
@@ -63,7 +76,8 @@ function initializeMinimalSystem() {
               .setAllowInvalid(false)
               .build();
 
-            var checkboxColumns = ['공개', '재제출허용'];
+            // ★★★ 시험모드, 강제전체화면 체크박스 추가 ★★★
+            var checkboxColumns = ['공개', '재제출허용', '시험모드', '강제전체화면'];
             
             checkboxColumns.forEach(function(colName) {
               var colIndex = headers.indexOf(colName) + 1;
@@ -71,6 +85,17 @@ function initializeMinimalSystem() {
                 sheet.getRange(2, colIndex, sheet.getMaxRows() - 1, 1).setDataValidation(checkboxRule);
               }
             });
+            
+            // 이탈허용횟수 컬럼에 숫자 검증 규칙 추가
+            var violationColIndex = headers.indexOf('이탈허용횟수') + 1;
+            if (violationColIndex > 0) {
+              var numberRule = SpreadsheetApp.newDataValidation()
+                .requireNumberBetween(0, 10)
+                .setAllowInvalid(false)
+                .setHelpText('0~10 사이의 숫자를 입력하세요')
+                .build();
+              sheet.getRange(2, violationColIndex, sheet.getMaxRows() - 1, 1).setDataValidation(numberRule);
+            }
           }
 
           if (sheetName === 'template') {
@@ -103,7 +128,7 @@ function initializeMinimalSystem() {
     if (createdCount > 0) {
       ui.alert(
         "✅ 필수 시트 생성 완료",
-        `${createdCount}개의 시트가 생성되었습니다.`,
+        `${createdCount}개의 시트가 생성되었습니다.\n\n시험 모드 기능이 추가되었습니다:\n- 과제설정: 시험모드, 이탈허용횟수, 강제전체화면\n- 시험로그: 학생 행동 로그 기록\n- template: 이탈횟수 기록`,
         ui.ButtonSet.OK
       );
     } else {

@@ -485,6 +485,8 @@
                     ta.addEventListener('input', (e) => {
                         saveDraft(e.target.dataset.assignmentId, e.target.dataset.studentId, e.target.dataset.questionColumn, e.target.value);
                     });
+                    // 복붙 방지 적용
+                    preventCopyPaste(ta);
                 });
 
                 typesetMath(questionsContainer);
@@ -701,7 +703,41 @@
         
         closeMathEditor();
     }
+
+    // 복사/붙여넣기 방지 함수
+    function preventCopyPaste(element) {
+        // 붙여넣기 방지
+        element.addEventListener('paste', function(e) {
+            e.preventDefault();
+            showMessage('submitMessage', '붙여넣기가 비활성화되어 있습니다. 직접 입력해주세요.', 'error');
+            setTimeout(() => hideMessage('submitMessage'), 3000);
+            return false;
+        });
+        
+        // 복사 방지
+        element.addEventListener('copy', function(e) {
+            e.preventDefault();
+            return false;
+        });
+        
+        // 잘라내기 방지
+        element.addEventListener('cut', function(e) {
+            e.preventDefault();
+            return false;
+        });
+        
+        // 우클릭 메뉴 방지
+        element.addEventListener('contextmenu', function(e) {
+            e.preventDefault();
+            return false;
+        });
+        
+        // 드래그 앤 드롭 방지
+        element.addEventListener('drop', function(e) {
+            e.preventDefault();
+            return false;
+        });
+    }
 </script>
 </body>
 </html>
-                        

@@ -1,8 +1,8 @@
 /**
- * 과제 목록 조회 API (v8 - 제출 상태 및 재제출 허용 기능 추가)
+ * 과제 목록 조회 API (v9 - 시험모드 정보 추가)
  * - 학생의 과제별 제출 여부(submitted)를 확인합니다.
  * - 교사가 설정한 재제출 허용 여부(resubmissionAllowed)를 확인합니다.
- * - 이 두 가지 상태를 API 응답에 포함하여 프론트엔드로 전달합니다.
+ * - 시험모드 관련 설정(examMode, maxViolations, forceFullscreen)을 포함합니다.
  */
 const { google } = require('googleapis');
 
@@ -139,13 +139,22 @@ module.exports = async (req, res) => {
       }
       
       const resubmissionAllowed = (headerMap['재제출허용'] !== undefined && row[headerMap['재제출허용']] || '').toString().toUpperCase() === 'TRUE';
+      
+      // ★★★ 시험모드 관련 정보 추가 ★★★
+      const examMode = (headerMap['시험모드'] !== undefined && row[headerMap['시험모드']] || '').toString().toUpperCase() === 'TRUE';
+      const maxViolations = headerMap['이탈허용횟수'] !== undefined ? parseInt(row[headerMap['이탈허용횟수']]) || 3 : 3;
+      const forceFullscreen = (headerMap['강제전체화면'] !== undefined && row[headerMap['강제전체화면']] || '').toString().toUpperCase() === 'TRUE';
 
       return {
         id: row[headerMap['과제ID']],
         name: assignmentName,
         dueDate: dueDateStr || '기한 없음',
         submitted: isSubmitted,
-        resubmissionAllowed: resubmissionAllowed
+        resubmissionAllowed: resubmissionAllowed,
+        // ★★★ 시험모드 정보 포함 ★★★
+        examMode: examMode,
+        maxViolations: maxViolations,
+        forceFullscreen: forceFullscreen
       };
     });
     

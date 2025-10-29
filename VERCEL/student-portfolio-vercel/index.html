@@ -307,7 +307,7 @@
         <div class="modal-content">
             <div class="modal-header"><h3 id="submitModalTitle">과제 제출</h3></div>
             <div class="modal-body"><form id="assignmentSubmitForm"><div id="questionsContainer"><div class="loading-message">질문을 불러오는 중...</div></div></form></div>
-            <div class="modal-footer"><button type="button" onclick="hideSubmitModal()" class="btn btn-secondary">취소</button><button type="button" onclick="submitAssignment()" class="btn btn-primary submit-btn">제출하기</button></div>
+            <div class="modal-footer"><button type="button" id="cancelSubmitBtn" onclick="hideSubmitModal()" class="btn btn-secondary">취소</button><button type="button" onclick="submitAssignment()" class="btn btn-primary submit-btn">제출하기</button></div>
         </div>
     </div>
 
@@ -972,6 +972,14 @@
 
         // 전체화면 해제
         exitFullscreen();
+
+        // 취소 버튼 활성화
+        const cancelBtn = document.getElementById('cancelSubmitBtn');
+        if (cancelBtn) {
+            cancelBtn.disabled = false;
+            cancelBtn.style.opacity = '1';
+            cancelBtn.style.cursor = 'pointer';
+        }
 
         console.log('시험 모드 비활성화됨');
     }

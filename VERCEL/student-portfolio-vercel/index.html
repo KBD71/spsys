@@ -1074,6 +1074,88 @@
         window.focus();
     }
 
+    
+    // ★ 추가: 키보드 단축키 차단
+    function handleKeyDown(e) {
+        if (!examModeActive) return;
+
+        // Alt+Tab, Ctrl+W, F11, ESC 등 차단
+        if (e.altKey && e.key === 'Tab') {
+            e.preventDefault();
+            examModeViolations++;
+            showExamWarning('Alt+Tab 사용이 감지되었습니다!');
+            return false;
+        }
+
+        if (e.ctrlKey && (e.key === 'w' || e.key === 'W')) {
+            e.preventDefault();
+            showExamWarning('창 닫기 시도가 감지되었습니다!');
+            return false;
+        }
+
+        if (e.key === 'F11') {
+            e.preventDefault();
+            return false;
+        }
+
+        if (e.key === 'Escape' && document.fullscreenElement) {
+            e.preventDefault();
+            return false;
+        }
+
+        // Windows 키, 개발자도구 단축키 차단
+        if (e.key === 'Meta' || e.metaKey) {
+            e.preventDefault();
+            return false;
+        }
+
+        if (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'i' || e.key === 'J' || e.key === 'j' || e.key === 'C' || e.key === 'c')) {
+            e.preventDefault();
+            examModeViolations++;
+            showExamWarning('개발자도구 사용이 감지되었습니다!');
+            return false;
+        }
+
+        if (e.key === 'F12') {
+            e.preventDefault();
+            examModeViolations++;
+            showExamWarning('개발자도구 사용이 감지되었습니다!');
+            return false;
+        }
+    }
+
+    // ★ 추가: 마우스 우클릭 차단
+    function handleContextMenu(e) {
+        if (!examModeActive) return;
+
+        e.preventDefault();
+        // 경고 없이 조용히 차단 (너무 많은 경고 방지)
+        return false;
+    }
+
+    // ★ 추가: 복사/붙여넣기 차단
+    function handleCopyPaste(e) {
+        if (!examModeActive) return;
+
+        e.preventDefault();
+        // 경고 없이 조용히 차단
+        return false;
+    }
+
+    // ★ 추가: 포커스 강제 회복
+    function enforceFocus() {
+        if (!examModeActive) return;
+
+        if (!document.hasFocus()) {
+            window.focus();
+        }
+
+        // 전체화면 이탈 시 복구
+        if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+            enterFullscreen();
+        }
+    }
+
     // 위반 기록 (서버에 로깅)
     async function logExamViolation(violationType) {
         try {

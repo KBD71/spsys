@@ -77,6 +77,7 @@ module.exports = async (req, res) => {
     // 시험 모드 플래그 추출 (있으면 사용, 없으면 false)
     const examModeColIndex = assignmentHeaderMap['시험모드'];
     const examMode = examModeColIndex !== undefined ?
+// 이탈허용횟수 추출    const maxViolationsColIndex = assignmentHeaderMap['이탈허용횟수'];    const maxViolations = maxViolationsColIndex !== undefined ? parseInt(assignmentRow[maxViolationsColIndex]) || 3 : 3;    // 강제전체화면 추출    const forceFullscreenColIndex = assignmentHeaderMap['강제전체화면'];    const forceFullscreen = forceFullscreenColIndex !== undefined ?        (assignmentRow[forceFullscreenColIndex] === 'TRUE' || assignmentRow[forceFullscreenColIndex] === true || assignmentRow[forceFullscreenColIndex] === 'true') :        false;
         (assignmentRow[examModeColIndex] === 'TRUE' || assignmentRow[examModeColIndex] === true || assignmentRow[examModeColIndex] === 'true') :
         false;
 
@@ -142,7 +143,7 @@ module.exports = async (req, res) => {
       questions: questions,
       submitted: submitted,
       submittedAt: submittedAt,
-      examMode: examMode
+      examMode: examMode,      maxViolations: maxViolations,      forceFullscreen: forceFullscreen
     });
 
   } catch (error) {

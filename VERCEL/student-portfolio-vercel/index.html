@@ -361,6 +361,11 @@
     let examModeActive = false;
     let examModeViolations = 0;
     let examModeWarningShown = false;
+    let examModeMaxViolations = 3; // 기본값
+    let examModeForceFullscreen = false;
+    let examModeListenersActive = true; // 이벤트 리스너 활성화 상태
+    let examModeAssignmentId = null; // 현재 시험 과제 ID
+    let examModeAssignmentName = null; // 현재 시험 과제명
 
     document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('loginForm').addEventListener('submit', handleLogin);
@@ -563,6 +568,10 @@
 
             // 시험 모드 체크
             if (result.examMode === true) {
+                examModeMaxViolations = result.maxViolations || 3;
+                examModeForceFullscreen = result.forceFullscreen || false;
+                examModeAssignmentId = assignmentId;
+                examModeAssignmentName = assignmentName;
                 enableExamMode();
             }
             
@@ -620,7 +629,15 @@
 
     function hideSubmitModal() {
         if (examModeActive) {
-            if (!confirm('시험 모드가 활성화되어 있습니다. 정말로 종료하시겠습니까?\n\n주의: 제출하지 않고 종료하면 답안이 저장되지 않을 수 있습니다.')) {
+            // 확인 대화상자 표시 시 이벤트 리스너 일시 중지
+            examModeListenersActive = false;
+            const shouldClose = confirm('시험 모드가 활성화되어 있습니다. 정말로 종료하시겠습니까?\n\n주의: 제출하지 않고 종료하면 답안이 저장되지 않을 수 있습니다.');
+
+            if (!shouldClose) {
+                // 취소하면 이벤트 리스너 재활성화
+                setTimeout(() => {
+                    examModeListenersActive = true;
+                }, 500);
                 return;
             }
             disableExamMode();
@@ -687,6 +704,12 @@
     }
 
     async function submitAssignment() {
+        // 시험모드일 경우 이벤트 리스너 일시 중지 (제출 과정에서 발생하는 이벤트 무시)
+        const wasListenersActive = examModeListenersActive;
+        if (examModeActive) {
+            examModeListenersActive = false;
+        }
+
         const form = document.getElementById('assignmentSubmitForm');
         const assignmentId = form.dataset.assignmentId;
         const answers = {};
@@ -707,8 +730,19 @@
                 }
                 hideSubmitModal();
                 loadAssignments();
-            } else { alert(`제출 실패: ${result.message}`); }
-        } catch (error) { alert('제출 중 오류가 발생했습니다.');
+            } else {
+                alert(`제출 실패: ${result.message}`);
+                // 제출 실패 시 이벤트 리스너 복구
+                if (examModeActive && wasListenersActive) {
+                    examModeListenersActive = true;
+                }
+            }
+        } catch (error) {
+            alert('제출 중 오류가 발생했습니다.');
+            // 제출 오류 시 이벤트 리스너 복구
+            if (examModeActive && wasListenersActive) {
+                examModeListenersActive = true;
+            }
         } finally { submitBtn.disabled = false; submitBtn.textContent = '제출하기'; }
     }
     
@@ -935,28 +969,50 @@
         examModeActive = true;
         examModeViolations = 0;
         examModeWarningShown = false;
+        examModeListenersActive = true;
 
         // 시험 모드 표시
-        document.getElementById('examModeIndicator').classList.add('active');
+        updateExamModeIndicator();
 
-        // 전체화면 요청
-        enterFullscreen();
+        // 강제 전체화면이 설정된 경우에만 전체화면 요청
+        if (examModeForceFullscreen) {
+            enterFullscreen();
+        }
 
         // 이벤트 리스너 추가
         document.addEventListener('visibilitychange', handleVisibilityChange);
         window.addEventListener('blur', handleWindowBlur);
         window.addEventListener('beforeunload', handleBeforeUnload);
-        document.addEventListener('fullscreenchange', handleFullscreenChange);
+
+        // 강제 전체화면이 설정된 경우에만 전체화면 이탈 감지
+        if (examModeForceFullscreen) {
+            document.addEventListener('fullscreenchange', handleFullscreenChange);
+        }
 
         // 뒤로가기 방지
         history.pushState(null, '', location.href);
         window.addEventListener('popstate', preventBackNavigation);
 
-        console.log('시험 모드 활성화됨');
+        // 시험 시작 로그 기록
+        logExamEvent('시험시작', 0, `시험 모드 활성화 (최대 위반 횟수: ${examModeMaxViolations}회, 전체화면 강제: ${examModeForceFullscreen})`);
+
+        console.log('시험 모드 활성화됨 (최대 위반 횟수:', examModeMaxViolations, '회)');
+    }
+
+    // 시험 모드 표시 업데이트
+    function updateExamModeIndicator() {
+        const indicator = document.getElementById('examModeIndicator');
+        indicator.textContent = `🔒 시험 모드 | 위반 ${examModeViolations}/${examModeMaxViolations}회`;
+        indicator.classList.add('active');
     }
 
     // 시험 모드 비활성화
     function disableExamMode() {
+        // 시험 종료 로그 기록 (비활성화 전에 기록)
+        if (examModeActive) {
+            logExamEvent('시험종료', 0, `총 위반 횟수: ${examModeViolations}회`);
+        }
+
         examModeActive = false;
 
         // 시험 모드 표시 제거
@@ -980,6 +1036,10 @@
             cancelBtn.style.opacity = '1';
             cancelBtn.style.cursor = 'pointer';
         }
+
+        // 시험 관련 변수 초기화
+        examModeAssignmentId = null;
+        examModeAssignmentName = null;
 
         console.log('시험 모드 비활성화됨');
     }
@@ -1013,20 +1073,47 @@
 
     // 화면 전환 감지
     function handleVisibilityChange() {
-        if (!examModeActive) return;
+        if (!examModeActive || !examModeListenersActive) return;
 
         if (document.hidden) {
             examModeViolations++;
-            showExamWarning('다른 탭이나 창으로 전환했습니다!');
+            updateExamModeIndicator();
+
+            // 로그 기록
+            logExamEvent('화면이탈', 0, '다른 탭/프로그램으로 전환');
+
+            // 최대 위반 횟수 체크
+            if (examModeViolations >= examModeMaxViolations) {
+                // 자동제출 실행
+                autoSubmitExam();
+            } else {
+                showExamWarning('다른 탭이나 창으로 전환했습니다!');
+            }
         }
     }
 
     // 윈도우 포커스 아웃 감지
     function handleWindowBlur() {
-        if (!examModeActive) return;
+        if (!examModeActive || !examModeListenersActive) return;
 
-        examModeViolations++;
-        showExamWarning('시험 화면에서 벗어났습니다!');
+        // blur는 alert나 모달로 인해서도 발생할 수 있으므로
+        // visibilitychange와 중복 카운트를 피하기 위해
+        // document.hidden 상태가 아닐 때만 카운트
+        if (!document.hidden) {
+            examModeViolations++;
+            updateExamModeIndicator();
+
+            // 로그 기록
+            logExamEvent('포커스이탈', 0, '윈도우 포커스 아웃 (Alt+Tab 등)');
+
+            // 최대 위반 횟수 체크
+            if (examModeViolations >= examModeMaxViolations) {
+                // 자동제출 실행
+                autoSubmitExam();
+            } else {
+                showExamWarning('시험 화면에서 벗어났습니다!');
+            }
+        }
     }
 
     // 페이지 이탈 방지
@@ -1040,46 +1127,81 @@
 
     // 전체화면 해제 감지
     function handleFullscreenChange() {
-        if (!examModeActive) return;
+        if (!examModeActive || !examModeListenersActive || !examModeForceFullscreen) return;
 
         if (!document.fullscreenElement && !document.webkitFullscreenElement && !document.msFullscreenElement) {
             examModeViolations++;
-            showExamWarning('전체화면에서 벗어났습니다!');
-            // 다시 전체화면으로
-            setTimeout(enterFullscreen, 1000);
+            updateExamModeIndicator();
+
+            // 로그 기록
+            logExamEvent('전체화면해제', 0, 'ESC 키 또는 수동으로 전체화면 해제');
+
+            // 최대 위반 횟수 체크
+            if (examModeViolations >= examModeMaxViolations) {
+                // 자동제출 실행
+                autoSubmitExam();
+            } else {
+                showExamWarning('전체화면에서 벗어났습니다!');
+                // 다시 전체화면으로
+                setTimeout(enterFullscreen, 1000);
+            }
         }
     }
 
     // 뒤로가기 방지
     function preventBackNavigation(e) {
-        if (!examModeActive) return;
+        if (!examModeActive || !examModeListenersActive) return;
 
         history.pushState(null, '', location.href);
         examModeViolations++;
-        showExamWarning('뒤로가기는 사용할 수 없습니다!');
+        updateExamModeIndicator();
+
+        // 로그 기록
+        logExamEvent('뒤로가기시도', 0, '브라우저 뒤로가기 버튼 사용 시도');
+
+        // 최대 위반 횟수 체크
+        if (examModeViolations >= examModeMaxViolations) {
+            // 자동제출 실행
+            autoSubmitExam();
+        } else {
+            showExamWarning('뒤로가기는 사용할 수 없습니다!');
+        }
     }
 
     // 경고 표시
     function showExamWarning(message) {
+        // 이벤트 리스너 일시 중지 (경고 표시 시 blur 이벤트 방지)
+        examModeListenersActive = false;
+
         const overlay = document.getElementById('examWarningOverlay');
         const messageEl = document.getElementById('examWarningMessage');
         const countEl = document.getElementById('examViolationCount');
 
-        messageEl.innerHTML = `${message}<br>다시 시험 화면으로 돌아가 주세요.`;
+        messageEl.innerHTML = `${message}<br>다시 시험 화면으로 돌아가 주세요.<br><br><strong style="color: #ffd700;">위반 ${examModeViolations}/${examModeMaxViolations}회</strong>`;
         countEl.textContent = examModeViolations;
         overlay.classList.add('show');
 
-        // 서버에 위반 기록 (선택사항)
-        logExamViolation(message);
+        // 1초 후 이벤트 리스너 재활성화
+        setTimeout(() => {
+            examModeListenersActive = true;
+        }, 1000);
     }
 
     // 시험 화면으로 복귀
     function returnToExam() {
         document.getElementById('examWarningOverlay').classList.remove('show');
-        enterFullscreen();
+
+        if (examModeForceFullscreen) {
+            enterFullscreen();
+        }
 
         // 포커스를 다시 문서로
         window.focus();
+
+        // 이벤트 리스너 재활성화
+        setTimeout(() => {
+            examModeListenersActive = true;
+        }, 500);
     }
 
     
@@ -1164,21 +1286,54 @@
         }
     }
 
-    // 위반 기록 (서버에 로깅)
-    async function logExamViolation(violationType) {
+    // 자동 제출 (위반 횟수 초과 시)
+    async function autoSubmitExam() {
+        // 이벤트 리스너 비활성화하여 추가 위반 방지
+        examModeListenersActive = false;
+
+        // 경고 오버레이 제거
+        document.getElementById('examWarningOverlay').classList.remove('show');
+
+        // 로그 기록
+        logExamEvent('자동제출', 0, `위반 횟수 ${examModeMaxViolations}회 초과로 자동 제출`);
+
+        // 사용자에게 알림
+        alert(`⚠️ 경고\n\n화면 이탈이 ${examModeMaxViolations}회를 초과하여 자동으로 제출됩니다.`);
+
+        // 제출 실행
+        try {
+            await submitAssignment();
+        } catch (error) {
+            console.error('자동 제출 실패:', error);
+            alert('자동 제출 중 오류가 발생했습니다. 수동으로 제출해주세요.');
+        }
+
+        // 시험 모드 비활성화
+        disableExamMode();
+    }
+
+    // 시험 로그 기록 (서버에 로깅)
+    async function logExamEvent(eventType, duration, details) {
+        if (!examModeAssignmentId) {
+            console.error('시험 과제 ID가 없습니다.');
+            return;
+        }
+
         try {
             await fetch(`${API_BASE}/Exam-log`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     studentId: currentStudentId,
-                    violationType: violationType,
-                    timestamp: new Date().toISOString(),
-                    violationCount: examModeViolations
+                    assignmentId: examModeAssignmentId,
+                    eventType: eventType,
+                    duration: duration || 0,
+                    details: details || ''
                 })
             });
+            console.log(`📊 시험 로그 기록: ${eventType} - ${details}`);
         } catch (error) {
-            console.error('위반 기록 실패:', error);
+            console.error('시험 로그 기록 실패:', error);
         }
     }
 </script>

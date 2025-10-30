@@ -993,9 +993,6 @@
         history.pushState(null, '', location.href);
         window.addEventListener('popstate', preventBackNavigation);
 
-        // 시험 시작 로그 기록
-        logExamEvent('시험시작', 0, `시험 모드 활성화 (최대 위반 횟수: ${examModeMaxViolations}회, 전체화면 강제: ${examModeForceFullscreen})`);
-
         console.log('시험 모드 활성화됨 (최대 위반 횟수:', examModeMaxViolations, '회)');
     }
 
@@ -1008,12 +1005,12 @@
 
     // 시험 모드 비활성화
     function disableExamMode(autoSubmitted = false) {
-        // 시험 종료 로그 기록 (비활성화 전에 기록)
-        if (examModeActive) {
+        // 위반 사항이 있는 경우에만 로그 기록
+        if (examModeActive && examModeViolations > 0) {
             const details = autoSubmitted
                 ? `자동 제출됨 (총 위반 횟수: ${examModeViolations}회, 최대 허용: ${examModeMaxViolations}회)`
                 : `정상 제출됨 (총 위반 횟수: ${examModeViolations}회, 최대 허용: ${examModeMaxViolations}회)`;
-            logExamEvent('시험종료', 0, details);
+            logExamEvent('시험로그', 0, details);
         }
 
         examModeActive = false;

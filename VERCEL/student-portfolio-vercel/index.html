@@ -1007,10 +1007,13 @@
     }
 
     // 시험 모드 비활성화
-    function disableExamMode() {
+    function disableExamMode(autoSubmitted = false) {
         // 시험 종료 로그 기록 (비활성화 전에 기록)
         if (examModeActive) {
-            logExamEvent('시험종료', 0, `총 위반 횟수: ${examModeViolations}회`);
+            const details = autoSubmitted
+                ? `자동 제출됨 (총 위반 횟수: ${examModeViolations}회, 최대 허용: ${examModeMaxViolations}회)`
+                : `정상 제출됨 (총 위반 횟수: ${examModeViolations}회, 최대 허용: ${examModeMaxViolations}회)`;
+            logExamEvent('시험종료', 0, details);
         }
 
         examModeActive = false;
@@ -1079,9 +1082,6 @@
             examModeViolations++;
             updateExamModeIndicator();
 
-            // 로그 기록
-            logExamEvent('화면이탈', 0, '다른 탭/프로그램으로 전환');
-
             // 최대 위반 횟수 체크
             if (examModeViolations >= examModeMaxViolations) {
                 // 자동제출 실행
@@ -1102,9 +1102,6 @@
         if (!document.hidden) {
             examModeViolations++;
             updateExamModeIndicator();
-
-            // 로그 기록
-            logExamEvent('포커스이탈', 0, '윈도우 포커스 아웃 (Alt+Tab 등)');
 
             // 최대 위반 횟수 체크
             if (examModeViolations >= examModeMaxViolations) {
@@ -1133,9 +1130,6 @@
             examModeViolations++;
             updateExamModeIndicator();
 
-            // 로그 기록
-            logExamEvent('전체화면해제', 0, 'ESC 키 또는 수동으로 전체화면 해제');
-
             // 최대 위반 횟수 체크
             if (examModeViolations >= examModeMaxViolations) {
                 // 자동제출 실행
@@ -1155,9 +1149,6 @@
         history.pushState(null, '', location.href);
         examModeViolations++;
         updateExamModeIndicator();
-
-        // 로그 기록
-        logExamEvent('뒤로가기시도', 0, '브라우저 뒤로가기 버튼 사용 시도');
 
         // 최대 위반 횟수 체크
         if (examModeViolations >= examModeMaxViolations) {
@@ -1294,9 +1285,6 @@
         // 경고 오버레이 제거
         document.getElementById('examWarningOverlay').classList.remove('show');
 
-        // 로그 기록
-        logExamEvent('자동제출', 0, `위반 횟수 ${examModeMaxViolations}회 초과로 자동 제출`);
-
         // 사용자에게 알림
         alert(`⚠️ 경고\n\n화면 이탈이 ${examModeMaxViolations}회를 초과하여 자동으로 제출됩니다.`);
 
@@ -1308,8 +1296,8 @@
             alert('자동 제출 중 오류가 발생했습니다. 수동으로 제출해주세요.');
         }
 
-        // 시험 모드 비활성화
-        disableExamMode();
+        // 시험 모드 비활성화 (자동제출 플래그 전달)
+        disableExamMode(true);
     }
 
     // 시험 로그 기록 (서버에 로깅)

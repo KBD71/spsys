@@ -974,6 +974,14 @@
         // 시험 모드 표시
         updateExamModeIndicator();
 
+        // 취소 버튼 비활성화
+        const cancelBtn = document.getElementById('cancelSubmitBtn');
+        if (cancelBtn) {
+            cancelBtn.disabled = true;
+            cancelBtn.style.opacity = '0.5';
+            cancelBtn.style.cursor = 'not-allowed';
+        }
+
         // 강제 전체화면이 설정된 경우에만 전체화면 요청
         if (examModeForceFullscreen) {
             enterFullscreen();

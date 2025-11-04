@@ -1,8 +1,9 @@
 /**
- * 내 기록 조회 및 건의사항 저장 API (v10 - v2 알림메시지 지원 + 캐싱)
+ * 내 기록 조회 및 건의사항 저장 API (v11 - 에러 처리 개선)
  * GET: 학생의 기록(교사 코멘트) 및 알림을 조회합니다.
  * - 교사 코멘트: 의견공개=TRUE일 때 과제 시트의 교사 평가 표시
  * - 알림: 알림메시지가 있고 의견공개=FALSE일 때 알림메시지 표시
+ * - '공개' 시트가 없거나 구조가 잘못되어도 에러 대신 빈 배열 반환
  * POST: 건의사항을 저장합니다.
  *
  * v2 구조: [과제공개, 대상시트, 대상반, 의견공개, 알림메시지]
@@ -65,15 +66,31 @@ async function handleGetRecords(req, res) {
   const spreadsheetId = process.env.SPREADSHEET_ID;
 
   // ★★★ v2 구조 호환: 5개 컬럼 조회 ★★★
-  const publicSheetResponse = await sheets.spreadsheets.values.get({ spreadsheetId, range: '공개!A:E' });
-  const publicSheetData = publicSheetResponse.data.values || [];
-  if (publicSheetData.length < 2) return res.status(200).json({ success: true, records: [] });
+  let publicSheetData = [];
+  try {
+    const publicSheetResponse = await sheets.spreadsheets.values.get({ spreadsheetId, range: '공개!A:E' });
+    publicSheetData = publicSheetResponse.data.values || [];
+  } catch (e) {
+    // '공개' 시트가 없거나 접근할 수 없는 경우 빈 결과 반환
+    console.log(`[my-records] '공개' 시트 조회 실패: ${e.message} - 빈 결과 반환`);
+    return res.status(200).json({ success: true, records: [] });
+  }
+
+  if (publicSheetData.length < 2) {
+    // 데이터가 없으면 빈 결과 반환 (에러가 아님)
+    console.log('[my-records] 공개 시트에 데이터가 없음 - 빈 결과 반환');
+    return res.status(200).json({ success: true, records: [] });
+  }
 
   // ★★★ v2 구조 지원: [과제공개, 대상시트, 대상반, 의견공개, 알림메시지] ★★★
   // v1 구조 폴백: [공개, 시트이름, 대상반]
   const publicHeaders = publicSheetData[0] || [];
   const publicHeaderMap = {};
-  publicHeaders.forEach((h, i) => { publicHeaderMap[h.trim()] = i; });
+  publicHeaders.forEach((h, i) => {
+    if (h && typeof h === 'string') {
+      publicHeaderMap[h.trim()] = i;
+    }
+  });
 
   // 컬럼 인덱스 찾기 (v2 우선, v1 폴백)
   const isPublicIdx = publicHeaderMap['과제공개'] !== undefined ? publicHeaderMap['과제공개'] : publicHeaderMap['공개'];
@@ -83,8 +100,9 @@ async function handleGetRecords(req, res) {
   const notificationMessageIdx = publicHeaderMap['알림메시지']; // v2 only
 
   if (isPublicIdx === undefined || sheetNameIdx === undefined) {
-    console.error('[my-records] 공개 시트 구조 인식 실패. 헤더:', publicHeaders);
-    return res.status(500).json({ success: false, message: '공개 시트 구조를 인식할 수 없습니다.' });
+    // 구조를 인식할 수 없어도 에러가 아니라 빈 결과 반환
+    console.log('[my-records] 공개 시트 구조 인식 실패 (헤더:', publicHeaders, ') - 빈 결과 반환');
+    return res.status(200).json({ success: true, records: [] });
   }
 
   const records = [];

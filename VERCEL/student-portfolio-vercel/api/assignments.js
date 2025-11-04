@@ -1,10 +1,12 @@
 /**
- * 과제 목록 조회 API (v9 - 시험모드 정보 추가)
+ * 과제 목록 조회 API (v9 - 시험모드 정보 추가 + 캐싱)
  * - 학생의 과제별 제출 여부(submitted)를 확인합니다.
  * - 교사가 설정한 재제출 허용 여부(resubmissionAllowed)를 확인합니다.
  * - 시험모드 관련 설정(examMode, maxViolations, forceFullscreen)을 포함합니다.
+ * - 30초 캐싱으로 동시 접속 성능 향상
  */
 const { google } = require('googleapis');
+const { getCacheKey, getCache, setCache } = require('./cache');
 
 async function getSheetsClient() {
   const auth = new google.auth.GoogleAuth({
@@ -63,6 +65,13 @@ module.exports = async (req, res) => {
     const { studentId } = req.query;
     if (!studentId) {
       return res.status(400).json({ success: false, message: '학번을 입력해주세요.' });
+    }
+
+    const cacheKey = getCacheKey('assignments', { studentId });
+    const cached = getCache(cacheKey, 30000);
+    if (cached) {
+      console.log(`[assignments] 캐시 HIT - 학번: ${studentId}`);
+      return res.status(200).json(cached);
     }
 
     const sheets = await getSheetsClient();
@@ -161,7 +170,10 @@ module.exports = async (req, res) => {
     const assignmentsWithNull = await Promise.all(assignmentsPromises);
     const assignments = assignmentsWithNull.filter(a => a !== null);
 
-    return res.status(200).json({ success: true, assignments });
+    const result = { success: true, assignments };
+    setCache(cacheKey, result);
+    console.log(`[assignments] 캐시 저장 - 학번: ${studentId}, 과제 수: ${assignments.length}`);
+    return res.status(200).json(result);
 
   } catch (error) {
     console.error('Assignments API 최종 오류:', error);

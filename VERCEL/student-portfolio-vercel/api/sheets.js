@@ -1,9 +1,10 @@
 /**
- * Google Sheets API 연동 라이브러리
+ * Google Sheets API 연동 라이브러리 (캐싱 추가)
  * Vercel Serverless Functions에서 사용
  */
 
 const { google } = require('googleapis');
+const { getCacheKey, getCache, setCache, clearCache } = require('./cache');
 
 /**
  * Google Sheets 인증 및 연결
@@ -38,10 +39,17 @@ function verifyPassword(plainPassword, storedPassword) {
 }
 
 /**
- * 학생 찾기
+ * 학생 찾기 (캐싱 적용)
  */
 async function findStudent(studentId) {
   try {
+    const cacheKey = getCacheKey('student', { studentId });
+    const cached = getCache(cacheKey, 60000);
+    if (cached) {
+      console.log(`[findStudent] 캐시 HIT - 학번: ${studentId}`);
+      return cached;
+    }
+
     const sheets = await getSheetsClient();
     const spreadsheetId = process.env.SPREADSHEET_ID;
 
@@ -82,7 +90,7 @@ async function findStudent(studentId) {
       const currentId = String(row[studentIdCol] || '').trim();
 
       if (currentId === String(studentId).trim()) {
-        return {
+        const result = {
           found: true,
           row: i + 1, // 1-based index
           studentId: currentId,
@@ -92,13 +100,18 @@ async function findStudent(studentId) {
           lastChangeDate: lastChangeDateCol !== -1 ? row[lastChangeDateCol] : null,
           changeCount: changeCountCol !== -1 ? Number(row[changeCountCol] || 0) : 0
         };
+        setCache(cacheKey, result);
+        console.log(`[findStudent] 캐시 저장 - 학번: ${studentId}`);
+        return result;
       }
     }
 
-    return {
+    const notFoundResult = {
       found: false,
       error: '학생을 찾을 수 없습니다.'
     };
+    setCache(cacheKey, notFoundResult);
+    return notFoundResult;
 
   } catch (error) {
     console.error('Find student error:', error);
@@ -198,6 +211,9 @@ async function updatePassword(row, newPasswordHash, currentCount) {
         data: updates
       }
     });
+
+    clearCache('student:');
+    console.log('[updatePassword] 학생 정보 캐시 무효화 완료');
 
     return { success: true };
 

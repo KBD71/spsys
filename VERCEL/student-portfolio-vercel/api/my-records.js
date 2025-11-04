@@ -1,9 +1,11 @@
 /**
- * 내 기록 조회 및 건의사항 저장 API (v8 - 단순 학번 Prefix 비교 최종판)
+ * 내 기록 조회 및 건의사항 저장 API (v8 - 단순 학번 Prefix 비교 최종판 + 캐싱)
  * GET: '대상반'에 입력된 '101, 106'과 같은 값을 학생 학번 앞 3자리와 직접 비교하여 필터링합니다.
  * POST: 건의사항을 저장합니다.
+ * - 45초 캐싱으로 조회 성능 향상
  */
 const { google } = require('googleapis');
+const { getCacheKey, getCache, setCache, clearCache } = require('./cache');
 
 async function getSheetsClient() {
   const auth = new google.auth.GoogleAuth({
@@ -42,10 +44,17 @@ function isClassAllowed(studentId, targetClass) {
 }
 
 
-// GET 요청 핸들러 (기록 조회)
+// GET 요청 핸들러 (기록 조회 - 캐싱 적용)
 async function handleGetRecords(req, res) {
   const { studentId } = req.query;
   if (!studentId) return res.status(400).json({ success: false, message: '학번이 필요합니다.' });
+
+  const cacheKey = getCacheKey('myRecords', { studentId });
+  const cached = getCache(cacheKey, 45000);
+  if (cached) {
+    console.log(`[my-records] 캐시 HIT - 학번: ${studentId}`);
+    return res.status(200).json(cached);
+  }
 
   const sheets = await getSheetsClient();
   const spreadsheetId = process.env.SPREADSHEET_ID;
@@ -132,7 +141,11 @@ async function handleGetRecords(req, res) {
         });
     }
   }
-  return res.status(200).json({ success: true, records: records });
+
+  const result = { success: true, records: records };
+  setCache(cacheKey, result);
+  console.log(`[my-records] 캐시 저장 - 학번: ${studentId}, 기록 수: ${records.length}`);
+  return res.status(200).json(result);
 }
 
 // POST 요청 핸들러 (건의사항 저장)
@@ -173,6 +186,10 @@ async function handleSaveSuggestion(req, res) {
     valueInputOption: 'USER_ENTERED',
     requestBody: { values: [[suggestion]] }
   });
+
+  const recordsCacheKey = getCacheKey('myRecords', { studentId });
+  clearCache(recordsCacheKey);
+  console.log(`[my-records] 캐시 무효화 - 학번: ${studentId}`);
 
   return res.status(200).json({ success: true, message: '건의사항이 저장되었습니다.' });
 }

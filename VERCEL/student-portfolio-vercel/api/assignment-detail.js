@@ -1,10 +1,12 @@
 /**
- * 과제 상세 정보 및 질문 조회 API (v2 - 헤더 기반 동적 처리 리팩토링)
+ * 과제 상세 정보 및 질문 조회 API (v2 - 헤더 기반 동적 처리 리팩토링 + 캐싱)
  * - '과제설정' 시트와 개별 과제 시트의 열 순서 변경에 대응할 수 있도록 개선되었습니다.
  * - 헤더 이름을 기반으로 필요한 모든 데이터의 위치를 동적으로 찾습니다.
+ * - 제출 여부에 따라 동적 TTL 적용 (제출 완료: 60초, 미제출: 30초)
  */
 
 const { google } = require('googleapis');
+const { getCacheKey, getCache, setCache } = require('./cache');
 
 async function getSheetsClient() {
   const auth = new google.auth.GoogleAuth({
@@ -36,6 +38,13 @@ module.exports = async (req, res) => {
     const { assignmentId, studentId } = req.query;
     if (!assignmentId || !studentId) {
       return res.status(400).json({ success: false, message: '과제ID와 학번을 입력해주세요.' });
+    }
+
+    const cacheKey = getCacheKey('assignmentDetail', { assignmentId, studentId });
+    const cached = getCache(cacheKey, 60000);
+    if (cached) {
+      console.log(`[assignment-detail] 캐시 HIT - 과제ID: ${assignmentId}, 학번: ${studentId}`);
+      return res.status(200).json(cached);
     }
 
     const sheets = await getSheetsClient();
@@ -140,7 +149,7 @@ module.exports = async (req, res) => {
     const submittedAtIndex = targetHeaderMap['제출일시'];
     const submittedAt = (submitted && submittedAtIndex !== undefined) ? studentRow[submittedAtIndex] : null;
 
-    return res.status(200).json({
+    const result = {
       success: true,
       assignment: {
         id: assignmentId,
@@ -155,7 +164,13 @@ module.exports = async (req, res) => {
       examMode: examMode,
       maxViolations: maxViolations,
       forceFullscreen: forceFullscreen
-    });
+    };
+
+    const cacheTTL = submitted ? 60000 : 30000;
+    setCache(cacheKey, result);
+    console.log(`[assignment-detail] 캐시 저장 - 과제ID: ${assignmentId}, 학번: ${studentId}, TTL: ${cacheTTL}ms`);
+
+    return res.status(200).json(result);
 
   } catch (error) {
     console.error('Assignment detail API error:', error);

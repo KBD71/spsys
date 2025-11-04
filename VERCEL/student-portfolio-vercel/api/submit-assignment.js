@@ -1,10 +1,12 @@
 /**
- * 과제 제출 API (v4 - 헤더 기반 동적 처리 리팩토링)
+ * 과제 제출 API (v4 - 헤더 기반 동적 처리 리팩토링 + 캐시 무효화)
  * 1. 관련된 모든 시트('학생명단_전체', '과제설정', 대상 과제 시트)의 헤더를 동적으로 분석합니다.
  * 2. 열 순서 변경에 관계없이 학생 정보와 답변을 정확한 컬럼에 저장합니다.
  * 3. '초안생성' 체크박스 UI 깨짐 방지 로직을 그대로 유지하여 안정성을 보장합니다.
+ * 4. 제출 후 관련 캐시를 무효화하여 최신 데이터를 보장합니다.
  */
 const { google } = require('googleapis');
+const { getCacheKey, clearCache } = require('./cache');
 
 async function getSheetsClient() {
   const auth = new google.auth.GoogleAuth({
@@ -210,6 +212,19 @@ module.exports = async (req, res) => {
         }
     }
     // ★★★ 종료: 생략되었던 부분 끝 ★★★
+
+    // 제출 성공 후 관련 캐시 무효화
+    const assignmentCacheKey = getCacheKey('assignments', { studentId });
+    const assignmentDetailCacheKey = getCacheKey('assignmentDetail', { assignmentId, studentId });
+    clearCache(assignmentCacheKey);
+    clearCache(assignmentDetailCacheKey);
+    console.log(`[submit-assignment] 캐시 무효화 - 학번: ${studentId}, 과제ID: ${assignmentId}`);
+
+    // 전체 제출인 경우 내 기록 캐시도 무효화
+    if (!isSingleQuestion) {
+      const recordsCacheKey = getCacheKey('myRecords', { studentId });
+      clearCache(recordsCacheKey);
+    }
 
     const successMessage = isSingleQuestion ? '답변이 저장되었습니다.' : '과제가 제출되었습니다.';
     return res.status(200).json({ success: true, message: successMessage });

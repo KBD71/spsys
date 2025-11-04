@@ -1,7 +1,9 @@
 /**
- * 내 기록 조회 및 건의사항 저장 API (v8 - 단순 학번 Prefix 비교 최종판 + 캐싱)
+ * 내 기록 조회 및 건의사항 저장 API (v9 - v2 공개 시트 구조 호환 + 캐싱)
  * GET: '대상반'에 입력된 '101, 106'과 같은 값을 학생 학번 앞 3자리와 직접 비교하여 필터링합니다.
  * POST: 건의사항을 저장합니다.
+ * - v2 구조: [과제공개, 대상시트, 대상반, 의견공개, 알림메시지]
+ * - v1 구조 폴백: [공개, 시트이름, 대상반]
  * - 45초 캐싱으로 조회 성능 향상
  */
 const { google } = require('googleapis');
@@ -59,22 +61,41 @@ async function handleGetRecords(req, res) {
   const sheets = await getSheetsClient();
   const spreadsheetId = process.env.SPREADSHEET_ID;
 
-  // '공개' 시트 읽기
-  const publicSheetResponse = await sheets.spreadsheets.values.get({ spreadsheetId, range: '공개!A:C' });
+  // ★★★ v2 구조 호환: 5개 컬럼 조회 ★★★
+  const publicSheetResponse = await sheets.spreadsheets.values.get({ spreadsheetId, range: '공개!A:E' });
   const publicSheetData = publicSheetResponse.data.values || [];
   if (publicSheetData.length < 2) return res.status(200).json({ success: true, records: [] });
+
+  // ★★★ v2 구조 지원: [과제공개, 대상시트, 대상반, 의견공개, 알림메시지] ★★★
+  // v1 구조 폴백: [공개, 시트이름, 대상반]
+  const publicHeaders = publicSheetData[0] || [];
+  const publicHeaderMap = {};
+  publicHeaders.forEach((h, i) => { publicHeaderMap[h.trim()] = i; });
+
+  // 컬럼 인덱스 찾기 (v2 우선, v1 폴백)
+  const isPublicIdx = publicHeaderMap['과제공개'] !== undefined ? publicHeaderMap['과제공개'] : publicHeaderMap['공개'];
+  const sheetNameIdx = publicHeaderMap['대상시트'] !== undefined ? publicHeaderMap['대상시트'] : publicHeaderMap['시트이름'];
+  const targetClassIdx = publicHeaderMap['대상반'];
+  const opinionPublicIdx = publicHeaderMap['의견공개']; // v2 only
+
+  if (isPublicIdx === undefined || sheetNameIdx === undefined) {
+    console.error('[my-records] 공개 시트 구조 인식 실패. 헤더:', publicHeaders);
+    return res.status(500).json({ success: false, message: '공개 시트 구조를 인식할 수 없습니다.' });
+  }
 
   const records = [];
   const sheetDataCache = {};
 
   for (let i = 1; i < publicSheetData.length; i++) {
     const publicRow = publicSheetData[i];
-    const isPublic = publicRow[0] === true || publicRow[0] === 'TRUE';
-    const targetSheetName = publicRow[1];
-    const targetClass = publicRow[2] || '전체';
+    const isPublic = publicRow[isPublicIdx] === true || publicRow[isPublicIdx] === 'TRUE';
+    const targetSheetName = publicRow[sheetNameIdx];
+    const targetClass = publicRow[targetClassIdx] || '전체';
+    const opinionPublic = opinionPublicIdx !== undefined ? (publicRow[opinionPublicIdx] === true || publicRow[opinionPublicIdx] === 'TRUE') : true; // v2: 의견공개 플래그, v1: 기본 true
 
     // ★★★ 핵심 수정: isClassAllowed 함수에 'studentId'를 전달하여 필터링 ★★★
-    if (!isPublic || !targetSheetName || !isClassAllowed(studentId, targetClass)) {
+    // ★★★ v2 추가: 의견공개 여부도 확인 (내 기록은 교사 의견을 보여주므로) ★★★
+    if (!isPublic || !opinionPublic || !targetSheetName || !isClassAllowed(studentId, targetClass)) {
       continue;
     }
 

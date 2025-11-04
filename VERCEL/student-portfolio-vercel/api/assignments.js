@@ -72,21 +72,39 @@ module.exports = async (req, res) => {
     const headers = allRows[0];
     const headerMap = createHeaderMap(headers);
 
-    const requiredColumns = ['공개', '과제ID', '과제명', '대상시트'];
+    // ★★★ v2 구조: '공개' 컬럼 제거됨 (공개 시트에서만 관리) ★★★
+    const requiredColumns = ['과제ID', '과제명', '대상시트'];
     for (const col of requiredColumns) {
         if (headerMap[col] === undefined) {
             throw new Error(`'과제설정' 시트에서 '${col}' 컬럼을 찾을 수 없습니다.`);
         }
     }
-    
-    const publicSheetResponse = await sheets.spreadsheets.values.get({ spreadsheetId, range: '공개!A:C' });
+
+    // ★★★ v2 구조 호환: 5개 컬럼 조회 ★★★
+    const publicSheetResponse = await sheets.spreadsheets.values.get({ spreadsheetId, range: '공개!A:E' });
     const publicSheetData = publicSheetResponse.data.values || [];
     const publicSettingsMap = {};
+
+    // ★★★ v2 구조 지원: [과제공개, 대상시트, 대상반, 의견공개, 알림메시지] ★★★
+    // v1 구조 폴백: [공개, 시트이름, 대상반]
+    const publicHeaders = publicSheetData[0] || [];
+    const publicHeaderMap = {};
+    publicHeaders.forEach((h, i) => { publicHeaderMap[h.trim()] = i; });
+
+    // 컬럼 인덱스 찾기 (v2 우선, v1 폴백)
+    const isPublicIdx = publicHeaderMap['과제공개'] !== undefined ? publicHeaderMap['과제공개'] : publicHeaderMap['공개'];
+    const sheetNameIdx = publicHeaderMap['대상시트'] !== undefined ? publicHeaderMap['대상시트'] : publicHeaderMap['시트이름'];
+    const targetClassIdx = publicHeaderMap['대상반'];
+
+    if (isPublicIdx === undefined || sheetNameIdx === undefined) {
+        console.error('[assignments] 공개 시트 구조 인식 실패. 헤더:', publicHeaders);
+    }
+
     for (let i = 1; i < publicSheetData.length; i++) {
         const publicRow = publicSheetData[i];
-        const isPublic = publicRow[0] === true || publicRow[0] === 'TRUE';
-        const sheetName = publicRow[1];
-        const targetClass = publicRow[2] || '전체';
+        const isPublic = publicRow[isPublicIdx] === true || publicRow[isPublicIdx] === 'TRUE';
+        const sheetName = publicRow[sheetNameIdx];
+        const targetClass = publicRow[targetClassIdx] || '전체';
         if (isPublic && sheetName) {
             publicSettingsMap[sheetName] = targetClass;
         }
@@ -99,8 +117,9 @@ module.exports = async (req, res) => {
     const validAssignments = [];
     for (let i = 1; i < allRows.length; i++) {
       const row = allRows[i];
-      const isPublic = (row[headerMap['공개']] || '').toString().toUpperCase() === 'TRUE';
-      if (!isPublic) continue;
+
+      // ★★★ v2: '공개' 컬럼 제거됨, '공개' 시트에서만 관리 ★★★
+      // 더 이상 '과제설정' 시트의 '공개' 컬럼을 체크하지 않음
 
       const assignmentName = row[headerMap['과제명']];
       const targetSheetName = row[headerMap['대상시트']];

@@ -1,9 +1,63 @@
 /**
  * ==============================================
- * Helpers.gs - 보조 함수
+ * Helpers.gs - 보조 함수 (v2.0 - 마스킹 유틸리티 추가)
  * ==============================================
  * 여러 모듈에서 공통으로 사용되는 데이터 집계 및 가공 함수를 관리합니다.
  */
+
+// ========== 민감정보 마스킹 유틸리티 ==========
+
+/**
+ * 학번 마스킹 (로그용)
+ * @param {string} studentId - 학번 (5자리)
+ * @returns {string} 마스킹된 학번
+ * @example maskStudentId('10101') // => '101**'
+ */
+function maskStudentId(studentId) {
+  if (!studentId || String(studentId).length < 3) return '***';
+  const idStr = String(studentId);
+  return idStr.substring(0, 3) + '**';
+}
+
+/**
+ * 이름 마스킹 (로그용)
+ * @param {string} name - 이름
+ * @returns {string} 마스킹된 이름
+ * @example maskName('홍길동') // => '홍*동'
+ */
+function maskName(name) {
+  if (!name || String(name).length < 2) return '*';
+  const nameStr = String(name);
+  if (nameStr.length === 2) return nameStr[0] + '*';
+  return nameStr[0] + '*'.repeat(nameStr.length - 2) + nameStr[nameStr.length - 1];
+}
+
+/**
+ * 안전한 로그 메시지 생성 (민감정보 자동 마스킹)
+ * @param {string} message - 로그 메시지
+ * @param {object} context - 컨텍스트 정보
+ * @returns {string} 마스킹된 로그 메시지
+ */
+function createSafeLog(message, context) {
+  context = context || {};
+  let safeMessage = message;
+
+  if (context.studentId) {
+    safeMessage += ` [학번: ${maskStudentId(context.studentId)}]`;
+  }
+
+  if (context.name) {
+    safeMessage += ` [이름: ${maskName(context.name)}]`;
+  }
+
+  if (context.assignmentId) {
+    safeMessage += ` [과제ID: ${context.assignmentId}]`;
+  }
+
+  return safeMessage;
+}
+
+// ========== 기존 기능 ==========
 
 /**
  * 시스템의 전반적인 통계 정보를 계산하여 반환합니다.
@@ -33,25 +87,22 @@ function getSystemStats() {
 }
 
 /**
- * '학생명단_전체' 시트를 분석하여 반별 학생 수를 계산합니다.
- * @returns {object} 반 이름을 키로, 학생 수를 값으로 갖는 객체
+ * ★★★ 통합된 함수: 학생 데이터로부터 반별 인원 계산 ★★★
+ * @param {object} studentData - 학생 정보 객체 (getFullStudentList() 반환값)
+ * @returns {object} 반 이름을 키로, 학생 수를 값으로 하는 객체
  */
-function getStudentCountByClass() {
+function getStudentCountByClassHelper(studentData) {
     try {
-      var ss = SpreadsheetApp.getActiveSpreadsheet();
-      var studentSheet = ss.getSheetByName('학생명단_전체');
-      if (!studentSheet || studentSheet.getLastRow() < 2) return {};
-      
-      var classRange = studentSheet.getRange("B2:B" + studentSheet.getLastRow());
-      var classes = classRange.getValues().flat().filter(String);
-      
-      var counts = {};
-      classes.forEach(className => {
-        counts[className] = (counts[className] || 0) + 1;
-      });
+      const counts = {};
+      for (const id in studentData) {
+        const student = studentData[id];
+        if (student.class) {
+          counts[student.class] = (counts[student.class] || 0) + 1;
+        }
+      }
       return counts;
     } catch(e) {
-      Logger.log('getStudentCountByClass Error: ' + e.message);
+      Logger.log('getStudentCountByClassHelper Error: ' + e.message);
       return {};
     }
 }

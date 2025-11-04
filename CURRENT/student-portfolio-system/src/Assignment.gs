@@ -58,7 +58,7 @@ function createAssignmentSheetFromSidebar(data) {
     var newRow = headers.map(header => newRowObject[header] || '');
     assignmentSettingsSheet.appendRow(newRow);
     
-    Logger.log(`과제 생성: ${assignmentName}, 시험모드: ${examMode}, 이탈허용: ${maxViolations}회, 전체화면: ${forceFullscreen}`);
+    Logger.log(`[과제생성] ${assignmentName}, 시험모드: ${examMode}, 이탈허용: ${maxViolations}회, 전체화면: ${forceFullscreen}`);
 
     // '공개' 시트에 행 추가
     ss.getSheetByName('공개').appendRow([false, finalSheetName, '전체']);

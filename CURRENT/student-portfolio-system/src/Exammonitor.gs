@@ -1,9 +1,72 @@
 /**
  * ==============================================
- * ExamMonitor.gs - 시험 감독 시스템
+ * ExamMonitor.gs - 시험 감독 시스템 (v2.0 - 캐싱 추가)
  * ==============================================
  * 온라인 시험 시 학생의 화면 이탈, 전체화면 해제 등을 기록하고 관리합니다.
+ * CacheService를 사용하여 학생/과제 정보를 30초 캐싱합니다.
  */
+
+// ========== 캐싱 유틸리티 ==========
+
+/**
+ * 학생 정보 캐싱 (30초 TTL)
+ * @param {string} studentId - 학번
+ * @returns {object|null} 학생 정보 또는 null
+ */
+function getCachedStudentInfo(studentId) {
+  const cache = CacheService.getScriptCache();
+  const cacheKey = `student_${studentId}`;
+  const cached = cache.get(cacheKey);
+
+  if (cached) {
+    Logger.log(`[캐시 HIT] 학생 정보: ${maskStudentId(studentId)}`);
+    return JSON.parse(cached);
+  }
+
+  return null;
+}
+
+/**
+ * 학생 정보 캐시 저장
+ * @param {string} studentId - 학번
+ * @param {object} studentInfo - 학생 정보
+ */
+function setCachedStudentInfo(studentId, studentInfo) {
+  const cache = CacheService.getScriptCache();
+  const cacheKey = `student_${studentId}`;
+  cache.put(cacheKey, JSON.stringify(studentInfo), 30); // 30초 TTL
+  Logger.log(`[캐시 SET] 학생 정보: ${maskStudentId(studentId)}`);
+}
+
+/**
+ * 과제명 캐싱 (30초 TTL)
+ * @param {string} assignmentId - 과제ID
+ * @returns {string|null} 과제명 또는 null
+ */
+function getCachedAssignmentName(assignmentId) {
+  const cache = CacheService.getScriptCache();
+  const cacheKey = `assignment_${assignmentId}`;
+  const cached = cache.get(cacheKey);
+
+  if (cached) {
+    Logger.log(`[캐시 HIT] 과제명: ${assignmentId}`);
+    return cached;
+  }
+
+  return null;
+}
+
+/**
+ * 과제명 캐시 저장
+ * @param {string} assignmentId - 과제ID
+ * @param {string} assignmentName - 과제명
+ */
+function setCachedAssignmentName(assignmentId, assignmentName) {
+  const cache = CacheService.getScriptCache();
+  const cacheKey = `assignment_${assignmentId}`;
+  cache.put(cacheKey, assignmentName, 30); // 30초 TTL
+  Logger.log(`[캐시 SET] 과제명: ${assignmentId}`);
+}
 
 /**
  * 시험 로그를 기록하는 함수 (웹에서 호출 가능)
@@ -14,7 +77,7 @@ function recordExamLog(logData) {
   try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     let logSheet = ss.getSheetByName('시험로그');
-    
+
     // 시험로그 시트가 없으면 생성
     if (!logSheet) {
       logSheet = ss.insertSheet('시험로그');
@@ -25,42 +88,56 @@ function recordExamLog(logData) {
         .setFontColor('white')
         .setFontWeight('bold');
     }
-    
-    // 학생 정보 조회
-    const studentSheet = ss.getSheetByName('학생명단_전체');
-    if (!studentSheet) {
-      throw new Error('학생명단_전체 시트를 찾을 수 없습니다.');
-    }
-    
-    const studentData = studentSheet.getDataRange().getValues();
-    const studentHeaders = studentData[0];
-    const studentIdColIndex = studentHeaders.indexOf('학번');
-    const nameColIndex = studentHeaders.indexOf('이름');
-    const classColIndex = studentHeaders.indexOf('반');
-    
-    const studentRow = studentData.find((row, idx) => idx > 0 && row[studentIdColIndex] === logData.studentId);
-    
-    if (!studentRow) {
-      throw new Error('학생 정보를 찾을 수 없습니다: ' + logData.studentId);
-    }
-    
-    const studentName = studentRow[nameColIndex];
-    const studentClass = studentRow[classColIndex];
-    
-    // 과제명 조회
-    const assignmentSheet = ss.getSheetByName('과제설정');
-    let assignmentName = logData.assignmentId;
-    
-    if (assignmentSheet) {
-      const assignmentData = assignmentSheet.getDataRange().getValues();
-      const assignmentHeaders = assignmentData[0];
-      const assignmentIdColIndex = assignmentHeaders.indexOf('과제ID');
-      const assignmentNameColIndex = assignmentHeaders.indexOf('과제명');
-      
-      const assignmentRow = assignmentData.find((row, idx) => idx > 0 && row[assignmentIdColIndex] === logData.assignmentId);
-      if (assignmentRow) {
-        assignmentName = assignmentRow[assignmentNameColIndex];
+
+    // ★★★ 학생 정보 조회 (캐싱 적용) ★★★
+    let studentInfo = getCachedStudentInfo(logData.studentId);
+
+    if (!studentInfo) {
+      const studentSheet = ss.getSheetByName('학생명단_전체');
+      if (!studentSheet) {
+        throw new Error('학생명단_전체 시트를 찾을 수 없습니다.');
       }
+
+      const studentData = studentSheet.getDataRange().getValues();
+      const studentHeaders = studentData[0];
+      const studentIdColIndex = studentHeaders.indexOf('학번');
+      const nameColIndex = studentHeaders.indexOf('이름');
+      const classColIndex = studentHeaders.indexOf('반');
+
+      const studentRow = studentData.find((row, idx) => idx > 0 && row[studentIdColIndex] === logData.studentId);
+
+      if (!studentRow) {
+        throw new Error('학생 정보를 찾을 수 없습니다: ' + logData.studentId);
+      }
+
+      studentInfo = {
+        name: studentRow[nameColIndex],
+        class: studentRow[classColIndex]
+      };
+
+      setCachedStudentInfo(logData.studentId, studentInfo);
+    }
+
+    // ★★★ 과제명 조회 (캐싱 적용) ★★★
+    let assignmentName = getCachedAssignmentName(logData.assignmentId);
+
+    if (!assignmentName) {
+      assignmentName = logData.assignmentId; // 기본값
+
+      const assignmentSheet = ss.getSheetByName('과제설정');
+      if (assignmentSheet) {
+        const assignmentData = assignmentSheet.getDataRange().getValues();
+        const assignmentHeaders = assignmentData[0];
+        const assignmentIdColIndex = assignmentHeaders.indexOf('과제ID');
+        const assignmentNameColIndex = assignmentHeaders.indexOf('과제명');
+
+        const assignmentRow = assignmentData.find((row, idx) => idx > 0 && row[assignmentIdColIndex] === logData.assignmentId);
+        if (assignmentRow) {
+          assignmentName = assignmentRow[assignmentNameColIndex];
+        }
+      }
+
+      setCachedAssignmentName(logData.assignmentId, assignmentName);
     }
     
     // 로그 기록
@@ -68,18 +145,18 @@ function recordExamLog(logData) {
     const newRow = [
       timestamp,
       logData.studentId,
-      studentName,
-      studentClass,
+      studentInfo.name,
+      studentInfo.class,
       logData.assignmentId,
       assignmentName,
       logData.eventType,
       logData.duration || '',
       logData.details || ''
     ];
-    
+
     logSheet.appendRow(newRow);
-    
-    Logger.log(`시험 로그 기록: ${studentName}(${logData.studentId}) - ${logData.eventType}`);
+
+    Logger.log(`[시험로그] ${maskName(studentInfo.name)}(${maskStudentId(logData.studentId)}) - ${logData.eventType}`);
     
     return { success: true, message: '로그 기록 완료' };
     

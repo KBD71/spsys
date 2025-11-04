@@ -120,6 +120,115 @@ function generateAiSummaryManual() {
 }
 
 /**
+ * ★★★ 신규 기능: 미작성 학생 일괄 AI 초안 생성 ★★★
+ * 현재 시트에서 '종합의견'이 비어있는 모든 학생의 초안을 자동 생성합니다.
+ */
+function generateAiBatchForUnwritten() {
+  const ui = SpreadsheetApp.getUi();
+  const sheet = SpreadsheetApp.getActiveSheet();
+
+  try {
+    // 1. 헤더 확인
+    const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    const opinionColIndex = headers.indexOf('종합의견');
+    const draftColIndex = headers.indexOf('초안생성');
+
+    if (opinionColIndex === -1) {
+      ui.alert('❌ 오류', '이 시트에는 \"종합의견\" 컬럼이 없습니다.', ui.ButtonSet.OK);
+      return;
+    }
+
+    if (draftColIndex === -1) {
+      ui.alert('❌ 오류', '이 시트에는 \"초안생성\" 컬럼이 없습니다.', ui.ButtonSet.OK);
+      return;
+    }
+
+    // 2. 미작성 행 찾기
+    const lastRow = sheet.getLastRow();
+    if (lastRow < 2) {
+      ui.alert('ℹ️ 알림', '데이터가 없습니다.', ui.ButtonSet.OK);
+      return;
+    }
+
+    const data = sheet.getRange(2, 1, lastRow - 1, headers.length).getValues();
+    const unwrittenRows = [];
+
+    data.forEach((row, index) => {
+      const opinion = row[opinionColIndex];
+      if (!opinion || String(opinion).trim() === '') {
+        unwrittenRows.push(index + 2); // 실제 행 번호
+      }
+    });
+
+    if (unwrittenRows.length === 0) {
+      ui.alert('✅ 완료', '모든 학생의 종합의견이 이미 작성되었습니다.', ui.ButtonSet.OK);
+      return;
+    }
+
+    // 3. 사용자 확인
+    const response = ui.alert(
+      '🤖 AI 일괄 초안 생성',
+      `${unwrittenRows.length}명의 미작성 학생에 대해 AI 초안을 생성합니다.\n\n` +
+      `예상 소요 시간: 약 ${Math.ceil(unwrittenRows.length * 10 / 60)}분\n\n계속하시겠습니까?`,
+      ui.ButtonSet.YES_NO
+    );
+
+    if (response !== ui.Button.YES) {
+      return;
+    }
+
+    // 4. 일괄 생성 실행
+    SpreadsheetApp.getActiveSpreadsheet().toast(
+      `${unwrittenRows.length}명의 AI 초안을 생성 중입니다...`,
+      '🚀 시작',
+      -1
+    );
+
+    let successCount = 0;
+    let failCount = 0;
+
+    unwrittenRows.forEach((rowNum, index) => {
+      try {
+        SpreadsheetApp.getActiveSpreadsheet().toast(
+          `진행 중: ${index + 1}/${unwrittenRows.length}명`,
+          '🤖 AI 생성 중',
+          3
+        );
+
+        runAiGeneration(sheet, rowNum);
+        successCount++;
+
+        // Rate Limit 방지를 위해 각 호출 사이 2초 대기
+        if (index < unwrittenRows.length - 1) {
+          Utilities.sleep(2000);
+        }
+      } catch (e) {
+        Logger.log(`[AI 일괄생성] 실패 - 행 ${rowNum}: ${e.message}`);
+        failCount++;
+      }
+    });
+
+    // 5. 결과 보고
+    SpreadsheetApp.getActiveSpreadsheet().toast(
+      `성공: ${successCount}명, 실패: ${failCount}명`,
+      '✅ 일괄 생성 완료',
+      10
+    );
+
+    ui.alert(
+      '✅ AI 일괄 초안 생성 완료',
+      `성공: ${successCount}명\n실패: ${failCount}명\n\n` +
+      (failCount > 0 ? '실패한 행은 로그(보기 > 로그)를 확인하세요.' : '모든 초안이 성공적으로 생성되었습니다.'),
+      ui.ButtonSet.OK
+    );
+
+  } catch (e) {
+    Logger.log(`[AI 일괄생성] 오류: ${e.message}\n${e.stack}`);
+    ui.alert('❌ 오류', `AI 일괄 생성 중 오류가 발생했습니다:\n${e.message}`, ui.ButtonSet.OK);
+  }
+}
+
+/**
  * AI 초안 생성의 전체 과정을 조율하는 메인 함수입니다.
  */
 function runAiGeneration(sheet, row) {
@@ -170,9 +279,7 @@ function runAiGeneration(sheet, row) {
     const summary = retryCallAiApi(provider, aiData.prompt, 3);
 
     opinionCell.setValue(summary.trim()).setHorizontalAlignment("left");
-    Logger.log(
-      `AI 초안 생성 완료 - 학번: ${aiData.studentId}, 시트: ${sheet.getName()}`
-    );
+    Logger.log(createSafeLog(`[AI 초안] 생성 완료 - 시트: ${sheet.getName()}`, { studentId: aiData.studentId }));
   } catch (e) {
     Logger.log(
       `❌ AI 초안 생성 실패 (시트: ${sheet.getName()}, 행: ${row}): ${
@@ -268,9 +375,7 @@ function getAiDataForSummary(sheet, row, headers) {
     `## 학생 정보:\n- 학번: ${studentId}\n- 과제명: ${sheetName}\n\n` +
     `## 학생 제출 내용 및 교사 평가:\n${context.trim()}\n\n` +
     `## AI 초안 작성 지시사항:\n${instructions}`;
-  Logger.log(
-    `프롬프트 생성 완료 (학번: ${studentId}, 길이: ${finalPrompt.length})`
-  );
+  Logger.log(createSafeLog(`[AI 초안] 프롬프트 생성 완료 (길이: ${finalPrompt.length})`, { studentId }));
   return { prompt: finalPrompt, studentId: studentId };
 }
 
@@ -337,11 +442,7 @@ function runAiDetection(sheet, row) {
       .setValue(detectionResult.trim())
       .setHorizontalAlignment("left")
       .setWrap(true);
-    Logger.log(
-      `AI 사용 검사 완료 - 학번: ${
-        detectionData.studentId
-      }, 시트: ${sheet.getName()}`
-    );
+    Logger.log(createSafeLog(`[AI 검사] 완료 - 시트: ${sheet.getName()}`, { studentId: detectionData.studentId }));
     ui.alert(
       "✅ AI 검사 완료",
       `'${sheet.getName()}' 시트의 ${row}행에 검사 결과를 기록했습니다.`,
@@ -408,9 +509,7 @@ function getAiDataForDetection(sheet, row, headers) {
     ---
   `;
 
-  Logger.log(
-    `AI 검사 프롬프트 생성 완료 (학번: ${studentId}, 길이: ${finalPrompt.length})`
-  );
+  Logger.log(createSafeLog(`[AI 검사] 프롬프트 생성 완료 (길이: ${finalPrompt.length})`, { studentId }));
   return { prompt: finalPrompt, studentId: studentId };
 }
 
@@ -419,13 +518,14 @@ function getAiDataForDetection(sheet, row, headers) {
 // ================================================================
 
 /**
- * AI API 호출을 재시도합니다 (범용 함수).
+ * AI API 호출을 재시도합니다 (범용 함수 v2.0 - 지수 백오프 추가).
  * @param {string} provider - 'gemini' 또는 'claude'
  * @param {string} prompt - AI에게 전달할 프롬프트
  * @param {number} maxRetries - 최대 재시도 횟수
  */
 function retryCallAiApi(provider, prompt, maxRetries) {
   let attempt = 0;
+
   while (attempt < maxRetries) {
     try {
       if (provider === "claude") {
@@ -434,16 +534,36 @@ function retryCallAiApi(provider, prompt, maxRetries) {
         return callGeminiApi(prompt);
       }
     } catch (e) {
+      const isRateLimitError =
+        e.message.includes('429') ||
+        e.message.includes('Resource has been exhausted') ||
+        e.message.includes('rate_limit_exceeded') ||
+        e.message.includes('quota');
+
       if (attempt < maxRetries - 1) {
+        // ★★★ 지수 백오프: Rate Limit 에러는 더 긴 대기 시간 ★★★
+        const baseDelay = isRateLimitError ? 5000 : 2000; // Rate Limit: 5초, 기타: 2초
+        const delayMs = baseDelay * Math.pow(2, attempt); // 지수 증가: 5→10→20초 또는 2→4→8초
+
         Logger.log(
-          `${provider === 'claude' ? 'Claude' : 'Gemini'} API 호출 실패 (시도 ${attempt + 1}/${maxRetries}): ${
-            e.message
-          }. 2초 후 재시도...`
+          `[AI API 재시도] ${provider === 'claude' ? 'Claude' : 'Gemini'} API 호출 실패 (시도 ${attempt + 1}/${maxRetries})\n` +
+          `오류: ${e.message.substring(0, 100)}...\n` +
+          `${isRateLimitError ? '⚠️ Rate Limit 감지 - ' : ''}${delayMs / 1000}초 후 재시도...`
         );
-        Utilities.sleep(2000 * (attempt + 1));
+
+        Utilities.sleep(delayMs);
         attempt++;
       } else {
-        throw e;
+        // 최종 실패 시 더 자세한 오류 메시지
+        const errorPrefix = isRateLimitError ?
+          '⚠️ API 사용량 한도 초과:\n' :
+          '❌ AI API 호출 최종 실패:\n';
+
+        throw new Error(
+          `${errorPrefix}${e.message}\n\n` +
+          `재시도 횟수: ${maxRetries}회 모두 소진\n` +
+          (isRateLimitError ? '잠시 후 다시 시도하거나 API 할당량을 확인하세요.' : '')
+        );
       }
     }
   }

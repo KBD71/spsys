@@ -5,26 +5,11 @@
  * - 제출 여부에 따라 동적 TTL 적용 (제출 완료: 60초, 미제출: 30초)
  */
 
-const { google } = require('googleapis');
 const { getCacheKey, getCache, setCache } = require('./cache');
-
-async function getSheetsClient() {
-  const auth = new google.auth.GoogleAuth({
-    credentials: {
-      client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-      private_key: process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, '\n')
-    },
-    scopes: ['https://www.googleapis.com/auth/spreadsheets']
-  });
-
-  const authClient = await auth.getClient();
-  return google.sheets({ version: 'v4', auth: authClient });
-}
+const { getSheetsClient, createHeaderMap, setCorsHeaders, createSafeLog, createErrorResponse } = require('./utils');
 
 module.exports = async (req, res) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  setCorsHeaders(res);
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
@@ -41,9 +26,9 @@ module.exports = async (req, res) => {
     }
 
     const cacheKey = getCacheKey('assignmentDetail', { assignmentId, studentId });
-    const cached = getCache(cacheKey, 60000);
+    const cached = await getCache(cacheKey, 60000);
     if (cached) {
-      console.log(`[assignment-detail] 캐시 HIT - 과제ID: ${assignmentId}, 학번: ${studentId}`);
+      console.log(createSafeLog('[assignment-detail] 캐시 HIT', { assignmentId, studentId }));
       return res.status(200).json(cached);
     }
 
@@ -62,8 +47,7 @@ module.exports = async (req, res) => {
 
     // ★★★ 핵심 변경점: '과제설정' 시트의 헤더 맵 생성 ★★★
     const assignmentHeaders = assignmentData[0];
-    const assignmentHeaderMap = {};
-    assignmentHeaders.forEach((h, i) => { assignmentHeaderMap[h.trim()] = i; });
+    const assignmentHeaderMap = createHeaderMap(assignmentHeaders);
     
     // '과제ID' 컬럼의 인덱스를 찾음
     const assignmentIdColIndex = assignmentHeaderMap['과제ID'];
@@ -122,8 +106,7 @@ module.exports = async (req, res) => {
 
     // ★★★ 핵심 변경점: 대상 시트의 헤더 맵 생성 ★★★
     const targetHeaders = targetSheetData[0];
-    const targetHeaderMap = {};
-    targetHeaders.forEach((h, i) => { targetHeaderMap[h.trim()] = i; });
+    const targetHeaderMap = createHeaderMap(targetHeaders);
 
     const studentIdColInTarget = targetHeaderMap['학번'];
     if (studentIdColInTarget === undefined) {
@@ -166,17 +149,15 @@ module.exports = async (req, res) => {
       forceFullscreen: forceFullscreen
     };
 
-    const cacheTTL = submitted ? 60000 : 30000;
-    setCache(cacheKey, result);
-    console.log(`[assignment-detail] 캐시 저장 - 과제ID: ${assignmentId}, 학번: ${studentId}, TTL: ${cacheTTL}ms`);
+    const cacheTTL = submitted ? 60 : 30;
+    await setCache(cacheKey, result, cacheTTL);
+    console.log(createSafeLog('[assignment-detail] 캐시 저장', { assignmentId, studentId }));
 
     return res.status(200).json(result);
 
   } catch (error) {
-    console.error('Assignment detail API error:', error);
-    return res.status(500).json({
-      success: false,
-      message: '과제 상세 조회 실패: ' + error.message
-    });
+    return res.status(500).json(
+      createErrorResponse(error, '과제 상세 조회 중 오류가 발생했습니다.')
+    );
   }
 };

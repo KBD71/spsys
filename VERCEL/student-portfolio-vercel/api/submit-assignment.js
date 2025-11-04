@@ -5,25 +5,11 @@
  * 3. '초안생성' 체크박스 UI 깨짐 방지 로직을 그대로 유지하여 안정성을 보장합니다.
  * 4. 제출 후 관련 캐시를 무효화하여 최신 데이터를 보장합니다.
  */
-const { google } = require('googleapis');
 const { getCacheKey, clearCache } = require('./cache');
-
-async function getSheetsClient() {
-  const auth = new google.auth.GoogleAuth({
-    credentials: {
-      client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-      private_key: process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, '\n')
-    },
-    scopes: ['https://www.googleapis.com/auth/spreadsheets']
-  });
-  const authClient = await auth.getClient();
-  return google.sheets({ version: 'v4', auth: authClient });
-}
+const { getSheetsClient, createHeaderMap, setCorsHeaders, createSafeLog, createErrorResponse } = require('./utils');
 
 module.exports = async (req, res) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  setCorsHeaders(res);
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ success: false, message: 'Method not allowed' });
 
@@ -52,8 +38,7 @@ module.exports = async (req, res) => {
     const studentResponse = await sheets.spreadsheets.values.get({ spreadsheetId, range: '학생명단_전체!A:Z' });
     const studentData = studentResponse.data.values;
     const studentHeaders = studentData[0];
-    const studentHeaderMap = {};
-    studentHeaders.forEach((h, i) => studentHeaderMap[h.trim()] = i);
+    const studentHeaderMap = createHeaderMap(studentHeaders);
     const studentIdCol = studentHeaderMap['학번'];
 
     const studentRowData = studentData.find((row, idx) => idx > 0 && row[studentIdCol] === studentId);
@@ -66,8 +51,7 @@ module.exports = async (req, res) => {
     const assignmentResponse = await sheets.spreadsheets.values.get({ spreadsheetId, range: '과제설정!A:Z' });
     const assignmentData = assignmentResponse.data.values;
     const assignmentHeaders = assignmentData[0];
-    const assignmentHeaderMap = {};
-    assignmentHeaders.forEach((h, i) => assignmentHeaderMap[h.trim()] = i);
+    const assignmentHeaderMap = createHeaderMap(assignmentHeaders);
     const assignmentIdCol = assignmentHeaderMap['과제ID'];
 
     const assignmentRowData = assignmentData.find((row, idx) => idx > 0 && row[assignmentIdCol] === assignmentId);
@@ -218,7 +202,7 @@ module.exports = async (req, res) => {
     const assignmentDetailCacheKey = getCacheKey('assignmentDetail', { assignmentId, studentId });
     await clearCache(assignmentCacheKey);
     await clearCache(assignmentDetailCacheKey);
-    console.log(`[submit-assignment] 캐시 무효화 - 학번: ${studentId}, 과제ID: ${assignmentId}`);
+    console.log(createSafeLog('[submit-assignment] 캐시 무효화', { studentId, assignmentId }));
 
     // 전체 제출인 경우 내 기록 캐시도 무효화
     if (!isSingleQuestion) {
@@ -230,7 +214,8 @@ module.exports = async (req, res) => {
     return res.status(200).json({ success: true, message: successMessage });
 
   } catch (error) {
-    console.error('Submit assignment API error:', error);
-    return res.status(500).json({ success: false, message: '과제 제출 실패: ' + error.message, stack: error.stack });
+    return res.status(500).json(
+      createErrorResponse(error, '과제 제출 중 오류가 발생했습니다.')
+    );
   }
 };

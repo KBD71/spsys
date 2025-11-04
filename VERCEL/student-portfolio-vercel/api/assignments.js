@@ -5,20 +5,8 @@
  * - 시험모드 관련 설정(examMode, maxViolations, forceFullscreen)을 포함합니다.
  * - 30초 캐싱으로 동시 접속 성능 향상
  */
-const { google } = require('googleapis');
 const { getCacheKey, getCache, setCache } = require('./cache');
-
-async function getSheetsClient() {
-  const auth = new google.auth.GoogleAuth({
-    credentials: {
-      client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-      private_key: process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, '\n')
-    },
-    scopes: ['https://www.googleapis.com/auth/spreadsheets']
-  });
-  const authClient = await auth.getClient();
-  return google.sheets({ version: 'v4', auth: authClient });
-}
+const { getSheetsClient, createHeaderMap, setCorsHeaders, createSafeLog, createErrorResponse } = require('./utils');
 
 function isClassAllowed(studentId, targetClass) {
   const target = (targetClass || '').trim();
@@ -55,9 +43,7 @@ function parseFlexibleDate(dateString) {
 }
 
 module.exports = async (req, res) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  setCorsHeaders(res);
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'GET') return res.status(405).json({ success: false, message: 'Method not allowed' });
 
@@ -70,7 +56,7 @@ module.exports = async (req, res) => {
     const cacheKey = getCacheKey('assignments', { studentId });
     const cached = await getCache(cacheKey, 30000);
     if (cached) {
-      console.log(`[assignments] 캐시 HIT - 학번: ${studentId}`);
+      console.log(createSafeLog('[assignments] 캐시 HIT', { studentId }));
       return res.status(200).json(cached);
     }
 
@@ -84,10 +70,7 @@ module.exports = async (req, res) => {
     }
 
     const headers = allRows[0];
-    const headerMap = {};
-    headers.forEach((header, index) => {
-        headerMap[header.trim()] = index;
-    });
+    const headerMap = createHeaderMap(headers);
 
     const requiredColumns = ['공개', '과제ID', '과제명', '대상시트'];
     for (const col of requiredColumns) {
@@ -202,11 +185,12 @@ module.exports = async (req, res) => {
 
     const result = { success: true, assignments };
     await setCache(cacheKey, result, 30); // TTL 30초
-    console.log(`[assignments] 캐시 저장 - 학번: ${studentId}, 과제 수: ${assignments.length}`);
+    console.log(createSafeLog('[assignments] 캐시 저장', { studentId }));
     return res.status(200).json(result);
 
   } catch (error) {
-    console.error('Assignments API 최종 오류:', error);
-    return res.status(500).json({ success: false, message: '과제 목록 조회 중 서버 오류가 발생했습니다: ' + error.message });
+    return res.status(500).json(
+      createErrorResponse(error, '과제 목록 조회 중 오류가 발생했습니다.')
+    );
   }
 };

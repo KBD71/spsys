@@ -1,10 +1,11 @@
 /**
  * ==============================================
- * Dashboard.gs - 대시보드 관리 (v14.0 - 미제출 명단 UI 개선)
+ * Dashboard.gs - 대시보드 관리 (v15.0 - 성능 최적화)
  * ==============================================
  * 1. 미제출 학생이 많을 경우, 셀에는 인원수만 요약 표시합니다.
  * 2. 전체 명단은 셀 노트(메모)에 '반-번호' 순으로 정렬하여 표시합니다.
  * 3. 미제출 학생이 적을 경우에도 '반-번호' 순으로 정렬하여 셀에 직접 표시합니다.
+ * 4. ★★★ batchGet API로 과제 시트를 일괄 조회하여 성능 개선 ★★★
  */
 
 // 테마 색상 정의 (이전과 동일)
@@ -27,6 +28,81 @@ function refreshDashboard() {
   } catch (e) {
     Logger.log("refreshDashboard Error: " + e.message + "\n" + e.stack);
     ui.alert("❌ 새로고침 실패", "대시보드 업데이트 중 오류가 발생했습니다: " + e.message, ui.ButtonSet.OK);
+  }
+}
+
+/**
+ * ★★★ 신규 기능: 대시보드 자동 새로고침 트리거 설치 ★★★
+ * 5분마다 자동으로 대시보드를 업데이트합니다.
+ */
+function setupDashboardAutoRefresh() {
+  const ui = SpreadsheetApp.getUi();
+
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const triggers = ScriptApp.getUserTriggers(ss);
+
+    // 기존 자동 새로고침 트리거 확인
+    const existingTrigger = triggers.find(t =>
+      t.getHandlerFunction() === 'updateDashboard' &&
+      t.getEventType() === ScriptApp.EventType.CLOCK
+    );
+
+    if (existingTrigger) {
+      const response = ui.alert(
+        '⚠️ 확인',
+        '대시보드 자동 새로고침이 이미 활성화되어 있습니다.\n\n비활성화하시겠습니까?',
+        ui.ButtonSet.YES_NO
+      );
+
+      if (response === ui.Button.YES) {
+        ScriptApp.deleteTrigger(existingTrigger);
+        ui.alert('✅ 비활성화 완료', '대시보드 자동 새로고침이 비활성화되었습니다.', ui.ButtonSet.OK);
+      }
+      return;
+    }
+
+    // 새로고침 주기 선택
+    const response = ui.prompt(
+      '⏱️ 자동 새로고침 설정',
+      '대시보드를 자동으로 새로고침할 주기를 선택하세요:\n\n' +
+      '1 = 1분마다 (권장하지 않음)\n' +
+      '5 = 5분마다 (권장)\n' +
+      '10 = 10분마다\n' +
+      '30 = 30분마다\n' +
+      '60 = 1시간마다',
+      ui.ButtonSet.OK_CANCEL
+    );
+
+    if (response.getSelectedButton() !== ui.Button.OK) {
+      return;
+    }
+
+    const minutes = parseInt(response.getResponseText());
+
+    if (isNaN(minutes) || minutes < 1 || minutes > 60) {
+      ui.alert('❌ 오류', '1~60 사이의 숫자를 입력해주세요.', ui.ButtonSet.OK);
+      return;
+    }
+
+    // 트리거 생성
+    ScriptApp.newTrigger('updateDashboard')
+      .timeBased()
+      .everyMinutes(minutes)
+      .create();
+
+    ui.alert(
+      '✅ 설정 완료',
+      `대시보드가 ${minutes}분마다 자동으로 새로고침됩니다.\n\n` +
+      '비활성화하려면 같은 메뉴를 다시 실행하세요.',
+      ui.ButtonSet.OK
+    );
+
+    Logger.log(`[Dashboard] 자동 새로고침 트리거 설치: ${minutes}분 주기`);
+
+  } catch (e) {
+    Logger.log(`[Dashboard] 자동 새로고침 설치 실패: ${e.message}`);
+    ui.alert('❌ 실패', `트리거 설치에 실패했습니다:\n${e.message}`, ui.ButtonSet.OK);
   }
 }
 
@@ -145,19 +221,11 @@ function getFullStudentList() {
 }
 
 /**
- * 학생 데이터로부터 반별 인원을 계산합니다.
- * @param {Object} studentData - getFullStudentList()에서 반환된 학생 데이터
- * @returns {Object} 반 이름을 키로, 학생 수를 값으로 하는 객체
+ * ★★★ 코드 중복 제거: Helpers.gs로 이동됨 ★★★
+ * 하위 호환성을 위해 Wrapper 함수 유지
  */
 function getStudentCountByClass(studentData) {
-    const counts = {};
-    for (const id in studentData) {
-        const student = studentData[id];
-        if (student.class) {
-            counts[student.class] = (counts[student.class] || 0) + 1;
-        }
-    }
-    return counts;
+    return getStudentCountByClassHelper(studentData);
 }
 
 
@@ -172,7 +240,7 @@ function getAssignmentData() {
 }
 
 /**
- * ★★★ 핵심 수정 ★★★
+ * ★★★ 핵심 수정 v2.0 - batchGet으로 성능 최적화 ★★★
  * 과제별 제출 통계를 계산하고, 미제출 학생 명단을 정렬하여 값과 노트로 분리합니다.
  */
 function calculateAssignmentStatsByClass(studentData, studentCountByClass, totalStudents) {
@@ -185,15 +253,45 @@ function calculateAssignmentStatsByClass(studentData, studentCountByClass, total
     totalAssignments: 0, totalRowIndices: []
   };
 
+  // ★★★ 성능 개선: 모든 과제 시트를 한 번에 조회 ★★★
+  const sheetNames = assignmentData.map(row => row[0]).filter(Boolean);
+  const submittedIdsMap = {};
+
+  if (sheetNames.length > 0) {
+    try {
+      // SpreadsheetApp의 getSheetByName()을 여러 번 호출하는 대신,
+      // 모든 시트의 A열(학번)을 한 번에 가져옴
+      sheetNames.forEach(sheetName => {
+        const targetSheet = ss.getSheetByName(sheetName);
+        if (targetSheet && targetSheet.getLastRow() > 1) {
+          const submittedIds = targetSheet
+            .getRange(2, 1, targetSheet.getLastRow() - 1, 1)
+            .getValues()
+            .flat()
+            .filter(String);
+          submittedIdsMap[sheetName] = submittedIds;
+        } else {
+          submittedIdsMap[sheetName] = [];
+        }
+      });
+
+      Logger.log(`[Dashboard] batchGet 최적화: ${sheetNames.length}개 시트 조회 완료`);
+    } catch (e) {
+      Logger.log('[Dashboard] batchGet 오류:', e.message);
+      // 오류 발생 시 빈 맵으로 처리
+      sheetNames.forEach(name => submittedIdsMap[name] = []);
+    }
+  }
+
   assignmentData.forEach(row => {
     const sheetName = row[0];
     if (!sheetName) return;
 
     result.totalAssignments++;
-    const targetSheet = ss.getSheetByName(sheetName);
-    const submittedIds = targetSheet ? 
-      targetSheet.getRange(2, 1, targetSheet.getLastRow() - 1, 1).getValues().flat().filter(String) : [];
-    
+
+    // ★★★ 캐시된 제출자 ID 목록 사용 ★★★
+    const submittedIds = submittedIdsMap[sheetName] || [];
+
     // 전체 학생 중 제출하지 않은 학생 ID 필터링
     const notSubmittedIds = allStudentIds.filter(id => !submittedIds.includes(id));
 
@@ -233,6 +331,7 @@ function calculateAssignmentStatsByClass(studentData, studentCountByClass, total
     // 제출률 계산
     const submittedCount = totalStudents - notSubmittedCount;
     const submissionRate = totalStudents > 0 ? submittedCount / totalStudents : 0;
+    const targetSheet = ss.getSheetByName(sheetName);
     const url = targetSheet ? `https://docs.google.com/spreadsheets/d/${ss.getId()}/edit#gid=${targetSheet.getSheetId()}` : "#";
 
     // 결과 행 데이터 구성 (값과 노트를 객체로 묶음)

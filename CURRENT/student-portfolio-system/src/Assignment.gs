@@ -36,7 +36,7 @@ function createAssignmentSheetFromSidebar(data) {
     
     // ★★★ 시험모드 정보를 포함한 행 데이터 생성 ★★★
     var newRowObject = {
-      '공개': false,
+      // '공개': false, // ★★★ 제거: '공개' 시트에서 관리 ★★★
       '재제출허용': false,
       '과제ID': assignmentId,
       '과제명': assignmentName,

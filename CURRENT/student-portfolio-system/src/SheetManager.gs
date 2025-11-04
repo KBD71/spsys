@@ -17,7 +17,7 @@ function initializeMinimalSystem() {
       메뉴: [],
       학생명단_전체: ["학번", "반", "번호", "이름", "비밀번호"],
       과제설정: [
-        "공개",
+        // "공개", // ★★★ 제거: '공개' 시트에서 관리 ★★★
         "재제출허용",
         "과제ID",
         "과제명",
@@ -95,7 +95,8 @@ function initializeMinimalSystem() {
               .build();
 
             // ★★★ 시험모드, 강제전체화면 체크박스 추가 ★★★
-            var checkboxColumns = ['공개', '재제출허용', '시험모드', '강제전체화면'];
+            // '공개' 제거됨 (공개 시트에서 관리)
+            var checkboxColumns = ['재제출허용', '시험모드', '강제전체화면'];
 
             checkboxColumns.forEach(function(colName) {
               var colIndex = headers.indexOf(colName) + 1;
@@ -184,7 +185,12 @@ function deleteSheetByName(sheetName) {
     var deletedFromSettings = deleteRowBySheetName(ss, "과제설정", "대상시트", sheetName);
     Logger.log(`과제설정 시트에서 ${deletedFromSettings}개 행 삭제`);
 
-    var deletedFromPublic = deleteRowBySheetName(ss, "공개", "시트이름", sheetName);
+    // ★★★ v2 구조 호환: '시트이름' 또는 '대상시트' 모두 시도 ★★★
+    var deletedFromPublic = deleteRowBySheetName(ss, "공개", "대상시트", sheetName);
+    if (deletedFromPublic === 0) {
+      // v1 구조 폴백
+      deletedFromPublic = deleteRowBySheetName(ss, "공개", "시트이름", sheetName);
+    }
     Logger.log(`공개 시트에서 ${deletedFromPublic}개 행 삭제`);
 
     ss.deleteSheet(sheet);

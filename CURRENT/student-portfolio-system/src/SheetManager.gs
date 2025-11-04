@@ -34,7 +34,7 @@ function initializeMinimalSystem() {
         "질문11", "질문12", "질문13", "질문14", "질문15",
         "질문16", "질문17", "질문18", "질문19", "질문20",
       ],
-      공개: ["공개", "시트이름", "대상반"],
+      공개: ["과제공개", "대상시트", "대상반", "의견공개", "알림메시지"],
       template: [
         "학번", "반", "이름",
         "질문1", "질문2", "질문3", "질문4", "질문5",
@@ -69,7 +69,25 @@ function initializeMinimalSystem() {
             .setFontWeight("bold");
 
           // 체크박스 설정
-          if (sheetName === '공개' || sheetName === '과제설정') {
+          if (sheetName === '공개') {
+            var headers = requiredSheets[sheetName];
+            var checkboxRule = SpreadsheetApp.newDataValidation()
+              .requireCheckbox()
+              .setAllowInvalid(false)
+              .build();
+
+            // ★★★ v2: 과제공개, 의견공개 체크박스 ★★★
+            var checkboxColumns = ['과제공개', '의견공개'];
+
+            checkboxColumns.forEach(function(colName) {
+              var colIndex = headers.indexOf(colName) + 1;
+              if (colIndex > 0) {
+                sheet.getRange(2, colIndex, sheet.getMaxRows() - 1, 1).setDataValidation(checkboxRule);
+              }
+            });
+          }
+
+          if (sheetName === '과제설정') {
             var headers = requiredSheets[sheetName];
             var checkboxRule = SpreadsheetApp.newDataValidation()
               .requireCheckbox()
@@ -78,7 +96,7 @@ function initializeMinimalSystem() {
 
             // ★★★ 시험모드, 강제전체화면 체크박스 추가 ★★★
             var checkboxColumns = ['공개', '재제출허용', '시험모드', '강제전체화면'];
-            
+
             checkboxColumns.forEach(function(colName) {
               var colIndex = headers.indexOf(colName) + 1;
               if (colIndex > 0) {

@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(tree /F \"C:\\Users\\matht\\OneDrive - 문현고등학교\\eduapp\\spsys-main\" /L 2 2)",
+      "Bash(nul)",
+      "Bash(test:*)",
+      "Bash(git add:*)",
+      "Bash(git reset HEAD .claude/ nul 2)",
+      "Bash(git commit -m \"$(cat <<''EOF''\nfeat: 성능 최적화 및 Vercel 배포 설정\n\n주요 변경사항:\n\n1. 관리자 로그인 제거\n   - 웹에서 관리자 로그인 기능 완전 삭제\n   - menu.js 서버리스 함수 제거\n   - 모든 관리자 작업은 Google Sheets에서 수행\n\n2. 시험모드 버그 수정\n   - 버튼 클릭 시 화면 축소로 인한 오탐 방지\n   - 이벤트 리스너 일시 중지 메커니즘 구현\n   - 저장/제출 시 300ms 딜레이로 안정성 확보\n\n3. N+1 쿼리 최적화 (95% API 호출 감소)\n   - assignments.js에서 batchGet API 활용\n   - 개별 시트 조회 → 일괄 조회로 변경\n   - 20개 과제 기준: 20회 API 호출 → 1회로 감소\n\n4. Vercel KV (Redis) 캐시 시스템 구축\n   - 하이브리드 캐싱 전략 (Redis + In-memory 폴백)\n   - 프로덕션: Vercel KV (서버리스 인스턴스 간 공유)\n   - 로컬: In-memory 캐시 자동 폴백\n   - TTL 설정: 30-60초 (과제 목록/학생 정보)\n   - 예상 캐시 히트율: 8

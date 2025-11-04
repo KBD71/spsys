@@ -60,8 +60,8 @@ function createAssignmentSheetFromSidebar(data) {
     
     Logger.log(`[과제생성] ${assignmentName}, 시험모드: ${examMode}, 이탈허용: ${maxViolations}회, 전체화면: ${forceFullscreen}`);
 
-    // '공개' 시트에 행 추가
-    ss.getSheetByName('공개').appendRow([false, finalSheetName, '전체']);
+    // '공개' 시트에 행 추가 (v2 구조)
+    ss.getSheetByName('공개').appendRow([false, finalSheetName, '전체', false, '']);
 
     // 'template'을 복사하여 새 과제 시트 생성
     var newSheet = templateSheet.copyTo(ss).setName(finalSheetName);

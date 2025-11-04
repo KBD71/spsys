@@ -43,7 +43,7 @@ function upgradePublicSheet() {
       }
     }
 
-    // v1 구조: [공개, 대상시트, 대상반]
+    // v1 구조: [공개, 대상시트, 대상반] 또는 [공개, 시트이름, 대상반]
     // v2 구조: [과제공개, 대상시트, 대상반, 의견공개, 알림메시지]
 
     const data = sheet.getDataRange().getValues();
@@ -57,13 +57,36 @@ function upgradePublicSheet() {
 
     for (let i = 1; i < data.length; i++) {
       const row = data[i];
-      const 과제공개 = row[oldHeaders.indexOf('공개')] || false;
-      const 대상시트 = row[oldHeaders.indexOf('대상시트')] || '';
+
+      // v1 구조 호환: '공개' 또는 '과제공개' 컬럼 모두 지원
+      let 과제공개 = false;
+      if (oldHeaders.indexOf('공개') !== -1) {
+        과제공개 = row[oldHeaders.indexOf('공개')] || false;
+      } else if (oldHeaders.indexOf('과제공개') !== -1) {
+        과제공개 = row[oldHeaders.indexOf('과제공개')] || false;
+      }
+
+      // '대상시트' 또는 '시트이름' 컬럼 모두 지원
+      let 대상시트 = '';
+      if (oldHeaders.indexOf('대상시트') !== -1) {
+        대상시트 = row[oldHeaders.indexOf('대상시트')] || '';
+      } else if (oldHeaders.indexOf('시트이름') !== -1) {
+        대상시트 = row[oldHeaders.indexOf('시트이름')] || '';
+      }
+
       const 대상반 = row[oldHeaders.indexOf('대상반')] || '전체';
 
       // 신규 컬럼 기본값
-      const 의견공개 = false;
-      const 알림메시지 = '';
+      let 의견공개 = false;
+      let 알림메시지 = '';
+
+      // 이미 v2 구조인 경우 기존 값 유지
+      if (oldHeaders.indexOf('의견공개') !== -1) {
+        의견공개 = row[oldHeaders.indexOf('의견공개')] || false;
+      }
+      if (oldHeaders.indexOf('알림메시지') !== -1) {
+        알림메시지 = row[oldHeaders.indexOf('알림메시지')] || '';
+      }
 
       newData.push([과제공개, 대상시트, 대상반, 의견공개, 알림메시지]);
     }

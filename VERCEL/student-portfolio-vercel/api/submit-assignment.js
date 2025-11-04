@@ -216,14 +216,14 @@ module.exports = async (req, res) => {
     // 제출 성공 후 관련 캐시 무효화
     const assignmentCacheKey = getCacheKey('assignments', { studentId });
     const assignmentDetailCacheKey = getCacheKey('assignmentDetail', { assignmentId, studentId });
-    clearCache(assignmentCacheKey);
-    clearCache(assignmentDetailCacheKey);
+    await clearCache(assignmentCacheKey);
+    await clearCache(assignmentDetailCacheKey);
     console.log(`[submit-assignment] 캐시 무효화 - 학번: ${studentId}, 과제ID: ${assignmentId}`);
 
     // 전체 제출인 경우 내 기록 캐시도 무효화
     if (!isSingleQuestion) {
       const recordsCacheKey = getCacheKey('myRecords', { studentId });
-      clearCache(recordsCacheKey);
+      await clearCache(recordsCacheKey);
     }
 
     const successMessage = isSingleQuestion ? '답변이 저장되었습니다.' : '과제가 제출되었습니다.';

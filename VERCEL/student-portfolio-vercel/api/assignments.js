@@ -68,7 +68,7 @@ module.exports = async (req, res) => {
     }
 
     const cacheKey = getCacheKey('assignments', { studentId });
-    const cached = getCache(cacheKey, 30000);
+    const cached = await getCache(cacheKey, 30000);
     if (cached) {
       console.log(`[assignments] 캐시 HIT - 학번: ${studentId}`);
       return res.status(200).json(cached);
@@ -112,18 +112,19 @@ module.exports = async (req, res) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const allSheetDataCache = {}; 
-
-    const assignmentsPromises = allRows.slice(1).map(async (row) => {
+    // ★★★ 성능 개선: 먼저 모든 대상 시트 이름을 수집 ★★★
+    const validAssignments = [];
+    for (let i = 1; i < allRows.length; i++) {
+      const row = allRows[i];
       const isPublic = (row[headerMap['공개']] || '').toString().toUpperCase() === 'TRUE';
-      if (!isPublic) return null;
+      if (!isPublic) continue;
 
       const assignmentName = row[headerMap['과제명']];
       const targetSheetName = row[headerMap['대상시트']];
-      
+
       const targetClass = publicSettingsMap[targetSheetName];
-      if (targetClass === undefined) return null;
-      if (!isClassAllowed(studentId, targetClass)) return null;
+      if (targetClass === undefined) continue;
+      if (!isClassAllowed(studentId, targetClass)) continue;
 
       const startDateStr = headerMap['시작일'] !== undefined ? row[headerMap['시작일']] : null;
       const dueDateStr = headerMap['마감일'] !== undefined ? row[headerMap['마감일']] : null;
@@ -131,24 +132,56 @@ module.exports = async (req, res) => {
       const startDate = parseFlexibleDate(startDateStr);
       const dueDate = parseFlexibleDate(dueDateStr);
 
-      if (startDate && today < startDate) return null;
-      if (dueDate && today > dueDate) return null;
-      
+      if (startDate && today < startDate) continue;
+      if (dueDate && today > dueDate) continue;
+
+      validAssignments.push({
+        row,
+        assignmentName,
+        targetSheetName,
+        startDateStr,
+        dueDateStr
+      });
+    }
+
+    // ★★★ 성능 개선: 모든 시트를 한 번의 batchGet 호출로 가져오기 ★★★
+    const allSheetDataCache = {};
+    if (validAssignments.length > 0) {
+      const uniqueSheetNames = [...new Set(validAssignments.map(a => a.targetSheetName).filter(Boolean))];
+
+      if (uniqueSheetNames.length > 0) {
+        try {
+          const ranges = uniqueSheetNames.map(name => `${name}!A:A`);
+          const batchResponse = await sheets.spreadsheets.values.batchGet({
+            spreadsheetId,
+            ranges: ranges
+          });
+
+          // 결과를 캐시에 저장
+          batchResponse.data.valueRanges.forEach((valueRange, index) => {
+            const sheetName = uniqueSheetNames[index];
+            allSheetDataCache[sheetName] = valueRange.values || [];
+          });
+
+          console.log(`[assignments] batchGet 성능 개선: ${uniqueSheetNames.length}개 시트를 1회 호출로 가져옴 (기존 방식: ${uniqueSheetNames.length}회 호출)`);
+        } catch (e) {
+          console.error('[assignments] batchGet 오류:', e.message);
+          // 오류 발생 시 빈 캐시로 처리
+        }
+      }
+    }
+
+    // ★★★ 캐시된 데이터로 과제 목록 생성 ★★★
+    const assignments = validAssignments.map((assignment) => {
+      const { row, assignmentName, targetSheetName, startDateStr, dueDateStr } = assignment;
+
       let isSubmitted = false;
-      if (targetSheetName) {
-          if (!allSheetDataCache[targetSheetName]) {
-              try {
-                  const sheetDataResponse = await sheets.spreadsheets.values.get({ spreadsheetId, range: `${targetSheetName}!A:A` });
-                  allSheetDataCache[targetSheetName] = sheetDataResponse.data.values || [];
-              } catch (e) {
-                  allSheetDataCache[targetSheetName] = [];
-              }
-          }
+      if (targetSheetName && allSheetDataCache[targetSheetName]) {
           isSubmitted = allSheetDataCache[targetSheetName].some((r, idx) => idx > 0 && r[0] === studentId);
       }
       
       const resubmissionAllowed = (headerMap['재제출허용'] !== undefined && row[headerMap['재제출허용']] || '').toString().toUpperCase() === 'TRUE';
-      
+
       // ★★★ 시험모드 관련 정보 추가 ★★★
       const examMode = (headerMap['시험모드'] !== undefined && row[headerMap['시험모드']] || '').toString().toUpperCase() === 'TRUE';
       const maxViolations = headerMap['이탈허용횟수'] !== undefined ? parseInt(row[headerMap['이탈허용횟수']]) || 3 : 3;
@@ -166,12 +199,9 @@ module.exports = async (req, res) => {
         forceFullscreen: forceFullscreen
       };
     });
-    
-    const assignmentsWithNull = await Promise.all(assignmentsPromises);
-    const assignments = assignmentsWithNull.filter(a => a !== null);
 
     const result = { success: true, assignments };
-    setCache(cacheKey, result);
+    await setCache(cacheKey, result, 30); // TTL 30초
     console.log(`[assignments] 캐시 저장 - 학번: ${studentId}, 과제 수: ${assignments.length}`);
     return res.status(200).json(result);
 

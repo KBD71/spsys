@@ -44,7 +44,7 @@ function verifyPassword(plainPassword, storedPassword) {
 async function findStudent(studentId) {
   try {
     const cacheKey = getCacheKey('student', { studentId });
-    const cached = getCache(cacheKey, 60000);
+    const cached = await getCache(cacheKey, 60000);
     if (cached) {
       console.log(`[findStudent] 캐시 HIT - 학번: ${studentId}`);
       return cached;
@@ -100,7 +100,7 @@ async function findStudent(studentId) {
           lastChangeDate: lastChangeDateCol !== -1 ? row[lastChangeDateCol] : null,
           changeCount: changeCountCol !== -1 ? Number(row[changeCountCol] || 0) : 0
         };
-        setCache(cacheKey, result);
+        await setCache(cacheKey, result, 60); // TTL 60초
         console.log(`[findStudent] 캐시 저장 - 학번: ${studentId}`);
         return result;
       }
@@ -110,7 +110,7 @@ async function findStudent(studentId) {
       found: false,
       error: '학생을 찾을 수 없습니다.'
     };
-    setCache(cacheKey, notFoundResult);
+    await setCache(cacheKey, notFoundResult, 60); // TTL 60초
     return notFoundResult;
 
   } catch (error) {
@@ -212,7 +212,7 @@ async function updatePassword(row, newPasswordHash, currentCount) {
       }
     });
 
-    clearCache('student:');
+    await clearCache('student:');
     console.log('[updatePassword] 학생 정보 캐시 무효화 완료');
 
     return { success: true };

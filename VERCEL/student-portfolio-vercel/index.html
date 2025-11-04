@@ -668,6 +668,12 @@
         saveBtn.textContent = '저장 중...';
         statusEl.classList.remove('show');
 
+        // 시험모드일 경우 이벤트 리스너 일시 중지
+        const wasListenersActive = examModeListenersActive;
+        if (examModeActive) {
+            examModeListenersActive = false;
+        }
+
         try {
             const response = await fetch(`${API_BASE}/submit-assignment`, {
                 method: 'POST',
@@ -691,15 +697,47 @@
                 setTimeout(() => {
                     saveBtn.classList.remove('saved');
                     saveBtn.textContent = originalText;
+                    // 이벤트 리스너 재활성화
+                    if (examModeActive && wasListenersActive) {
+                        setTimeout(() => {
+                            examModeListenersActive = true;
+                        }, 300);
+                    }
                 }, 2000);
             } else {
+                // 실패 시 alert 전에 리스너 비활성화 확인
+                if (examModeActive) {
+                    examModeListenersActive = false;
+                }
                 alert(`저장 실패: ${result.message}`);
+                // alert 종료 후 재활성화
+                if (examModeActive && wasListenersActive) {
+                    setTimeout(() => {
+                        examModeListenersActive = true;
+                    }, 300);
+                }
             }
         } catch (error) {
             console.error('질문 저장 실패:', error);
+            // 오류 시 alert 전에 리스너 비활성화 확인
+            if (examModeActive) {
+                examModeListenersActive = false;
+            }
             alert('저장 중 오류가 발생했습니다.');
+            // alert 종료 후 재활성화
+            if (examModeActive && wasListenersActive) {
+                setTimeout(() => {
+                    examModeListenersActive = true;
+                }, 300);
+            }
         } finally {
             saveBtn.disabled = false;
+            // 성공 케이스가 아닌 경우에만 여기서 재활성화
+            if (examModeActive && wasListenersActive && !saveBtn.classList.contains('saved')) {
+                setTimeout(() => {
+                    examModeListenersActive = true;
+                }, 300);
+            }
         }
     }
 
@@ -724,6 +762,8 @@
                 clearDraft(assignmentId, currentStudentId, questions);
                 if (examModeActive) {
                     disableExamMode();
+                    // alert 실행 전 리스너 비활성화 확인
+                    examModeListenersActive = false;
                     alert('과제가 성공적으로 제출되었습니다.\n시험 모드가 해제되었습니다.');
                 } else {
                     alert('과제가 성공적으로 제출되었습니다.');
@@ -731,17 +771,29 @@
                 hideSubmitModal();
                 loadAssignments();
             } else {
+                // 실패 시 alert 전에 리스너 비활성화
+                if (examModeActive) {
+                    examModeListenersActive = false;
+                }
                 alert(`제출 실패: ${result.message}`);
                 // 제출 실패 시 이벤트 리스너 복구
                 if (examModeActive && wasListenersActive) {
-                    examModeListenersActive = true;
+                    setTimeout(() => {
+                        examModeListenersActive = true;
+                    }, 300);
                 }
             }
         } catch (error) {
+            // 오류 시 alert 전에 리스너 비활성화
+            if (examModeActive) {
+                examModeListenersActive = false;
+            }
             alert('제출 중 오류가 발생했습니다.');
             // 제출 오류 시 이벤트 리스너 복구
             if (examModeActive && wasListenersActive) {
-                examModeListenersActive = true;
+                setTimeout(() => {
+                    examModeListenersActive = true;
+                }, 300);
             }
         } finally { submitBtn.disabled = false; submitBtn.textContent = '제출하기'; }
     }
@@ -1290,7 +1342,7 @@
         // 경고 오버레이 제거
         document.getElementById('examWarningOverlay').classList.remove('show');
 
-        // 사용자에게 알림
+        // 사용자에게 알림 (이미 리스너 비활성화됨)
         alert(`⚠️ 경고\n\n화면 이탈이 ${examModeMaxViolations}회를 초과하여 자동으로 제출됩니다.`);
 
         // 제출 실행
@@ -1298,6 +1350,7 @@
             await submitAssignment();
         } catch (error) {
             console.error('자동 제출 실패:', error);
+            // 오류 alert (이미 리스너 비활성화됨)
             alert('자동 제출 중 오류가 발생했습니다. 수동으로 제출해주세요.');
         }
 

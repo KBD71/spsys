@@ -166,8 +166,8 @@ function getAssignmentData() {
 }
 
 /**
- * ★★★ 핵심 수정 v2.0 - batchGet으로 성능 최적화 ★★★
- * 과제별 제출 통계를 계산하고, 미제출 학생 명단을 정렬하여 값과 노트로 분리합니다.
+ * ★★★ 핵심 수정 v3.0 - 반별 통계 복원 및 대상 반 필터링 ★★★
+ * 과제별 제출 통계를 계산하고, 대상 반 정보를 기반으로 반별 통계를 제공합니다.
  */
 function calculateAssignmentStatsByClass(studentData, studentCountByClass, totalStudents) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -211,6 +211,8 @@ function calculateAssignmentStatsByClass(studentData, studentCountByClass, total
 
   assignmentData.forEach(row => {
     const sheetName = row[0];
+    const targetClass = String(row[1] || '').trim(); // ★★★ 대상 반 정보 사용 ★★★
+
     if (!sheetName) return;
 
     result.totalAssignments++;
@@ -218,8 +220,33 @@ function calculateAssignmentStatsByClass(studentData, studentCountByClass, total
     // ★★★ 캐시된 제출자 ID 목록 사용 ★★★
     const submittedIds = submittedIdsMap[sheetName] || [];
 
-    // 전체 학생 중 제출하지 않은 학생 ID 필터링
-    const notSubmittedIds = allStudentIds.filter(id => !submittedIds.includes(id));
+    // ★★★ 대상 반 필터링 로직 ★★★
+    let targetStudentIds, targetStudents, targetCount, displayTargetClass;
+
+    if (!targetClass || targetClass.toLowerCase() === '전체') {
+      // 전체 학생 대상
+      targetStudentIds = allStudentIds;
+      targetStudents = studentData;
+      targetCount = totalStudents;
+      displayTargetClass = "전체";
+    } else {
+      // 특정 반 대상 (복수 반 지원: "101, 102, 103")
+      const allowedPrefixes = targetClass.split(',').map(cls => cls.trim());
+      targetStudentIds = allStudentIds.filter(id => {
+        const studentPrefix = id.substring(0, 3);
+        return allowedPrefixes.includes(studentPrefix);
+      });
+
+      targetStudents = {};
+      targetStudentIds.forEach(id => {
+        targetStudents[id] = studentData[id];
+      });
+      targetCount = targetStudentIds.length;
+      displayTargetClass = targetClass;
+    }
+
+    // 대상 학생 중 제출하지 않은 학생 ID 필터링
+    const notSubmittedIds = targetStudentIds.filter(id => !submittedIds.includes(id));
 
     // 미제출 학생 정보를 객체 배열로 만든 후 정렬
     const notSubmittedStudents = notSubmittedIds.map(id => ({
@@ -253,10 +280,10 @@ function calculateAssignmentStatsByClass(studentData, studentCountByClass, total
         noteText = fullListString;
       }
     }
-    
-    // 제출률 계산
-    const submittedCount = totalStudents - notSubmittedCount;
-    const submissionRate = totalStudents > 0 ? submittedCount / totalStudents : 0;
+
+    // 제출률 계산 (대상 학생 기준)
+    const submittedCount = targetCount - notSubmittedCount;
+    const submissionRate = targetCount > 0 ? submittedCount / targetCount : 0;
     const targetSheet = ss.getSheetByName(sheetName);
     const url = targetSheet ? `https://docs.google.com/spreadsheets/d/${ss.getId()}/edit#gid=${targetSheet.getSheetId()}` : "#";
 
@@ -264,18 +291,18 @@ function calculateAssignmentStatsByClass(studentData, studentCountByClass, total
     result.rows.push({
         values: [
             `=HYPERLINK("${url}", "${sheetName}${targetSheet ? "" : " (시트없음)"}")`,
-            "전체",
+            displayTargetClass, // ★★★ 실제 대상 반 표시 ★★★
             submittedCount,
-            totalStudents,
+            targetCount, // ★★★ 실제 대상 인원 ★★★
             submissionRate,
-            `=SPARKLINE(${submittedCount}, {"charttype","bar";"max",${totalStudents};"color1","${THEME.sparkline_bar}"})`,
-            `${submittedCount}/${totalStudents}`,
+            `=SPARKLINE(${submittedCount}, {"charttype","bar";"max",${targetCount};"color1","${THEME.sparkline_bar}"})`,
+            `${submittedCount}/${targetCount}`,
             displayText
         ],
         notes: ["", "", "", "", "", "", "", noteText] // 8번째 열에만 노트 추가
     });
 
-    if (totalStudents > 0) {
+    if (targetCount > 0) {
         result.totalRate += submissionRate;
         result.validCount++;
     }

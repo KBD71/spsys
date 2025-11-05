@@ -647,7 +647,7 @@ function callClaudeApi(prompt) {
 
   const url = "https://api.anthropic.com/v1/messages";
   const payload = {
-    model: "claude-3-5-sonnet-20241022",
+    model: "claude-sonnet-4-5-20250929",
     max_tokens: 4096,
     temperature: 0.5,
     messages: [

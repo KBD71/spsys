@@ -1,5 +1,5 @@
 /**
- * 내 기록 조회 및 건의사항 저장 API (v11 - 에러 처리 개선)
+ * 내 기록 조회 및 건의사항 저장 API (v12 - 캐시 TTL 단축)
  * GET: 학생의 기록(교사 코멘트) 및 알림을 조회합니다.
  * - 교사 코멘트: 의견공개=TRUE일 때 과제 시트의 교사 평가 표시
  * - 알림: 알림메시지가 있고 의견공개=FALSE일 때 알림메시지 표시
@@ -8,7 +8,7 @@
  *
  * v2 구조: [과제공개, 대상시트, 대상반, 의견공개, 알림메시지]
  * v1 구조 폴백: [공개, 시트이름, 대상반]
- * 45초 캐싱으로 조회 성능 향상
+ * 15초 캐싱으로 Google Sheets 변경 빠른 반영
  */
 const { google } = require('googleapis');
 const { getCacheKey, getCache, setCache, clearCache } = require('./cache');
@@ -56,7 +56,7 @@ async function handleGetRecords(req, res) {
   if (!studentId) return res.status(400).json({ success: false, message: '학번이 필요합니다.' });
 
   const cacheKey = getCacheKey('myRecords', { studentId });
-  const cached = await getCache(cacheKey, 45000);
+  const cached = await getCache(cacheKey, 15000);
   if (cached) {
     console.log(`[my-records] 캐시 HIT - 학번: ${studentId}`);
     return res.status(200).json(cached);
@@ -200,7 +200,7 @@ async function handleGetRecords(req, res) {
   }
 
   const result = { success: true, records: records };
-  await setCache(cacheKey, result);
+  await setCache(cacheKey, result, 15);
   console.log(`[my-records] 캐시 저장 - 학번: ${studentId}, 기록 수: ${records.length}`);
   return res.status(200).json(result);
 }

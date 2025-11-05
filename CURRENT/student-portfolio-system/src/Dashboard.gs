@@ -102,8 +102,11 @@ function updateDashboard() {
     sheet.getRange(dataStartRow, 8, assignmentStats.rows.length, 1).setHorizontalAlignment("left").setWrap(true);
     sheet.getRange(dataStartRow, 3, assignmentStats.rows.length, 2).setNumberFormat('0"명"');
     sheet.getRange(dataStartRow, 5, assignmentStats.rows.length, 1).setNumberFormat("0.0%");
-    assignmentStats.totalRowIndices.forEach(idx => {
-      sheet.getRange(dataStartRow + idx, 1, 1, 8).setBackground(THEME.total_bg).setFontWeight("bold");
+    // 전체 통계 행 강조 표시
+    assignmentStats.rows.forEach((row, idx) => {
+      if (row.isTotal) {
+        sheet.getRange(dataStartRow + idx, 1, 1, 8).setBackground(THEME.total_bg).setFontWeight("bold");
+      }
     });
     const rateRange = sheet.getRange(dataStartRow, 5, assignmentStats.rows.length, 1);
     const rules = [
@@ -239,7 +242,7 @@ function calculateAssignmentStatsByClass(studentData, studentCountByClass, total
     let classGroups = [];
 
     if (!targetClass || targetClass.toLowerCase() === '전체') {
-      // 전체 대상 과제는 각 반별로 통계 분리
+      // 전체 대상 과제는 각 반별로 통계 분리 후 마지막에 전체 통계 추가
       const classes = {};
 
       // 학생들을 반별로 그룹화
@@ -263,8 +266,23 @@ function calculateAssignmentStatsByClass(studentData, studentCountByClass, total
           submittedIds: classSubmittedIds,
           notSubmittedIds: classNotSubmittedIds,
           targetCount: classStudentIds.length,
-          submittedCount: classSubmittedIds.length
+          submittedCount: classSubmittedIds.length,
+          isTotal: false
         });
+      });
+
+      // 전체 통계를 마지막에 추가
+      const totalSubmittedIds = allStudentIds.filter(id => submittedIds.includes(id));
+      const totalNotSubmittedIds = allStudentIds.filter(id => !submittedIds.includes(id));
+
+      classGroups.push({
+        targetClass: "전체",
+        targetStudentIds: allStudentIds,
+        submittedIds: totalSubmittedIds,
+        notSubmittedIds: totalNotSubmittedIds,
+        targetCount: allStudentIds.length,
+        submittedCount: totalSubmittedIds.length,
+        isTotal: true
       });
     } else {
       // 특정 반 대상 (복수 반 지원: "101, 102, 103")
@@ -294,7 +312,7 @@ function calculateAssignmentStatsByClass(studentData, studentCountByClass, total
 
     // 각 반별로 결과 행 생성
     classGroups.forEach((group, index) => {
-      const { targetClass, notSubmittedIds, targetCount, submittedCount } = group;
+      const { targetClass, notSubmittedIds, targetCount, submittedCount, isTotal } = group;
 
       // 미제출 학생 정보 정렬
       const notSubmittedStudents = notSubmittedIds.map(id => ({
@@ -335,8 +353,9 @@ function calculateAssignmentStatsByClass(studentData, studentCountByClass, total
       const url = targetSheet ? `https://docs.google.com/spreadsheets/d/${ss.getId()}/edit#gid=${targetSheet.getSheetId()}` : "#";
 
       // 결과 행 데이터 구성
+      const isFirstRow = classGroups.findIndex(g => !g.isTotal) === 0 && !isTotal;
       const rowValues = [
-        index === 0 ? `=HYPERLINK("${url}", "${sheetName}${targetSheet ? "" : " (시트없음)"}")` : "", // 첫 행에만 과제명 표시
+        isFirstRow ? `=HYPERLINK("${url}", "${sheetName}${targetSheet ? "" : " (시트없음)"}")` : sheetName, // 첫 번째 반에만 링크
         targetClass, // 반별 정보
         submittedCount,
         targetCount,
@@ -350,7 +369,8 @@ function calculateAssignmentStatsByClass(studentData, studentCountByClass, total
 
       result.rows.push({
         values: rowValues,
-        notes: rowNotes
+        notes: rowNotes,
+        isTotal: isTotal || false // 전체 통계 행 표시
       });
 
       Logger.log(`[Dashboard] ${targetClass} 통계: ${submittedCount}/${targetCount} (${Math.round(submissionRate * 100)}%)`);

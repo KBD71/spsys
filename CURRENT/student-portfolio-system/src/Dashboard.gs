@@ -22,6 +22,8 @@ const THEME = {
 function refreshDashboard() {
   const ui = SpreadsheetApp.getUi();
   try {
+    // ★★★ 버전 확인 로그 - 2025-11-05 버전 ★★★
+    Logger.log("=== DASHBOARD VERSION: 2025-11-05-v4 ===");
     Logger.log("[refreshDashboard] 시작 - 새로고침 함수 호출");
     SpreadsheetApp.getActiveSpreadsheet().toast("대시보드를 새로고치고 있습니다...", "🚀 업데이트 중");
     updateDashboard();

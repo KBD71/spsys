@@ -100,7 +100,7 @@ async function findStudent(studentId) {
           lastChangeDate: lastChangeDateCol !== -1 ? row[lastChangeDateCol] : null,
           changeCount: changeCountCol !== -1 ? Number(row[changeCountCol] || 0) : 0
         };
-        await setCache(cacheKey, result, 60); // TTL 60초
+        await setCache(cacheKey, result, 15); // TTL 15초
         console.log(`[findStudent] 캐시 저장 - 학번: ${studentId}`);
         return result;
       }
@@ -110,7 +110,7 @@ async function findStudent(studentId) {
       found: false,
       error: '학생을 찾을 수 없습니다.'
     };
-    await setCache(cacheKey, notFoundResult, 60); // TTL 60초
+    await setCache(cacheKey, notFoundResult, 15); // TTL 15초
     return notFoundResult;
 
   } catch (error) {

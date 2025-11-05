@@ -42,8 +42,8 @@ function getCacheKey(endpoint, params) {
             return acc;
         }, {});
 
-    // 버전 번호 추가: v3 (캐시 재활성화 - 2025-11-05)
-    return `v3:${endpoint}:${JSON.stringify(sortedParams)}`;
+    // 버전 번호 추가: v4 (대시보드 새로고침 문제 해결 - 2025-11-05)
+    return `v4:${endpoint}:${JSON.stringify(sortedParams)}`;
 }
 
 /**

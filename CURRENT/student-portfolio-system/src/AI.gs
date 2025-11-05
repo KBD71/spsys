@@ -1,33 +1,14 @@
 /**
  * =================================================================
- * AI Draft Generator & Detector Module (v3.0)
+ * AI Draft Generator & Detector Module (v3.2 - 2025 모델 업데이트)
  * =================================================================
  * 1. (기존) 학생 종합 의견 초안을 생성합니다.
- * 2. (추가) 학생의 답변이 AI에 의해 작성되었는지 검사하는 기능을 제공합니다.
- * 3. (신규) Gemini와 Claude 중 AI 제공자를 선택할 수 있습니다.
- * 두 기능은 비용 효율성과 결과의 안정성을 위해 별도의 API 호출로 분리되었습니다.
+ * 2. (기존) 학생의 답변이 AI에 의해 작성되었는지 검사하는 기능을 제공합니다.
+ * 3. (수정) gemini-pro, gemini-flash, claude4.5 중 AI 제공자를 선택할 수 있습니다.
  */
 
 // API 키는 PropertiesService에서 관리됩니다.
-// 지원하는 AI 제공자: 'gemini', 'claude'
-
-/**
- * (참고) AI 기능 메뉴는 Triggers.gs의 onOpen() 함수에서 서브메뉴로 통합되어 있습니다.
- * 이 onOpen() 함수는 사용되지 않으며, 참고용으로만 남겨둡니다.
- */
-// function onOpen() {
-//   SpreadsheetApp.getUi()
-//     .createMenu("🤖 AI 기능")
-//     .addItem("📝 선택된 행 초안 생성", "generateAiSummaryManual")
-//     .addSeparator()
-//     .addItem("🕵️ 선택된 행 AI 사용 검사", "runAiDetectionManual")
-//     .addSeparator()
-//     .addItem("🔑 Gemini API 키 설정", "setGeminiApiKey")
-//     .addItem("🔑 Claude API 키 설정", "setClaudeApiKey")
-//     .addSeparator()
-//     .addItem("⚙️ AI 제공자 선택 (Gemini/Claude)", "selectAiProvider")
-//     .addToUi();
-// }
+// 지원하는 AI 제공자: 'gemini-2.5-pro', 'gemini-2.5-flash', 'claude-sonnet-4-5-20250929'
 
 /**
  * 사용자 속성에 Gemini API 키를 설정합니다.
@@ -68,36 +49,58 @@ function setClaudeApiKey() {
 }
 
 /**
- * AI 제공자를 선택합니다 (Gemini 또는 Claude).
+ * ★★★ 수정된 함수 (v2.5) ★★★
+ * AI 제공자를 선택합니다 (gemini-pro, gemini-flash, claude4.5).
  */
 function selectAiProvider() {
   const ui = SpreadsheetApp.getUi();
-  const currentProvider = PropertiesService.getUserProperties().getProperty("AI_PROVIDER") || "gemini";
+  const properties = PropertiesService.getUserProperties();
+  const currentProvider = properties.getProperty("AI_PROVIDER") || "gemini-2.5-flash"; // 새 기본값
 
-  const response = ui.alert(
-    "AI 제공자 선택",
-    `현재 선택: ${currentProvider === 'gemini' ? 'Gemini' : 'Claude'}\n\n어떤 AI를 사용하시겠습니까?`,
-    ui.ButtonSet.YES_NO_CANCEL
-  );
+  // ★★★ 수정: 요청하신 3가지 모델명으로 프롬프트 변경 ★★★
+  const message = `현재 모델: ${currentProvider}\n\n` +
+    `사용할 AI 모델의 번호를 입력하세요:\n\n` +
+    `  1: gemini-pro (gemini-2.5-pro)\n` +
+    `  2: gemini-flash (gemini-2.5-flash)\n` +
+    `  3: claude4.5 (claude-sonnet-4-5-20250929)\n`;
 
-  if (response == ui.Button.YES) {
-    PropertiesService.getUserProperties().setProperty("AI_PROVIDER", "gemini");
-    ui.alert("✅ 설정 완료", "Gemini를 사용합니다.", ui.ButtonSet.OK);
-  } else if (response == ui.Button.NO) {
-    PropertiesService.getUserProperties().setProperty("AI_PROVIDER", "claude");
-    ui.alert("✅ 설정 완료", "Claude를 사용합니다.", ui.ButtonSet.OK);
+  const response = ui.prompt("AI 모델 선택", message, ui.ButtonSet.OK_CANCEL);
+
+  if (response.getSelectedButton() == ui.Button.OK) {
+    const choice = response.getResponseText().trim();
+    let newProvider = "";
+    let providerName = "";
+
+    if (choice === "1") {
+      newProvider = "gemini-2.5-pro";
+      providerName = "gemini-pro";
+    } else if (choice === "2") {
+      newProvider = "gemini-2.5-flash";
+      providerName = "gemini-flash";
+    } else if (choice === "3") {
+      newProvider = "claude-sonnet-4-5-20250929";
+      providerName = "claude4.5";
+    } else {
+      ui.alert("❌ 잘못된 입력", "1, 2, 3 중 하나를 입력해야 합니다.", ui.ButtonSet.OK);
+      return;
+    }
+    
+    properties.setProperty("AI_PROVIDER", newProvider);
+    ui.alert("✅ 설정 완료", `기본 AI가 [${providerName}] (으)로 설정되었습니다.`, ui.ButtonSet.OK);
   }
 }
 
 /**
- * 현재 설정된 AI 제공자를 반환합니다.
+ * ★★★ 수정된 함수 (v2.5) ★★★
+ * 현재 설정된 AI 제공자(모델명)를 반환합니다.
  */
 function getAiProvider() {
-  return PropertiesService.getUserProperties().getProperty("AI_PROVIDER") || "gemini";
+  // ★★★ 수정: 기본값을 새 Flash 모델로 변경 ★★★
+  return PropertiesService.getUserProperties().getProperty("AI_PROVIDER") || "gemini-2.5-flash";
 }
 
 // ================================================================
-// 기능 1: 종합의견 초안 생성 (기존 코드와 동일)
+// 기능 1: 종합의견 초안 생성
 // ================================================================
 
 /**
@@ -120,13 +123,11 @@ function generateAiSummaryManual() {
 }
 
 /**
- * ★★★ 신규 기능: 미작성 학생 일괄 AI 초안 생성 ★★★
- * 현재 시트에서 '종합의견'이 비어있는 모든 학생의 초안을 자동 생성합니다.
+ * 미작성 학생 일괄 AI 초안 생성
  */
 function generateAiBatchForUnwritten() {
   const ui = SpreadsheetApp.getUi();
   const sheet = SpreadsheetApp.getActiveSheet();
-
   try {
     // 1. 헤더 확인
     const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
@@ -134,12 +135,12 @@ function generateAiBatchForUnwritten() {
     const draftColIndex = headers.indexOf('초안생성');
 
     if (opinionColIndex === -1) {
-      ui.alert('❌ 오류', '이 시트에는 \"종합의견\" 컬럼이 없습니다.', ui.ButtonSet.OK);
+      ui.alert('❌ 오류', '이 시트에는 "종합의견" 컬럼이 없습니다.', ui.ButtonSet.OK);
       return;
     }
 
     if (draftColIndex === -1) {
-      ui.alert('❌ 오류', '이 시트에는 \"초안생성\" 컬럼이 없습니다.', ui.ButtonSet.OK);
+      ui.alert('❌ 오류', '이 시트에는 "초안생성" 컬럼이 없습니다.', ui.ButtonSet.OK);
       return;
     }
 
@@ -152,14 +153,12 @@ function generateAiBatchForUnwritten() {
 
     const data = sheet.getRange(2, 1, lastRow - 1, headers.length).getValues();
     const unwrittenRows = [];
-
     data.forEach((row, index) => {
       const opinion = row[opinionColIndex];
       if (!opinion || String(opinion).trim() === '') {
         unwrittenRows.push(index + 2); // 실제 행 번호
       }
     });
-
     if (unwrittenRows.length === 0) {
       ui.alert('✅ 완료', '모든 학생의 종합의견이 이미 작성되었습니다.', ui.ButtonSet.OK);
       return;
@@ -172,7 +171,6 @@ function generateAiBatchForUnwritten() {
       `예상 소요 시간: 약 ${Math.ceil(unwrittenRows.length * 10 / 60)}분\n\n계속하시겠습니까?`,
       ui.ButtonSet.YES_NO
     );
-
     if (response !== ui.Button.YES) {
       return;
     }
@@ -183,7 +181,6 @@ function generateAiBatchForUnwritten() {
       '🚀 시작',
       -1
     );
-
     let successCount = 0;
     let failCount = 0;
 
@@ -207,21 +204,18 @@ function generateAiBatchForUnwritten() {
         failCount++;
       }
     });
-
     // 5. 결과 보고
     SpreadsheetApp.getActiveSpreadsheet().toast(
       `성공: ${successCount}명, 실패: ${failCount}명`,
       '✅ 일괄 생성 완료',
       10
     );
-
     ui.alert(
       '✅ AI 일괄 초안 생성 완료',
       `성공: ${successCount}명\n실패: ${failCount}명\n\n` +
       (failCount > 0 ? '실패한 행은 로그(보기 > 로그)를 확인하세요.' : '모든 초안이 성공적으로 생성되었습니다.'),
       ui.ButtonSet.OK
     );
-
   } catch (e) {
     Logger.log(`[AI 일괄생성] 오류: ${e.message}\n${e.stack}`);
     ui.alert('❌ 오류', `AI 일괄 생성 중 오류가 발생했습니다:\n${e.message}`, ui.ButtonSet.OK);
@@ -271,9 +265,8 @@ function runAiGeneration(sheet, row) {
     SpreadsheetApp.flush();
     const aiData = getAiDataForSummary(sheet, row, headers);
 
-    const provider = getAiProvider();
-    const providerName = provider === 'claude' ? 'Claude' : 'Gemini';
-    opinionCell.setValue(`🤖 ${providerName}가 초안을 작성 중입니다...`);
+    const provider = getAiProvider(); // 예: "gemini-2.5-flash"
+    opinionCell.setValue(`🤖 [${provider}] 초안 작성 중...`);
     SpreadsheetApp.flush();
 
     const summary = retryCallAiApi(provider, aiData.prompt, 3);
@@ -296,10 +289,9 @@ function runAiGeneration(sheet, row) {
 }
 
 /**
- * (이름 변경) AI 초안 생성에 필요한 데이터를 수집하고 프롬프트를 구성합니다.
+ * AI 초안 생성에 필요한 데이터를 수집하고 프롬프트를 구성합니다.
  */
 function getAiDataForSummary(sheet, row, headers) {
-  // ... (기존 getAiData 함수의 내용과 동일)
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheetName = sheet.getName();
   const assignmentSettingsSheet = ss.getSheetByName("과제설정");
@@ -343,7 +335,8 @@ function getAiDataForSummary(sheet, row, headers) {
       let questionText = headerStr;
       if (assignmentRow) {
         const questionIndexInAssignment = assignmentHeaders.findIndex(
-          (h) => h === headerStr
+         
+           (h) => h === headerStr
         );
         if (questionIndexInAssignment > -1) {
           questionText = assignmentRow[questionIndexInAssignment] || headerStr;
@@ -380,7 +373,7 @@ function getAiDataForSummary(sheet, row, headers) {
 }
 
 // ================================================================
-// ★★★ 기능 2: AI 사용 검사 (새로 추가된 기능) ★★★
+// 기능 2: AI 사용 검사
 // ================================================================
 
 /**
@@ -411,7 +404,6 @@ function runAiDetection(sheet, row) {
   try {
     let headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
     let resultColIndex = headers.indexOf("AI 검사 결과");
-
     // 'AI 검사 결과' 열이 없으면 맨 마지막에 자동으로 추가
     if (resultColIndex === -1) {
       const lastCol = sheet.getLastColumn();
@@ -428,16 +420,13 @@ function runAiDetection(sheet, row) {
 
     resultCell.setValue("⏳ 답변 분석 중...").setHorizontalAlignment("center");
     SpreadsheetApp.flush();
-
     const detectionData = getAiDataForDetection(sheet, row, headers);
 
-    const provider = getAiProvider();
-    const providerName = provider === 'claude' ? 'Claude' : 'Gemini';
-    resultCell.setValue(`🤖 ${providerName}가 검사 중입니다...`);
+    const provider = getAiProvider(); // 예: "gemini-2.5-flash"
+    resultCell.setValue(`🤖 [${provider}] 검사 중입니다...`);
     SpreadsheetApp.flush();
 
     const detectionResult = retryCallAiApi(provider, detectionData.prompt, 3);
-
     resultCell
       .setValue(detectionResult.trim())
       .setHorizontalAlignment("left")
@@ -482,7 +471,6 @@ function getAiDataForDetection(sheet, row, headers) {
       studentAnswers += `- 학생 답변 (${headerStr}): ${cellValue}\n`;
     }
   });
-
   if (!studentAnswers.trim()) {
     throw new Error(
       "검사할 학생의 답변 내용이 없습니다. '질문' 컬럼의 내용을 확인해주세요."
@@ -491,47 +479,44 @@ function getAiDataForDetection(sheet, row, headers) {
 
   const studentIdIndex = headers.indexOf("학번");
   const studentId =
-    studentIdIndex > -1 ? studentRowData[studentIdIndex] : "알 수 없음";
+    studentIdIndex > -1 ?
+    studentRowData[studentIdIndex] : "알 수 없음";
 
   // AI 사용 검사를 위한 전용 프롬프트
   const finalPrompt = `
     **역할**: 당신은 AI가 생성한 텍스트의 특징을 분석하는 전문가입니다.
-    
-    **주요 작업**: 아래에 주어진 학생의 답변이 AI(예: ChatGPT, Gemini 등)에 의해 생성되었을 확률이 얼마나 되는지 분석하고, 그 근거를 설명해주세요. 특히 '단순 복사-붙여넣기'처럼 성의 없는 AI 사용에 초점을 맞춰주세요.
+    **주요 작업**: 아래에 주어진 학생의 답변이 AI(예: ChatGPT, Gemini 등)에 의해 생성되었을 확률이 얼마나 되는지 분석하고, 그 근거를 설명해주세요.
+    특히 '단순 복사-붙여넣기'처럼 성의 없는 AI 사용에 초점을 맞춰주세요.
     
     **출력 형식**:
     1.  **AI 작성 확률**: [0% ~ 100%] 형태로 명확하게 백분율만 표시해주세요.
     2.  **판단 근거**: 문체의 일관성, 어휘 선택의 독창성, 개인적인 경험이나 주장의 유무, 정보의 깊이 등을 바탕으로 2~3 문장으로 간결하게 서술해주세요.
-    
     ---
     **[분석할 학생 답변]**
     ${studentAnswers.trim()}
     ---
   `;
-
   Logger.log(createSafeLog(`[AI 검사] 프롬프트 생성 완료 (길이: ${finalPrompt.length})`, { studentId }));
   return { prompt: finalPrompt, studentId: studentId };
 }
 
 // ================================================================
-// 공통 API 호출 함수 (기존 코드와 동일)
+// 공통 API 호출 함수
 // ================================================================
 
 /**
- * AI API 호출을 재시도합니다 (범용 함수 v2.0 - 지수 백오프 추가).
- * @param {string} provider - 'gemini' 또는 'claude'
- * @param {string} prompt - AI에게 전달할 프롬프트
- * @param {number} maxRetries - 최대 재시도 횟수
+ * ★★★ 수정된 함수 (v2.5) ★★★
+ * AI API 호출을 재시도합니다.
  */
 function retryCallAiApi(provider, prompt, maxRetries) {
   let attempt = 0;
-
   while (attempt < maxRetries) {
     try {
-      if (provider === "claude") {
-        return callClaudeApi(prompt);
+      // provider(모델명)에 따라 호출할 함수를 결정
+      if (provider.includes("claude")) {
+        return callClaudeApi(prompt, provider); // 모델명을 인자로 전달
       } else {
-        return callGeminiApi(prompt);
+        return callGeminiApi(prompt, provider); // 모델명을 인자로 전달
       }
     } catch (e) {
       const isRateLimitError =
@@ -541,24 +526,19 @@ function retryCallAiApi(provider, prompt, maxRetries) {
         e.message.includes('quota');
 
       if (attempt < maxRetries - 1) {
-        // ★★★ 지수 백오프: Rate Limit 에러는 더 긴 대기 시간 ★★★
-        const baseDelay = isRateLimitError ? 5000 : 2000; // Rate Limit: 5초, 기타: 2초
-        const delayMs = baseDelay * Math.pow(2, attempt); // 지수 증가: 5→10→20초 또는 2→4→8초
-
+        const baseDelay = isRateLimitError ? 5000 : 2000; 
+        const delayMs = baseDelay * Math.pow(2, attempt);
         Logger.log(
-          `[AI API 재시도] ${provider === 'claude' ? 'Claude' : 'Gemini'} API 호출 실패 (시도 ${attempt + 1}/${maxRetries})\n` +
+          `[AI API 재시도] ${provider} API 호출 실패 (시도 ${attempt + 1}/${maxRetries})\n` +
           `오류: ${e.message.substring(0, 100)}...\n` +
           `${isRateLimitError ? '⚠️ Rate Limit 감지 - ' : ''}${delayMs / 1000}초 후 재시도...`
         );
-
         Utilities.sleep(delayMs);
         attempt++;
       } else {
-        // 최종 실패 시 더 자세한 오류 메시지
         const errorPrefix = isRateLimitError ?
           '⚠️ API 사용량 한도 초과:\n' :
           '❌ AI API 호출 최종 실패:\n';
-
         throw new Error(
           `${errorPrefix}${e.message}\n\n` +
           `재시도 횟수: ${maxRetries}회 모두 소진\n` +
@@ -575,13 +555,15 @@ function retryCallAiApi(provider, prompt, maxRetries) {
  * @deprecated retryCallAiApi 사용 권장
  */
 function retryCallGeminiApi(prompt, maxRetries) {
-  return retryCallAiApi("gemini", prompt, maxRetries);
+  // 이전 기본값 대신 새 기본값으로 호출
+  return retryCallAiApi("gemini-2.5-flash", prompt, maxRetries);
 }
 
 /**
+ * ★★★ 수정된 함수 (v2.5) ★★★
  * Gemini API를 호출하여 콘텐츠를 생성합니다.
  */
-function callGeminiApi(prompt) {
+function callGeminiApi(prompt, modelName) {
   const apiKey =
     PropertiesService.getUserProperties().getProperty("GEMINI_API_KEY");
   if (!apiKey) {
@@ -590,7 +572,12 @@ function callGeminiApi(prompt) {
     );
   }
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${apiKey}`;
+  // ★★★ 수정: modelName을 인자로 받고, 기본값을 gemini-2.5-flash로 변경 ★★★
+  const modelToUse = modelName || 'gemini-2.5-flash';
+  
+  // v1beta에서 v1으로 변경 (gemini-2.5-pro/flash는 v1 권장)
+  const url = `https://generativelanguage.googleapis.com/v1/models/${modelToUse}:generateContent?key=${apiKey}`;
+  
   const payload = {
     contents: [{ parts: [{ text: prompt }] }],
     generationConfig: {
@@ -604,11 +591,11 @@ function callGeminiApi(prompt) {
     payload: JSON.stringify(payload),
     muteHttpExceptions: true,
   };
-
+  
   const response = UrlFetchApp.fetch(url, options);
   const responseCode = response.getResponseCode();
   const responseBody = response.getContentText();
-
+  
   if (responseCode === 200) {
     const data = JSON.parse(responseBody);
     const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
@@ -620,7 +607,7 @@ function callGeminiApi(prompt) {
       );
     }
   } else {
-    let errorMessage = `Gemini API 호출 실패 (HTTP ${responseCode})`;
+    let errorMessage = `Gemini API 호출 실패 (모델: ${modelToUse}, HTTP ${responseCode})`;
     try {
       const errorData = JSON.parse(responseBody);
       errorMessage += `\n오류 상세: ${
@@ -634,9 +621,10 @@ function callGeminiApi(prompt) {
 }
 
 /**
+ * ★★★ 수정된 함수 (v4.5) ★★★
  * Claude API를 호출하여 콘텐츠를 생성합니다.
  */
-function callClaudeApi(prompt) {
+function callClaudeApi(prompt, modelName) {
   const apiKey =
     PropertiesService.getUserProperties().getProperty("CLAUDE_API_KEY");
   if (!apiKey) {
@@ -646,8 +634,12 @@ function callClaudeApi(prompt) {
   }
 
   const url = "https://api.anthropic.com/v1/messages";
+  
+  // ★★★ 수정: modelName을 인자로 받고, 기본값을 claude-sonnet-4-5-20250929로 변경 ★★★
+  const modelToUse = modelName || 'claude-sonnet-4-5-20250929';
+  
   const payload = {
-    model: "claude-sonnet-4-5-20250929",
+    model: modelToUse,
     max_tokens: 4096,
     temperature: 0.5,
     messages: [
@@ -662,16 +654,16 @@ function callClaudeApi(prompt) {
     contentType: "application/json",
     headers: {
       "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01"
+      "anthropic-version": "2023-06-01" // API 버전은 유지
     },
     payload: JSON.stringify(payload),
     muteHttpExceptions: true,
   };
-
+  
   const response = UrlFetchApp.fetch(url, options);
   const responseCode = response.getResponseCode();
   const responseBody = response.getContentText();
-
+  
   if (responseCode === 200) {
     const data = JSON.parse(responseBody);
     const text = data?.content?.[0]?.text;
@@ -683,7 +675,7 @@ function callClaudeApi(prompt) {
       );
     }
   } else {
-    let errorMessage = `Claude API 호출 실패 (HTTP ${responseCode})`;
+    let errorMessage = `Claude API 호출 실패 (모델: ${modelToUse}, HTTP ${responseCode})`;
     try {
       const errorData = JSON.parse(responseBody);
       errorMessage += `\n오류 상세: ${

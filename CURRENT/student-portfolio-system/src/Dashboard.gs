@@ -1,14 +1,13 @@
 /**
  * ==============================================
- * Dashboard.gs - 대시보드 관리 (v15.0 - 성능 최적화)
+ * Dashboard.gs - 대시보드 관리 (v18 - 캐시 강제 무효화)
  * ==============================================
- * 1. 미제출 학생이 많을 경우, 셀에는 인원수만 요약 표시합니다.
- * 2. 전체 명단은 셀 노트(메모)에 '반-번호' 순으로 정렬하여 표시합니다.
- * 3. 미제출 학생이 적을 경우에도 '반-번호' 순으로 정렬하여 셀에 직접 표시합니다.
- * 4. ★★★ batchGet API로 과제 시트를 일괄 조회하여 성능 개선 ★★★
+ * 1. (수정) 모든 주요 함수 이름(refresh, update, calculate, get)을 v18로 변경하여 서버 캐시 강제 무효화
+ * 2. (유지) 빈 과제 시트(헤더만 있음) 조회 시 getRange 오류가 발생하던 버그 수정
+ * 3. (유지) 반별 통계 생성 및 학번 String 통일 로직
  */
 
-// 테마 색상 정의 (이전과 동일)
+// 테마 색상 정의
 const THEME = {
   primary: "#4A80FE", background: "#F8F9FA", header: "#E9ECF1",
   title: "#FFFFFF", text: "#202124", border: "#DADCE0",
@@ -17,62 +16,56 @@ const THEME = {
 };
 
 /**
+ * ★★★ 이름 변경 (v18) ★★★
  * 메뉴의 '대시보드 새로고침'을 클릭했을 때 실행되는 함수입니다.
  */
-function refreshDashboard() {
+function refreshDashboard_v18() {
   const ui = SpreadsheetApp.getUi();
   try {
-    // ★★★ 버전 확인 로그 - 2025-11-05 버전 ★★★
-    Logger.log("=== DASHBOARD VERSION: 2025-11-05-v4 ===");
-    Logger.log("[refreshDashboard] 시작 - 새로고침 함수 호출");
-    SpreadsheetApp.getActiveSpreadsheet().toast("대시보드를 새로고치고 있습니다...", "🚀 업데이트 중");
-    updateDashboard();
-    Logger.log("[refreshDashboard] 완료 - updateDashboard() 실행 성공");
+    SpreadsheetApp.getActiveSpreadsheet().toast("대시보드(v18)를 새로고치고 있습니다...", "🚀 업데이트 중");
+    
+    // ★★★ 이름 변경 (v18) ★★★
+    updateDashboard_v18(); 
+    
     SpreadsheetApp.getActiveSpreadsheet().toast("대시보드가 최신 정보로 업데이트되었습니다.", "✅ 새로고침 완료", 5);
   } catch (e) {
-    Logger.log("refreshDashboard Error: " + e.message + "\n" + e.stack);
+    Logger.log("refreshDashboard_v18 Error: " + e.message + "\n" + e.stack);
     ui.alert("❌ 새로고침 실패", "대시보드 업데이트 중 오류가 발생했습니다: " + e.message, ui.ButtonSet.OK);
   }
 }
 
 
 /**
+ * ★★★ 이름 변경 (v18) ★★★
  * 대시보드의 전체 레이아웃을 생성하고 데이터를 채웁니다.
  */
-function updateDashboard() {
-  Logger.log("[updateDashboard] 시작 - 대시보드 업데이트 함수 호출");
+function updateDashboard_v18() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   let sheet = ss.getSheetByName("메뉴");
   if (!sheet) {
     sheet = ss.insertSheet("메뉴", 0);
   }
 
-  // --- 데이터 수집 ---
-  Logger.log("[updateDashboard] 1단계: 학생 데이터 수집 시작");
-  const studentData = getFullStudentList(); // '번호'를 포함한 전체 학생 정보 가져오기
-  const studentCountByClass = getStudentCountByClass(studentData);
+  // --- 데이터 수집 (v18 함수 호출) ---
+  const studentData = getFullStudentList_v18();
+  const studentCountByClass = getStudentCountByClass(studentData); // Helpers.gs 함수는 그대로 둬도 됨
   const totalStudents = Object.keys(studentData).length;
-  Logger.log(`[updateDashboard] 학생 데이터 수집 완료: 총 ${totalStudents}명`);
-
-  // ★★★ 미제출 학생 명단 로직이 포함된 함수 호출 ★★★
-  Logger.log("[updateDashboard] 2단계: 과제 통계 계산 시작");
-  const assignmentStats = calculateAssignmentStatsByClass(studentData, studentCountByClass, totalStudents);
-  Logger.log(`[updateDashboard] 과제 통계 계산 완료: ${assignmentStats.rows.length}개 행 생성`);
-
-  // --- 시트 초기화 및 스타일링 (기존과 유사) ---
+  const assignmentStats = calculateAssignmentStatsByClass_v18(studentData, studentCountByClass);
+  
+  // --- 시트 초기화 ---
   sheet.clear();
   sheet.clearFormats();
   sheet.clearConditionalFormatRules();
   sheet.setFrozenRows(2);
   sheet.setTabColor(THEME.primary);
   sheet.setHiddenGridlines(true);
-
+  
   const maxRows = Math.max(100, sheet.getMaxRows());
-  sheet.getRange(1, 1, maxRows, 8) // 열 개수를 8개로 유지
+  sheet.getRange(1, 1, maxRows, 8)
       .setBackground(THEME.background).setFontFamily("Google Sans")
       .setFontSize(10).setVerticalAlignment("middle").setFontColor(THEME.text);
-
-  // 헤더, 시스템 현황, 반별 인원 현황 등 (이전 버전과 대부분 동일)
+  
+  // 헤더, 시스템 현황
   sheet.getRange("A1:H1").merge().setValue("🎓 학생 포트폴리오 대시보드").setFontSize(20).setFontWeight("bold").setHorizontalAlignment("center").setBackground(THEME.primary).setFontColor(THEME.title);
   sheet.setRowHeight(1, 50);
   sheet.getRange("A2:H2").merge().setValue(`마지막 새로고침: ${Utilities.formatDate(new Date(), ss.getSpreadsheetTimeZone(), "yyyy-MM-dd HH:mm:ss")}`).setHorizontalAlignment("right").setFontSize(9).setFontColor("#777");
@@ -82,41 +75,40 @@ function updateDashboard() {
   sheet.getRange("A6:B6").merge().setValue(totalStudents).setFontSize(24).setFontWeight("bold").setFontColor(THEME.primary).setHorizontalAlignment("center");
   sheet.getRange("C5").setValue("총 과제 수").setFontSize(11).setFontWeight("bold").setHorizontalAlignment("center");
   sheet.getRange("C6:D6").merge().setValue(assignmentStats.totalAssignments).setFontSize(24).setFontWeight("bold").setFontColor(THEME.primary).setHorizontalAlignment("center");
+  
   const avgSubmissionRate = assignmentStats.validCount > 0 ? assignmentStats.totalRate / assignmentStats.validCount : 0;
   sheet.getRange("E5:F5").merge().setValue("전체 평균 제출률").setFontSize(11).setFontWeight("bold").setHorizontalAlignment("center");
   sheet.getRange("E6:F6").merge().setValue(avgSubmissionRate).setNumberFormat("0.0%").setFontSize(24).setFontWeight("bold").setFontColor(THEME.primary).setHorizontalAlignment("center");
   sheet.setRowHeight(5, 30);
   sheet.setRowHeight(6, 60);
-
+  
   // --- 과제 제출 현황 (반별 구분) ---
   const assignmentStartRow = 10;
   sheet.getRange(assignmentStartRow, 1, 1, 8).merge().setValue("📝 과제 제출 현황 (반별)").setFontSize(14).setFontWeight("bold").setHorizontalAlignment("center").setBackground(THEME.header);
   sheet.getRange(assignmentStartRow + 1, 1, 1, 8).setValues([["과제명", "대상 반", "제출", "대상", "제출률", "진행률 시각화", "진행 현황", "미제출 학생 명단"]]).setFontWeight("bold").setHorizontalAlignment("center").setBackground(THEME.header);
-
+  
   if (assignmentStats.rows.length > 0) {
     const dataStartRow = assignmentStartRow + 2;
     const dataRange = sheet.getRange(dataStartRow, 1, assignmentStats.rows.length, 8);
     
-    // 값과 노트를 분리하여 설정
     const values = assignmentStats.rows.map(r => r.values);
     const notes = assignmentStats.rows.map(r => r.notes);
 
     dataRange.setValues(values);
-    dataRange.setNotes(notes); // ★★★ 셀 노트(메모) 일괄 적용 ★★★
+    dataRange.setNotes(notes); 
 
     sheet.setRowHeights(dataStartRow, assignmentStats.rows.length, 30);
-    // 컬럼별 정렬 및 포맷팅 (이전과 동일)
+    
     sheet.getRange(dataStartRow, 1, assignmentStats.rows.length, 1).setHorizontalAlignment("left");
     sheet.getRange(dataStartRow, 2, assignmentStats.rows.length, 7).setHorizontalAlignment("center");
     sheet.getRange(dataStartRow, 8, assignmentStats.rows.length, 1).setHorizontalAlignment("left").setWrap(true);
     sheet.getRange(dataStartRow, 3, assignmentStats.rows.length, 2).setNumberFormat('0"명"');
     sheet.getRange(dataStartRow, 5, assignmentStats.rows.length, 1).setNumberFormat("0.0%");
-    // 전체 통계 행 강조 표시
-    assignmentStats.rows.forEach((row, idx) => {
-      if (row.isTotal) {
-        sheet.getRange(dataStartRow + idx, 1, 1, 8).setBackground(THEME.total_bg).setFontWeight("bold");
-      }
+    
+    assignmentStats.totalRowIndices.forEach(idx => {
+      sheet.getRange(dataStartRow + idx, 1, 1, 8).setBackground(THEME.total_bg).setFontWeight("bold");
     });
+    
     const rateRange = sheet.getRange(dataStartRow, 5, assignmentStats.rows.length, 1);
     const rules = [
       SpreadsheetApp.newConditionalFormatRule().whenNumberGreaterThan(0.8).setFontColor(THEME.accent_green).setRanges([rateRange]).build(),
@@ -128,30 +120,36 @@ function updateDashboard() {
   // --- 컬럼 너비 설정 ---
   sheet.setColumnWidth(1, 220); sheet.setColumnWidth(2, 100);
   sheet.setColumnWidth(3, 80); sheet.setColumnWidth(4, 80);
-  sheet.setColumnWidth(5, 80); sheet.setColumnWidth(6, 120);
-  sheet.setColumnWidth(7, 80); sheet.setColumnWidth(8, 200); // 미제출 학생 명단 열 너비
+  sheet.setColumnWidth(5, 80);
+  sheet.setColumnWidth(6, 120);
+  sheet.setColumnWidth(7, 80); sheet.setColumnWidth(8, 200); 
 
   SpreadsheetApp.flush();
 }
 
 /**
+ * ★★★ 이름 변경 (v18) ★★★
  * '학생명단_전체' 시트에서 모든 학생 정보를 객체로 가져옵니다.
- * @returns {Object} 학번을 키로, {name, class, number} 객체를 값으로 하는 맵
  */
-function getFullStudentList() {
+function getFullStudentList_v18() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const studentSheet = ss.getSheetByName("학생명단_전체");
   if (!studentSheet || studentSheet.getLastRow() < 2) return {};
-
-  const data = studentSheet.getRange(2, 1, studentSheet.getLastRow() - 1, 4).getValues(); // A:D 학번, 반, 번호, 이름
+  
+  const data = studentSheet.getRange(2, 1, studentSheet.getLastRow() - 1, 4).getValues();
   const studentMap = {};
+  
   data.forEach(row => {
-    const id = String(row[0]).trim();
-    if (id) {
+    const id = String(row[0]).trim(); 
+    const className = String(row[1]).trim(); 
+    const number = String(row[2]).trim(); 
+    const name = String(row[3]).trim(); 
+    
+    if (id && className && name) {
       studentMap[id] = {
-        name: String(row[3]).trim(),
-        class: String(row[1]).trim(),
-        number: String(row[2]).trim()
+        name: name,
+        class: className,
+        number: number
       };
     }
   });
@@ -159,219 +157,136 @@ function getFullStudentList() {
 }
 
 /**
- * ★★★ 코드 중복 제거: Helpers.gs로 이동됨 ★★★
- * 하위 호환성을 위해 Wrapper 함수 유지
+ * Helpers.gs의 함수 호출 (이름 변경 불필요)
  */
 function getStudentCountByClass(studentData) {
-    return getStudentCountByClassHelper(studentData);
+    return getStudentCountByClassHelper(studentData); 
 }
 
 
-// getAssignmentData 함수 - v2 구조에 맞게 수정
-function getAssignmentData() {
-  Logger.log("[getAssignmentData] 시작 - 공개 시트 데이터 조회");
+/**
+ * ★★★ 이름 변경 (v18) ★★★
+ * '공개' 시트에서 v2 구조(A:E)를 읽어옵니다.
+ */
+function getAssignmentData_v18() {
   try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const publicSheet = ss.getSheetByName("공개");
-    if (!publicSheet || publicSheet.getLastRow() < 2) {
-      Logger.log("[getAssignmentData] 공개 시트 없음 또는 데이터 없음");
-      return [];
-    }
-
-    // v2 구조: [과제공개, 대상시트, 대상반, 의견공개, 알림메시지]
-    const data = publicSheet.getRange(2, 1, publicSheet.getLastRow() - 1, 5).getValues();
-    Logger.log(`[getAssignmentData] 원본 데이터 조회: ${data.length}행, 내용: ${JSON.stringify(data.slice(0, 3))}`);
-
-    // 과제공개=TRUE인 행만 필터링하고 [대상시트, 대상반]만 반환
-    const filteredData = data
-      .filter(row => row[0] === true) // 과제공개가 TRUE인 경우만
-      .map(row => [row[1], row[2]]); // [대상시트, 대상반]만 반환
-
-    Logger.log(`[getAssignmentData] 필터링된 데이터: ${filteredData.length}개, 내용: ${JSON.stringify(filteredData)}`);
-    return filteredData;
-  } catch (e) {
-    Logger.log(`getAssignmentData 오류: ${e.message}`);
-    return [];
+    if (!publicSheet || publicSheet.getLastRow() < 2) return [];
+    
+    return publicSheet.getRange(2, 1, publicSheet.getLastRow() - 1, 5).getValues();
+  } catch (e) { 
+    Logger.log("getAssignmentData_v18 Error: " + e.message);
+    return []; 
   }
 }
 
 /**
- * ★★★ 핵심 수정 v3.0 - 반별 통계 복원 및 대상 반 필터링 ★★★
- * 과제별 제출 통계를 계산하고, 대상 반 정보를 기반으로 반별 통계를 제공합니다.
+ * ★★★ 이름 변경 (v18) ★★★
+ * 과제별 제출 통계를 '반별'로 계산합니다.
  */
-function calculateAssignmentStatsByClass(studentData, studentCountByClass, totalStudents) {
-  Logger.log("[calculateAssignmentStatsByClass] 시작 - 과제 통계 계산 함수");
-  Logger.log(`[calculateAssignmentStatsByClass] 입력 데이터: 학생수=${totalStudents}, 학생데이터=${Object.keys(studentData).length}명`);
-
+function calculateAssignmentStatsByClass_v18(studentData, studentCountByClass) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const assignmentData = getAssignmentData();
+  const assignmentData = getAssignmentData_v18(); // v18 함수 호출
   const allStudentIds = Object.keys(studentData);
-
-  Logger.log(`[calculateAssignmentStatsByClass] getAssignmentData() 반환됨: ${assignmentData.length}개`);
-
+  
   const result = {
     rows: [], totalRate: 0, validCount: 0,
     totalAssignments: 0, totalRowIndices: []
   };
 
-  // ★★★ 성능 개선: 모든 과제 시트를 한 번에 조회 ★★★
-  Logger.log(`[Dashboard] assignmentData 확인: ${JSON.stringify(assignmentData)}`);
-
-  const sheetNames = assignmentData.map(row => row[0]).filter(Boolean);
-  Logger.log(`[Dashboard] 추출된 시트명: ${JSON.stringify(sheetNames)}`);
-
+  // 1. 모든 과제 시트의 제출자 명단(A열)을 미리 가져와 맵에 저장
+  const sheetNames = [...new Set(assignmentData.map(row => row[1]).filter(Boolean))]; 
   const submittedIdsMap = {};
 
   if (sheetNames.length > 0) {
     try {
-      // SpreadsheetApp의 getSheetByName()을 여러 번 호출하는 대신,
-      // 모든 시트의 A열(학번)을 한 번에 가져옴
       sheetNames.forEach(sheetName => {
-        Logger.log(`[Dashboard] 시트 조회 중: ${sheetName}`);
         const targetSheet = ss.getSheetByName(sheetName);
-        if (targetSheet && targetSheet.getLastRow() > 1) {
+        
+        // (v17 버그 수정 유지) 시트가 존재하고, 헤더 외에 데이터 행이 1개라도 있는지 확인
+        if (targetSheet && targetSheet.getLastRow() > 1) { 
+          const numRows = targetSheet.getLastRow() - 1; // 데이터 행의 수
           const submittedIds = targetSheet
-            .getRange(2, 1, targetSheet.getLastRow() - 1, 1)
+            .getRange(2, 1, numRows, 1) // A열 (학번)
             .getValues()
             .flat()
-            .filter(String);
+            .map(String) // 학번을 문자열로 통일
+            .filter(Boolean); 
           submittedIdsMap[sheetName] = submittedIds;
-          Logger.log(`[Dashboard] ${sheetName} 제출자: ${submittedIds.length}명`);
         } else {
-          submittedIdsMap[sheetName] = [];
-          Logger.log(`[Dashboard] ${sheetName} 시트 없거나 비어있음`);
+          submittedIdsMap[sheetName] = []; 
         }
       });
-
-      Logger.log(`[Dashboard] batchGet 최적화: ${sheetNames.length}개 시트 조회 완료`);
+      Logger.log(`[Dashboard v18] Submitted ID Map: ${sheetNames.length}개 시트 조회 완료`);
     } catch (e) {
-      Logger.log('[Dashboard] batchGet 오류:', e.message);
-      // 오류 발생 시 빈 맵으로 처리
+      Logger.log('[Dashboard v18] Submitted ID Map 오류:', e.message);
       sheetNames.forEach(name => submittedIdsMap[name] = []);
     }
-  } else {
-    Logger.log('[Dashboard] 처리할 시트가 없음');
   }
 
-  Logger.log(`[Dashboard] 가져온 과제 데이터: ${assignmentData.length}개`);
-  Logger.log(`[Dashboard] 과제 데이터 내용: ${JSON.stringify(assignmentData)}`);
-
+  // 2. '공개' 시트를 기준으로 과제별 통계 생성
   assignmentData.forEach(row => {
-    const sheetName = row[0];
-    const targetClass = String(row[1] || '').trim(); // ★★★ 대상 반 정보 사용 ★★★
+    const isPublic = row[0] === true || String(row[0]).toUpperCase() === 'TRUE'; 
+    const sheetName = row[1]; 
+    const targetClassStr = row[2] || '전체'; 
 
-    Logger.log(`[Dashboard] 처리 중: 시트명=${sheetName}, 대상반=${targetClass}`);
-    Logger.log(`[Dashboard] targetClass 조건 확인: targetClass='${targetClass}', toLowerCase()='${targetClass.toLowerCase()}', '전체' 비교=${targetClass.toLowerCase() === '전체'}`);
-
-    if (!sheetName) return;
+    if (!isPublic || !sheetName) return;
 
     result.totalAssignments++;
 
-    // ★★★ 캐시된 제출자 ID 목록 사용 ★★★
-    const submittedIds = submittedIdsMap[sheetName] || [];
+    const submittedIds = submittedIdsMap[sheetName] || []; 
 
-    // ★★★ 대상 반 필터링 로직 - 반별 통계 지원 ★★★
-    let classGroups = [];
+    const allClassNames = Object.keys(studentCountByClass);
+    const targetClasses = (targetClassStr.toLowerCase() === '전체') 
+      ? allClassNames.sort() 
+      : targetClassStr.split(',').map(c => c.trim()).filter(c => allClassNames.includes(c));
 
-    if (!targetClass || targetClass.toLowerCase() === '전체') {
-      // 전체 대상 과제는 각 반별로 통계 분리 후 마지막에 전체 통계 추가
-      const classes = {};
+    if (targetClasses.length === 0) return; 
 
-      // 학생들을 반별로 그룹화
-      allStudentIds.forEach(studentId => {
-        const classPrefix = studentId.substring(0, 3);
-        if (!classes[classPrefix]) {
-          classes[classPrefix] = [];
-        }
-        classes[classPrefix].push(studentId);
-      });
+    let assignmentTotalSubmitted = 0;
+    let assignmentTotalStudents = 0;
+    let assignmentAllNotSubmittedStudents = [];
+    
+    const classRows = []; 
 
-      // 각 반별로 통계 생성
-      Object.keys(classes).sort().forEach(classPrefix => {
-        const classStudentIds = classes[classPrefix];
-        const classSubmittedIds = classStudentIds.filter(id => submittedIds.includes(id));
-        const classNotSubmittedIds = classStudentIds.filter(id => !submittedIds.includes(id));
+    // 3. 이 과제의 대상 반(targetClasses)을 하나씩 순회
+    targetClasses.forEach(className => {
+      const classTotal = studentCountByClass[className];
+      if (!classTotal || classTotal === 0) return; 
 
-        classGroups.push({
-          targetClass: classPrefix + '반',
-          targetStudentIds: classStudentIds,
-          submittedIds: classSubmittedIds,
-          notSubmittedIds: classNotSubmittedIds,
-          targetCount: classStudentIds.length,
-          submittedCount: classSubmittedIds.length,
-          isTotal: false
-        });
-      });
+      const classStudentIds = allStudentIds.filter(id => studentData[id].class === className);
+      
+      const classSubmittedIds = classStudentIds.filter(id => submittedIds.includes(id));
+      const classSubmittedCount = classSubmittedIds.length;
+      
+      const classNotSubmittedIds = classStudentIds.filter(id => !submittedIds.includes(id));
+      const classNotSubmittedCount = classNotSubmittedIds.length;
 
-      // 전체 통계를 마지막에 추가
-      const totalSubmittedIds = allStudentIds.filter(id => submittedIds.includes(id));
-      const totalNotSubmittedIds = allStudentIds.filter(id => !submittedIds.includes(id));
+      assignmentTotalSubmitted += classSubmittedCount;
+      assignmentTotalStudents += classTotal;
 
-      classGroups.push({
-        targetClass: "전체",
-        targetStudentIds: allStudentIds,
-        submittedIds: totalSubmittedIds,
-        notSubmittedIds: totalNotSubmittedIds,
-        targetCount: allStudentIds.length,
-        submittedCount: totalSubmittedIds.length,
-        isTotal: true
-      });
-    } else {
-      // 특정 반 대상 (복수 반 지원: "101, 102, 103")
-      const allowedPrefixes = targetClass.split(',').map(cls => cls.trim());
-
-      allowedPrefixes.forEach(prefix => {
-        const classStudentIds = allStudentIds.filter(id => {
-          const studentPrefix = id.substring(0, 3);
-          return studentPrefix === prefix;
-        });
-
-        const classSubmittedIds = classStudentIds.filter(id => submittedIds.includes(id));
-        const classNotSubmittedIds = classStudentIds.filter(id => !submittedIds.includes(id));
-
-        classGroups.push({
-          targetClass: prefix + '반',
-          targetStudentIds: classStudentIds,
-          submittedIds: classSubmittedIds,
-          notSubmittedIds: classNotSubmittedIds,
-          targetCount: classStudentIds.length,
-          submittedCount: classSubmittedIds.length
-        });
-      });
-    }
-
-    Logger.log(`[Dashboard] 생성된 반별 그룹: ${classGroups.length}개`);
-
-    // 각 반별로 결과 행 생성
-    classGroups.forEach((group, index) => {
-      const { targetClass, notSubmittedIds, targetCount, submittedCount, isTotal } = group;
-
-      // 미제출 학생 정보 정렬
-      const notSubmittedStudents = notSubmittedIds.map(id => ({
+      const notSubmittedStudents = classNotSubmittedIds.map(id => ({
         id: id,
         name: studentData[id].name,
         class: studentData[id].class,
         number: parseInt(studentData[id].number, 10) || 0
-      })).sort((a, b) => {
-        if (a.class < b.class) return -1;
-        if (a.class > b.class) return 1;
-        return a.number - b.number;
-      });
+      })).sort((a, b) => a.number - b.number); 
 
-      // ★★★ 표시할 텍스트와 노트 생성 ★★★
+      assignmentAllNotSubmittedStudents.push(...notSubmittedStudents); 
+
+      // 4. 미제출 학생 명단 표시 텍스트 생성
       let displayText, noteText;
-      const notSubmittedCount = notSubmittedStudents.length;
-
-      if (notSubmittedCount === 0) {
+      if (classNotSubmittedCount === 0) {
         displayText = "✅ 전원 제출 완료";
         noteText = "";
       } else {
         const fullListString = notSubmittedStudents
           .map(s => `${s.class}-${s.number} ${s.name}`)
           .join("\n");
-
-        if (notSubmittedCount > 5) {
-          displayText = `${notSubmittedCount}명 (명단 확인)`;
+        
+        if (classNotSubmittedCount > 5) { 
+          displayText = `${classNotSubmittedCount}명 (명단 확인)`;
           noteText = fullListString;
         } else {
           displayText = notSubmittedStudents.map(s => s.name).join(", ");
@@ -379,45 +294,85 @@ function calculateAssignmentStatsByClass(studentData, studentCountByClass, total
         }
       }
 
-      // 제출률 계산
-      const submissionRate = targetCount > 0 ? submittedCount / targetCount : 0;
-      const targetSheet = ss.getSheetByName(sheetName);
+      const submissionRate = classTotal > 0 ? (classSubmittedCount / classTotal) : 0;
+      const targetSheet = ss.getSheetByName(sheetName); 
       const url = targetSheet ? `https://docs.google.com/spreadsheets/d/${ss.getId()}/edit#gid=${targetSheet.getSheetId()}` : "#";
 
-      // 결과 행 데이터 구성
-      const isFirstRow = classGroups.findIndex(g => !g.isTotal) === 0 && !isTotal;
-      const rowValues = [
-        isFirstRow ? `=HYPERLINK("${url}", "${sheetName}${targetSheet ? "" : " (시트없음)"}")` : sheetName, // 첫 번째 반에만 링크
-        targetClass, // 반별 정보
-        submittedCount,
-        targetCount,
-        submissionRate,
-        `=SPARKLINE(${submittedCount},{"charttype","bar","max",${targetCount},"color1","${THEME.sparkline_bar}"})`,
-        `${submittedCount}/${targetCount}`,
-        displayText
-      ];
+      // 5. 이 반(className)에 대한 행 데이터 생성
+      classRows.push({
+          values: [
+            `=HYPERLINK("${url}", "${sheetName}${targetSheet ? "" : " (시트없음)"}")`, 
+            className, 
+            classSubmittedCount, 
+            classTotal, 
+            submissionRate, 
+            `=SPARKLINE(${classSubmittedCount}, {"charttype","bar";"max",${classTotal};"color1","${THEME.sparkline_bar}"})`,
+            `${classSubmittedCount}/${classTotal}`, 
+            displayText 
+          ],
+          notes: ["", "", "", "", "", "", "", noteText] 
+      });
+    }); // (반 순회 종료)
 
-      const rowNotes = ["", "", "", "", "", "", "", noteText];
+    // 6. 생성된 반별 행들을 결과에 추가
+    result.rows.push(...classRows);
 
-      result.rows.push({
-        values: rowValues,
-        notes: rowNotes,
-        isTotal: isTotal || false // 전체 통계 행 표시
+    // 7. 만약 여러 반(2개 이상)이 대상이었다면, 과제별 "합계" 행 추가
+    if (classRows.length > 1) {
+      const totalSubmissionRate = assignmentTotalStudents > 0 ? (assignmentTotalSubmitted / assignmentTotalStudents) : 0;
+      
+      const sortedAllNotSubmitted = assignmentAllNotSubmittedStudents.sort((a, b) => {
+        if (a.class < b.class) return -1;
+        if (a.class > b.class) return 1;
+        return a.number - b.number;
       });
 
-      Logger.log(`[Dashboard] ${targetClass} 통계: ${submittedCount}/${targetCount} (${Math.round(submissionRate * 100)}%)`);
-
-      if (targetCount > 0) {
-        result.totalRate += submissionRate;
-        result.validCount++;
+      let totalDisplayText, totalNoteText;
+      if (sortedAllNotSubmitted.length === 0) {
+        totalDisplayText = "✅ 전원 제출 완료";
+        totalNoteText = "";
+      } else {
+        const fullListString = sortedAllNotSubmitted
+          .map(s => `${s.class}-${s.number} ${s.name}`)
+          .join("\n");
+        
+        if (sortedAllNotSubmitted.length > 5) {
+          totalDisplayText = `${sortedAllNotSubmitted.length}명 (명단 확인)`;
+          totalNoteText = fullListString;
+        } else {
+          totalDisplayText = sortedAllNotSubmitted.map(s => s.name).join(", ");
+          totalNoteText = fullListString;
+        }
       }
-    });
-  });
+
+      // 합계 행 추가
+      result.rows.push({
+        values: [
+          sheetName, 
+          "합계", 
+          assignmentTotalSubmitted, 
+          assignmentTotalStudents, 
+          totalSubmissionRate,
+          `=SPARKLINE(${assignmentTotalSubmitted}, {"charttype","bar";"max",${assignmentTotalStudents};"color1","${THEME.sparkline_bar}"})`,
+          `${assignmentTotalSubmitted}/${assignmentTotalStudents}`,
+          totalDisplayText
+        ],
+        notes: ["", "", "", "", "", "", "", totalNoteText]
+      });
+      result.totalRowIndices.push(result.rows.length - 1);
+    }
+    
+    // 8. 시스템 전체 평균 제출률 계산을 위한 누적
+    if (assignmentTotalStudents > 0) {
+        result.totalRate += (assignmentTotalSubmitted / assignmentTotalStudents);
+        result.validCount++;
+    }
+  }); // (과제 순회 종료)
 
   return result;
 }
 
 // createDashboardLayout 함수는 하위 호환성을 위해 유지합니다.
 function createDashboardLayout() {
-  updateDashboard();
+  updateDashboard_v18(); // v18 호출
 }

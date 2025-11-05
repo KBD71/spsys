@@ -149,7 +149,7 @@ module.exports = async (req, res) => {
       forceFullscreen: forceFullscreen
     };
 
-    const cacheTTL = submitted ? 15 : 10;
+    const cacheTTL = submitted ? 90 : 60;
     await setCache(cacheKey, result, cacheTTL);
     console.log(createSafeLog('[assignment-detail] 캐시 저장', { assignmentId, studentId }));
 

@@ -203,7 +203,7 @@ module.exports = async (req, res) => {
     });
 
     const result = { success: true, assignments };
-    await setCache(cacheKey, result, 10); // TTL 10초
+    await setCache(cacheKey, result, 60); // TTL 60초
     console.log(createSafeLog('[assignments] 캐시 저장', { studentId }));
     return res.status(200).json(result);
 

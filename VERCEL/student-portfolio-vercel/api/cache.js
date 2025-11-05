@@ -236,12 +236,8 @@ function cleanupExpiredCache(maxAge = 300000) {
     return deletedCount;
 }
 
-// In-memory 사용 시에만 자동 정리 (5분마다)
-if (!useRedis) {
-    setInterval(() => {
-        cleanupExpiredCache(300000);
-    }, 300000);
-}
+// Serverless 환경에서는 setInterval 사용하지 않음
+// 수동 호출 또는 API 호출 시에만 정리 수행
 
 module.exports = {
     getCacheKey,

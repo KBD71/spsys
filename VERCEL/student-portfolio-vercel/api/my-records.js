@@ -9,7 +9,7 @@
  *
  * v2 구조: [과제공개, 대상시트, 대상반, 의견공개, 알림메시지]
  * v1 구조 폴백: [공개, 시트이름, 대상반]
- * 10초 캐싱으로 Google Sheets 변경 빠른 반영
+ * 45초 캐싱으로 비용 효율적인 API 관리
  */
 const { google } = require('googleapis');
 const { getCacheKey, getCache, setCache, clearCache } = require('./cache');
@@ -57,7 +57,7 @@ async function handleGetRecords(req, res) {
   if (!studentId) return res.status(400).json({ success: false, message: '학번이 필요합니다.' });
 
   const cacheKey = getCacheKey('myRecords', { studentId });
-  const cached = await getCache(cacheKey, 10000);
+  const cached = await getCache(cacheKey, 45000);
   if (cached) {
     console.log(`[my-records] 캐시 HIT - 학번: ${studentId}`);
     return res.status(200).json(cached);
@@ -201,7 +201,7 @@ async function handleGetRecords(req, res) {
   }
 
   const result = { success: true, records: records };
-  await setCache(cacheKey, result, 10);
+  await setCache(cacheKey, result, 45);
   console.log(`[my-records] 캐시 저장 - 학번: ${studentId}, 기록 수: ${records.length}`);
   return res.status(200).json(result);
 }

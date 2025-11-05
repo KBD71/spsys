@@ -67,7 +67,7 @@ module.exports = async (req, res) => {
         class: studentRow[classColIndex]
       };
 
-      await setCache(studentCacheKey, studentInfo, 10); // TTL 10초
+      await setCache(studentCacheKey, studentInfo, 120); // TTL 120초
       console.log(createSafeLog('[exam-log] 학생 정보 캐시 저장', { studentId }));
     } else {
       console.log(createSafeLog('[exam-log] 학생 정보 캐시 HIT', { studentId }));
@@ -95,7 +95,7 @@ module.exports = async (req, res) => {
       assignmentName = assignmentRow ?
         assignmentRow[assignmentNameColIndex] : assignmentId;
 
-      await setCache(assignmentCacheKey, assignmentName, 10); // TTL 10초
+      await setCache(assignmentCacheKey, assignmentName, 120); // TTL 120초
       console.log(`[exam-log] 과제명 캐시 저장: ${assignmentId}`);
     } else {
       console.log(`[exam-log] 과제명 캐시 HIT: ${assignmentId}`);

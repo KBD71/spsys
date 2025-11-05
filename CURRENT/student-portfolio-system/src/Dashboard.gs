@@ -155,14 +155,24 @@ function getStudentCountByClass(studentData) {
 }
 
 
-// getAssignmentData 함수는 이전과 동일합니다.
+// getAssignmentData 함수 - v2 구조에 맞게 수정
 function getAssignmentData() {
   try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const publicSheet = ss.getSheetByName("공개");
     if (!publicSheet || publicSheet.getLastRow() < 2) return [];
-    return publicSheet.getRange(2, 2, publicSheet.getLastRow() - 1, 2).getValues();
-  } catch (e) { return []; }
+
+    // v2 구조: [과제공개, 대상시트, 대상반, 의견공개, 알림메시지]
+    const data = publicSheet.getRange(2, 1, publicSheet.getLastRow() - 1, 5).getValues();
+
+    // 과제공개=TRUE인 행만 필터링하고 [대상시트, 대상반]만 반환
+    return data
+      .filter(row => row[0] === true) // 과제공개가 TRUE인 경우만
+      .map(row => [row[1], row[2]]); // [대상시트, 대상반]만 반환
+  } catch (e) {
+    Logger.log(`getAssignmentData 오류: ${e.message}`);
+    return [];
+  }
 }
 
 /**
@@ -209,9 +219,14 @@ function calculateAssignmentStatsByClass(studentData, studentCountByClass, total
     }
   }
 
+  Logger.log(`[Dashboard] 가져온 과제 데이터: ${assignmentData.length}개`);
+  Logger.log(`[Dashboard] 과제 데이터 내용: ${JSON.stringify(assignmentData)}`);
+
   assignmentData.forEach(row => {
     const sheetName = row[0];
     const targetClass = String(row[1] || '').trim(); // ★★★ 대상 반 정보 사용 ★★★
+
+    Logger.log(`[Dashboard] 처리 중: 시트명=${sheetName}, 대상반=${targetClass}`);
 
     if (!sheetName) return;
 
@@ -220,92 +235,131 @@ function calculateAssignmentStatsByClass(studentData, studentCountByClass, total
     // ★★★ 캐시된 제출자 ID 목록 사용 ★★★
     const submittedIds = submittedIdsMap[sheetName] || [];
 
-    // ★★★ 대상 반 필터링 로직 ★★★
-    let targetStudentIds, targetStudents, targetCount, displayTargetClass;
+    // ★★★ 대상 반 필터링 로직 - 반별 통계 지원 ★★★
+    let classGroups = [];
 
     if (!targetClass || targetClass.toLowerCase() === '전체') {
-      // 전체 학생 대상
-      targetStudentIds = allStudentIds;
-      targetStudents = studentData;
-      targetCount = totalStudents;
-      displayTargetClass = "전체";
+      // 전체 대상 과제는 각 반별로 통계 분리
+      const classes = {};
+
+      // 학생들을 반별로 그룹화
+      allStudentIds.forEach(studentId => {
+        const classPrefix = studentId.substring(0, 3);
+        if (!classes[classPrefix]) {
+          classes[classPrefix] = [];
+        }
+        classes[classPrefix].push(studentId);
+      });
+
+      // 각 반별로 통계 생성
+      Object.keys(classes).sort().forEach(classPrefix => {
+        const classStudentIds = classes[classPrefix];
+        const classSubmittedIds = classStudentIds.filter(id => submittedIds.includes(id));
+        const classNotSubmittedIds = classStudentIds.filter(id => !submittedIds.includes(id));
+
+        classGroups.push({
+          targetClass: classPrefix + '반',
+          targetStudentIds: classStudentIds,
+          submittedIds: classSubmittedIds,
+          notSubmittedIds: classNotSubmittedIds,
+          targetCount: classStudentIds.length,
+          submittedCount: classSubmittedIds.length
+        });
+      });
     } else {
       // 특정 반 대상 (복수 반 지원: "101, 102, 103")
       const allowedPrefixes = targetClass.split(',').map(cls => cls.trim());
-      targetStudentIds = allStudentIds.filter(id => {
-        const studentPrefix = id.substring(0, 3);
-        return allowedPrefixes.includes(studentPrefix);
-      });
 
-      targetStudents = {};
-      targetStudentIds.forEach(id => {
-        targetStudents[id] = studentData[id];
+      allowedPrefixes.forEach(prefix => {
+        const classStudentIds = allStudentIds.filter(id => {
+          const studentPrefix = id.substring(0, 3);
+          return studentPrefix === prefix;
+        });
+
+        const classSubmittedIds = classStudentIds.filter(id => submittedIds.includes(id));
+        const classNotSubmittedIds = classStudentIds.filter(id => !submittedIds.includes(id));
+
+        classGroups.push({
+          targetClass: prefix + '반',
+          targetStudentIds: classStudentIds,
+          submittedIds: classSubmittedIds,
+          notSubmittedIds: classNotSubmittedIds,
+          targetCount: classStudentIds.length,
+          submittedCount: classSubmittedIds.length
+        });
       });
-      targetCount = targetStudentIds.length;
-      displayTargetClass = targetClass;
     }
 
-    // 대상 학생 중 제출하지 않은 학생 ID 필터링
-    const notSubmittedIds = targetStudentIds.filter(id => !submittedIds.includes(id));
+    Logger.log(`[Dashboard] 생성된 반별 그룹: ${classGroups.length}개`);
 
-    // 미제출 학생 정보를 객체 배열로 만든 후 정렬
-    const notSubmittedStudents = notSubmittedIds.map(id => ({
-      id: id,
-      name: studentData[id].name,
-      class: studentData[id].class,
-      number: parseInt(studentData[id].number, 10) || 0 // 번호순 정렬을 위해 숫자로 변환
-    })).sort((a, b) => {
-      if (a.class < b.class) return -1;
-      if (a.class > b.class) return 1;
-      return a.number - b.number; // 같은 반이면 번호순으로 정렬
-    });
+    // 각 반별로 결과 행 생성
+    classGroups.forEach((group, index) => {
+      const { targetClass, notSubmittedIds, targetCount, submittedCount } = group;
 
-    // ★★★ 표시할 텍스트와 노트에 넣을 텍스트 생성 ★★★
-    let displayText, noteText;
-    const notSubmittedCount = notSubmittedStudents.length;
+      // 미제출 학생 정보 정렬
+      const notSubmittedStudents = notSubmittedIds.map(id => ({
+        id: id,
+        name: studentData[id].name,
+        class: studentData[id].class,
+        number: parseInt(studentData[id].number, 10) || 0
+      })).sort((a, b) => {
+        if (a.class < b.class) return -1;
+        if (a.class > b.class) return 1;
+        return a.number - b.number;
+      });
 
-    if (notSubmittedCount === 0) {
-      displayText = "✅ 전원 제출 완료";
-      noteText = "";
-    } else {
-      const fullListString = notSubmittedStudents
-        .map(s => `${s.class}-${s.number} ${s.name}`)
-        .join("\n");
+      // ★★★ 표시할 텍스트와 노트 생성 ★★★
+      let displayText, noteText;
+      const notSubmittedCount = notSubmittedStudents.length;
 
-      if (notSubmittedCount > 5) {
-        displayText = `${notSubmittedCount}명 (명단 확인)`;
-        noteText = fullListString;
+      if (notSubmittedCount === 0) {
+        displayText = "✅ 전원 제출 완료";
+        noteText = "";
       } else {
-        displayText = notSubmittedStudents.map(s => s.name).join(", ");
-        noteText = fullListString;
+        const fullListString = notSubmittedStudents
+          .map(s => `${s.class}-${s.number} ${s.name}`)
+          .join("\n");
+
+        if (notSubmittedCount > 5) {
+          displayText = `${notSubmittedCount}명 (명단 확인)`;
+          noteText = fullListString;
+        } else {
+          displayText = notSubmittedStudents.map(s => s.name).join(", ");
+          noteText = fullListString;
+        }
       }
-    }
 
-    // 제출률 계산 (대상 학생 기준)
-    const submittedCount = targetCount - notSubmittedCount;
-    const submissionRate = targetCount > 0 ? submittedCount / targetCount : 0;
-    const targetSheet = ss.getSheetByName(sheetName);
-    const url = targetSheet ? `https://docs.google.com/spreadsheets/d/${ss.getId()}/edit#gid=${targetSheet.getSheetId()}` : "#";
+      // 제출률 계산
+      const submissionRate = targetCount > 0 ? submittedCount / targetCount : 0;
+      const targetSheet = ss.getSheetByName(sheetName);
+      const url = targetSheet ? `https://docs.google.com/spreadsheets/d/${ss.getId()}/edit#gid=${targetSheet.getSheetId()}` : "#";
 
-    // 결과 행 데이터 구성 (값과 노트를 객체로 묶음)
-    result.rows.push({
-        values: [
-            `=HYPERLINK("${url}", "${sheetName}${targetSheet ? "" : " (시트없음)"}")`,
-            displayTargetClass, // ★★★ 실제 대상 반 표시 ★★★
-            submittedCount,
-            targetCount, // ★★★ 실제 대상 인원 ★★★
-            submissionRate,
-            `=SPARKLINE(${submittedCount}, {"charttype","bar";"max",${targetCount};"color1","${THEME.sparkline_bar}"})`,
-            `${submittedCount}/${targetCount}`,
-            displayText
-        ],
-        notes: ["", "", "", "", "", "", "", noteText] // 8번째 열에만 노트 추가
-    });
+      // 결과 행 데이터 구성
+      const rowValues = [
+        index === 0 ? `=HYPERLINK("${url}", "${sheetName}${targetSheet ? "" : " (시트없음)"}")` : "", // 첫 행에만 과제명 표시
+        targetClass, // 반별 정보
+        submittedCount,
+        targetCount,
+        submissionRate,
+        `=SPARKLINE(${submittedCount}, {"charttype","bar";"max",${targetCount};"color1","${THEME.sparkline_bar}"})`,
+        `${submittedCount}/${targetCount}`,
+        displayText
+      ];
 
-    if (targetCount > 0) {
+      const rowNotes = ["", "", "", "", "", "", "", noteText];
+
+      result.rows.push({
+        values: rowValues,
+        notes: rowNotes
+      });
+
+      Logger.log(`[Dashboard] ${targetClass} 통계: ${submittedCount}/${targetCount} (${Math.round(submissionRate * 100)}%)`);
+
+      if (targetCount > 0) {
         result.totalRate += submissionRate;
         result.validCount++;
-    }
+      }
+    });
   });
 
   return result;

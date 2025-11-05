@@ -230,6 +230,7 @@ function calculateAssignmentStatsByClass(studentData, studentCountByClass, total
     const targetClass = String(row[1] || '').trim(); // ★★★ 대상 반 정보 사용 ★★★
 
     Logger.log(`[Dashboard] 처리 중: 시트명=${sheetName}, 대상반=${targetClass}`);
+    Logger.log(`[Dashboard] targetClass 조건 확인: targetClass='${targetClass}', toLowerCase()='${targetClass.toLowerCase()}', '전체' 비교=${targetClass.toLowerCase() === '전체'}`);
 
     if (!sheetName) return;
 
@@ -360,7 +361,7 @@ function calculateAssignmentStatsByClass(studentData, studentCountByClass, total
         submittedCount,
         targetCount,
         submissionRate,
-        `=SPARKLINE(${submittedCount}, {"charttype","bar";"max",${targetCount};"color1","${THEME.sparkline_bar}"})`,
+        `=SPARKLINE(${submittedCount},{"charttype","bar","max",${targetCount},"color1","${THEME.sparkline_bar}"})`,
         `${submittedCount}/${targetCount}`,
         displayText
       ];

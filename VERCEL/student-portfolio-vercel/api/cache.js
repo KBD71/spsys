@@ -42,7 +42,8 @@ function getCacheKey(endpoint, params) {
             return acc;
         }, {});
 
-    return `${endpoint}:${JSON.stringify(sortedParams)}`;
+    // 버전 번호 추가: v2 (기존 캐시 무효화)
+    return `v2:${endpoint}:${JSON.stringify(sortedParams)}`;
 }
 
 /**

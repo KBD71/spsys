@@ -198,9 +198,14 @@ function getAssignmentData() {
  * 과제별 제출 통계를 계산하고, 대상 반 정보를 기반으로 반별 통계를 제공합니다.
  */
 function calculateAssignmentStatsByClass(studentData, studentCountByClass, totalStudents) {
+  Logger.log("[calculateAssignmentStatsByClass] 시작 - 과제 통계 계산 함수");
+  Logger.log(`[calculateAssignmentStatsByClass] 입력 데이터: 학생수=${totalStudents}, 학생데이터=${Object.keys(studentData).length}명`);
+
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const assignmentData = getAssignmentData();
   const allStudentIds = Object.keys(studentData);
+
+  Logger.log(`[calculateAssignmentStatsByClass] getAssignmentData() 반환됨: ${assignmentData.length}개`);
 
   const result = {
     rows: [], totalRate: 0, validCount: 0,
@@ -208,7 +213,11 @@ function calculateAssignmentStatsByClass(studentData, studentCountByClass, total
   };
 
   // ★★★ 성능 개선: 모든 과제 시트를 한 번에 조회 ★★★
+  Logger.log(`[Dashboard] assignmentData 확인: ${JSON.stringify(assignmentData)}`);
+
   const sheetNames = assignmentData.map(row => row[0]).filter(Boolean);
+  Logger.log(`[Dashboard] 추출된 시트명: ${JSON.stringify(sheetNames)}`);
+
   const submittedIdsMap = {};
 
   if (sheetNames.length > 0) {
@@ -216,6 +225,7 @@ function calculateAssignmentStatsByClass(studentData, studentCountByClass, total
       // SpreadsheetApp의 getSheetByName()을 여러 번 호출하는 대신,
       // 모든 시트의 A열(학번)을 한 번에 가져옴
       sheetNames.forEach(sheetName => {
+        Logger.log(`[Dashboard] 시트 조회 중: ${sheetName}`);
         const targetSheet = ss.getSheetByName(sheetName);
         if (targetSheet && targetSheet.getLastRow() > 1) {
           const submittedIds = targetSheet
@@ -224,8 +234,10 @@ function calculateAssignmentStatsByClass(studentData, studentCountByClass, total
             .flat()
             .filter(String);
           submittedIdsMap[sheetName] = submittedIds;
+          Logger.log(`[Dashboard] ${sheetName} 제출자: ${submittedIds.length}명`);
         } else {
           submittedIdsMap[sheetName] = [];
+          Logger.log(`[Dashboard] ${sheetName} 시트 없거나 비어있음`);
         }
       });
 
@@ -235,6 +247,8 @@ function calculateAssignmentStatsByClass(studentData, studentCountByClass, total
       // 오류 발생 시 빈 맵으로 처리
       sheetNames.forEach(name => submittedIdsMap[name] = []);
     }
+  } else {
+    Logger.log('[Dashboard] 처리할 시트가 없음');
   }
 
   Logger.log(`[Dashboard] 가져온 과제 데이터: ${assignmentData.length}개`);

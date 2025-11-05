@@ -22,8 +22,10 @@ const THEME = {
 function refreshDashboard() {
   const ui = SpreadsheetApp.getUi();
   try {
+    Logger.log("[refreshDashboard] 시작 - 새로고침 함수 호출");
     SpreadsheetApp.getActiveSpreadsheet().toast("대시보드를 새로고치고 있습니다...", "🚀 업데이트 중");
     updateDashboard();
+    Logger.log("[refreshDashboard] 완료 - updateDashboard() 실행 성공");
     SpreadsheetApp.getActiveSpreadsheet().toast("대시보드가 최신 정보로 업데이트되었습니다.", "✅ 새로고침 완료", 5);
   } catch (e) {
     Logger.log("refreshDashboard Error: " + e.message + "\n" + e.stack);
@@ -36,6 +38,7 @@ function refreshDashboard() {
  * 대시보드의 전체 레이아웃을 생성하고 데이터를 채웁니다.
  */
 function updateDashboard() {
+  Logger.log("[updateDashboard] 시작 - 대시보드 업데이트 함수 호출");
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   let sheet = ss.getSheetByName("메뉴");
   if (!sheet) {
@@ -43,12 +46,16 @@ function updateDashboard() {
   }
 
   // --- 데이터 수집 ---
+  Logger.log("[updateDashboard] 1단계: 학생 데이터 수집 시작");
   const studentData = getFullStudentList(); // '번호'를 포함한 전체 학생 정보 가져오기
   const studentCountByClass = getStudentCountByClass(studentData);
   const totalStudents = Object.keys(studentData).length;
-  
+  Logger.log(`[updateDashboard] 학생 데이터 수집 완료: 총 ${totalStudents}명`);
+
   // ★★★ 미제출 학생 명단 로직이 포함된 함수 호출 ★★★
+  Logger.log("[updateDashboard] 2단계: 과제 통계 계산 시작");
   const assignmentStats = calculateAssignmentStatsByClass(studentData, studentCountByClass, totalStudents);
+  Logger.log(`[updateDashboard] 과제 통계 계산 완료: ${assignmentStats.rows.length}개 행 생성`);
 
   // --- 시트 초기화 및 스타일링 (기존과 유사) ---
   sheet.clear();
@@ -160,18 +167,26 @@ function getStudentCountByClass(studentData) {
 
 // getAssignmentData 함수 - v2 구조에 맞게 수정
 function getAssignmentData() {
+  Logger.log("[getAssignmentData] 시작 - 공개 시트 데이터 조회");
   try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const publicSheet = ss.getSheetByName("공개");
-    if (!publicSheet || publicSheet.getLastRow() < 2) return [];
+    if (!publicSheet || publicSheet.getLastRow() < 2) {
+      Logger.log("[getAssignmentData] 공개 시트 없음 또는 데이터 없음");
+      return [];
+    }
 
     // v2 구조: [과제공개, 대상시트, 대상반, 의견공개, 알림메시지]
     const data = publicSheet.getRange(2, 1, publicSheet.getLastRow() - 1, 5).getValues();
+    Logger.log(`[getAssignmentData] 원본 데이터 조회: ${data.length}행, 내용: ${JSON.stringify(data.slice(0, 3))}`);
 
     // 과제공개=TRUE인 행만 필터링하고 [대상시트, 대상반]만 반환
-    return data
+    const filteredData = data
       .filter(row => row[0] === true) // 과제공개가 TRUE인 경우만
       .map(row => [row[1], row[2]]); // [대상시트, 대상반]만 반환
+
+    Logger.log(`[getAssignmentData] 필터링된 데이터: ${filteredData.length}개, 내용: ${JSON.stringify(filteredData)}`);
+    return filteredData;
   } catch (e) {
     Logger.log(`getAssignmentData 오류: ${e.message}`);
     return [];

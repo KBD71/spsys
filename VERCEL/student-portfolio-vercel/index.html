@@ -532,15 +532,37 @@
         const bodyEl = document.getElementById('recordsModalBody');
         const title = group.type === 'comment' ? `📊 ${group.sheetName} (교사 코멘트)` : `📢 ${group.sheetName} (알림)`;
         titleEl.textContent = title;
-        bodyEl.innerHTML = group.records.map((record, index) => {
-            let cardHtml = `<div class="record-card ${record.type}"><div class="data-row"><div class="data-label">${record.label}:</div><div class="data-value">${record.value || '-'}</div></div>`;
-            if (record.hasSuggestion) {
-                const suggestionId = `modal-suggestion-${index}`;
-                cardHtml += `<div class="suggestion-box"><strong>💡 건의사항:</strong><div><textarea id="${suggestionId}" class="suggestion-input" rows="3" placeholder="이 기록에 대한 건의사항을 입력하세요...">${escapeHTML(record.suggestion || '')}</textarea><button class="btn btn-primary" style="width:auto; padding: 8px 16px; margin-top: 8px;" data-sheet-name="${escapeHTML(record.sheetName)}" data-suggestion-id="${suggestionId}">저장</button></div></div>`;
-            }
-            cardHtml += `</div>`; return cardHtml;
+
+        // 모든 record 표시 (건의사항 입력창 제외)
+        let bodyHtml = group.records.map((record, index) => {
+            return `<div class="record-card ${record.type}">
+                <div class="data-row">
+                    <div class="data-label">${record.label}:</div>
+                    <div class="data-value">${record.value || '-'}</div>
+                </div>
+            </div>`;
         }).join('');
 
+        // 건의사항 입력창이 필요한지 확인 (records 중 하나라도 hasSuggestion이 true면)
+        const needsSuggestion = group.records.some(r => r.hasSuggestion);
+
+        if (needsSuggestion) {
+            // 첫 번째 record의 suggestion 값을 사용 (모두 같은 시트니까)
+            const existingSuggestion = group.records.find(r => r.suggestion)?.suggestion || '';
+            const suggestionId = `modal-suggestion-group`;
+
+            bodyHtml += `<div class="suggestion-box">
+                <strong>💡 건의사항:</strong>
+                <div>
+                    <textarea id="${suggestionId}" class="suggestion-input" rows="3" placeholder="이 과제에 대한 건의사항을 입력하세요...">${escapeHTML(existingSuggestion)}</textarea>
+                    <button class="btn btn-primary" style="width:auto; padding: 8px 16px; margin-top: 8px;" data-sheet-name="${escapeHTML(group.sheetName)}" data-suggestion-id="${suggestionId}">저장</button>
+                </div>
+            </div>`;
+        }
+
+        bodyEl.innerHTML = bodyHtml;
+
+        // 저장 버튼에 이벤트 리스너 추가
         bodyEl.querySelectorAll('button[data-suggestion-id]').forEach(btn => {
             btn.addEventListener('click', () => {
                 saveSuggestion(btn.dataset.sheetName, btn.dataset.suggestionId);

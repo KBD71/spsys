@@ -1,6 +1,8 @@
 /**
- * my-records 디버그 API
+ * my-records 디버그 API (v2 - 알림 로직 업데이트)
  * 공개 시트의 모든 행을 상세히 출력하여 문제 진단
+ * - 알림: 알림메시지가 있으면 항상 표시 (의견공개 상태 무관)
+ * - 코멘트: 의견공개=TRUE일 때 표시
  */
 const { google } = require('googleapis');
 
@@ -106,9 +108,9 @@ module.exports = async (req, res) => {
           '2_대상시트_존재': !!targetSheetName,
           '3_대상반_일치': classAllowed,
           '4_알림메시지_존재': !!notificationMessage,
-          '5_의견공개_FALSE': !opinionPublic
+          '5_의견공개_TRUE': opinionPublic
         },
-        willShowNotification: isPublic && targetSheetName && classAllowed && notificationMessage && !opinionPublic,
+        willShowNotification: isPublic && targetSheetName && classAllowed && notificationMessage,
         willShowComment: isPublic && targetSheetName && classAllowed && opinionPublic
       };
 

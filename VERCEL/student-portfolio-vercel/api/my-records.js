@@ -1,8 +1,9 @@
 /**
- * 내 기록 조회 및 건의사항 저장 API (v12 - 캐시 TTL 단축)
+ * 내 기록 조회 및 건의사항 저장 API (v13 - 알림과 코멘트 동시 표시)
  * GET: 학생의 기록(교사 코멘트) 및 알림을 조회합니다.
+ * - 알림: 알림메시지가 있으면 항상 표시 (의견공개 상태 무관)
  * - 교사 코멘트: 의견공개=TRUE일 때 과제 시트의 교사 평가 표시
- * - 알림: 알림메시지가 있고 의견공개=FALSE일 때 알림메시지 표시
+ * - 둘 다 동시에 표시 가능 (알림메시지 + 의견공개 체크 시)
  * - '공개' 시트가 없거나 구조가 잘못되어도 에러 대신 빈 배열 반환
  * POST: 건의사항을 저장합니다.
  *
@@ -121,8 +122,8 @@ async function handleGetRecords(req, res) {
       continue;
     }
 
-    // ★★★ v2 알림 로직: 알림메시지가 있으면 알림으로 추가 ★★★
-    if (notificationMessage && !opinionPublic) {
+    // ★★★ v2 알림 로직: 알림메시지가 있으면 항상 표시 (의견공개 상태 무관) ★★★
+    if (notificationMessage) {
       records.push({
         sheetName: targetSheetName,
         label: '알림',

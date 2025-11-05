@@ -55,14 +55,12 @@ async function handleGetRecords(req, res) {
   const { studentId } = req.query;
   if (!studentId) return res.status(400).json({ success: false, message: '학번이 필요합니다.' });
 
-  // ★★★ 캐시 임시 비활성화 - 디버깅용 ★★★
-  // const cacheKey = getCacheKey('myRecords', { studentId });
-  // const cached = getCache(cacheKey, 45000);
-  // if (cached) {
-  //   console.log(`[my-records] 캐시 HIT - 학번: ${studentId}`);
-  //   return res.status(200).json(cached);
-  // }
-  console.log(`[my-records] 캐시 비활성화 - 직접 조회: ${studentId}`);
+  const cacheKey = getCacheKey('myRecords', { studentId });
+  const cached = await getCache(cacheKey, 45000);
+  if (cached) {
+    console.log(`[my-records] 캐시 HIT - 학번: ${studentId}`);
+    return res.status(200).json(cached);
+  }
 
   const sheets = await getSheetsClient();
   const spreadsheetId = process.env.SPREADSHEET_ID;
@@ -202,9 +200,8 @@ async function handleGetRecords(req, res) {
   }
 
   const result = { success: true, records: records };
-  // ★★★ 캐시 저장 임시 비활성화 - 디버깅용 ★★★
-  // setCache(cacheKey, result);
-  console.log(`[my-records] 캐시 저장 비활성화 - 학번: ${studentId}, 기록 수: ${records.length}`);
+  await setCache(cacheKey, result);
+  console.log(`[my-records] 캐시 저장 - 학번: ${studentId}, 기록 수: ${records.length}`);
   return res.status(200).json(result);
 }
 

@@ -26,7 +26,6 @@ function onOpen() {
       )
       .addSeparator()
       .addItem('🔄 대시보드 새로고침', 'refreshDashboard')
-      .addItem('⏰ 대시보드 자동 새로고침 설정', 'setupDashboardAutoRefresh')
       .addItem('🗑️ 시트 삭제', 'promptToDeleteSheet')
       .addSeparator()
       .addSubMenu(ui.createMenu('🤖 AI 기능')

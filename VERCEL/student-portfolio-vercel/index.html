@@ -1,5 +1,6 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ko">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,17 +8,26 @@
     <title>문현고 과제제출 시스템</title>
 
     <!-- Favicon -->
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📚</text></svg>">
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📚</text></svg>">
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+KR:wght@400;500;700&display=swap"
+        rel="stylesheet">
 
     <script>
+        // ==========================================
+        // [설정] 학교 이름 변경
+        // 아래 변수의 값을 변경하면 페이지 전체에 반영됩니다.
+        // ==========================================
+        const SCHOOL_NAME = "문현고";
+
         MathJax = {
-            tex: { 
-                inlineMath: [['$', '$'], ['\\(', '\\)']], 
-                displayMath: [['$$', '$$'], ['\\[', '\\]']] 
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']]
             },
             svg: { fontCache: 'global' },
             options: {
@@ -31,100 +41,443 @@
 
     <style>
         :root {
-            --primary-color: #4f46e5; --primary-hover: #4338ca; --secondary-color: #6b7280;
-            --background-color: #f3f4f6; --surface-color: #ffffff; --border-color: #e5e7eb;
-            --text-primary: #111827; --text-secondary: #4b5563; --font-family-main: 'Inter', 'Noto Sans KR', sans-serif;
+            --primary-color: #4f46e5;
+            --primary-hover: #4338ca;
+            --secondary-color: #6b7280;
+            --background-color: #f3f4f6;
+            --surface-color: #ffffff;
+            --border-color: #e5e7eb;
+            --text-primary: #111827;
+            --text-secondary: #4b5563;
+            --font-family-main: 'Inter', 'Noto Sans KR', sans-serif;
         }
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: var(--font-family-main); background-color: var(--background-color); min-height: 100vh;
-            display: flex; justify-content: center; align-items: center; padding: 20px; color: var(--text-primary); line-height: 1.6;
-        }
-        .screen {
-            background: var(--surface-color); border-radius: 16px; box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
-            max-width: 70vw; width: 100%; overflow: hidden; animation: fadeIn 0.5s ease-in-out; border: 1px solid var(--border-color);
-        }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-        .screen.hidden { display: none; }
-        header { background-color: var(--primary-color); color: white; padding: 24px 30px; text-align: center; position: relative; }
-        header h1 { font-size: 1.5rem; font-weight: 700; margin: 0; }
-        .btn-back {
-            position: absolute; left: 20px; top: 50%; transform: translateY(-50%); background: rgba(255, 255, 255, 0.1);
-            color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; transition: background-color 0.3s ease;
-        }
-        .btn-back:hover { background: rgba(255, 255, 255, 0.2); }
-        main { padding: 32px; max-height: 75vh; overflow-y: auto; }
-        section { margin-bottom: 28px; }
-        section:last-child { margin-bottom: 0; }
-        h2 { font-size: 1.25rem; margin-bottom: 16px; color: var(--text-primary); font-weight: 700; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; }
-        .form-group { margin-bottom: 20px; }
-        label { display: block; margin-bottom: 8px; font-weight: 500; color: var(--text-secondary); font-size: 0.9rem; }
-        input, textarea {
-            width: 100%; padding: 12px 16px; border: 1px solid var(--border-color); border-radius: 8px;
-            font-size: 1rem; transition: all 0.2s ease; background: #f9fafb; font-family: inherit;
-        }
-        textarea { resize: vertical; min-height: 120px; }
-        input:focus, textarea:focus { outline: none; border-color: var(--primary-color); background: white; box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1); }
-        .btn {
-            padding: 12px 24px; border: none; border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer;
-            transition: all 0.2s ease; width: 100%; margin-top: 10px; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-        }
-        .btn-primary { background-color: var(--primary-color); color: white; }
-        .btn-primary:hover { background-color: var(--primary-hover); transform: translateY(-1px); }
-        .btn-secondary { background: #e5e7eb; color: #374151; }
-        .btn-secondary:hover { background: #d1d5db; }
-        .btn:disabled { background: #ccc; cursor: not-allowed; opacity: 0.7; }
-        .info-card { background: #f9fafb; padding: 20px; border-radius: 12px; border: 1px solid var(--border-color); }
-        .info-card strong { color: var(--primary-color); }
-        .info-card-actions { margin-top: 20px; display: flex; gap: 12px; }
-        .info-card-actions .btn { width: 100%; margin: 0; }
-        .assignment-card {
-            background: var(--surface-color); border: 1px solid var(--border-color); border-radius: 12px;
-            padding: 1rem 1.25rem; margin-bottom: 1rem; transition: all 0.2s ease; cursor: pointer;
-        }
-        .assignment-card:hover { border-color: var(--primary-color); box-shadow: 0 4px 12px rgba(0,0,0,0.05); transform: translateY(-2px); }
-        .assignment-card h4 { color: var(--primary-color); margin-bottom: 4px; font-size: 1.1rem; }
-        .assignment-meta { font-size: 0.9rem; color: var(--text-secondary); }
-        .assignment-card-disabled {
-            background: #f3f4f6; cursor: not-allowed; opacity: 0.7; position: relative;
-            border: 1px solid var(--border-color); border-radius: 12px; padding: 1rem 1.25rem; margin-bottom: 1rem;
-        }
-        .assignment-card-disabled h4 { color: var(--text-secondary); }
-        .assignment-card-disabled:hover { transform: none; box-shadow: none; }
-        .submission-badge {
-            background-color: var(--secondary-color); color: white; font-size: 0.75rem; font-weight: 600;
-            padding: 4px 8px; border-radius: 12px; margin-left: 8px; vertical-align: middle;
-        }
-        .record-card { background: var(--surface-color); padding: 1rem; margin-bottom: 1rem; border-radius: 8px; border: 1px solid var(--border-color); }
-        .record-card.comment { border-left: 4px solid var(--primary-color); }
-        .record-card.notification { border-left: 4px solid #0ea5e9; }
-        .data-row { display: flex; align-items: flex-start; margin: 10px 0; padding-bottom: 10px; border-bottom: 1px solid #f3f4f6; }
-        .data-row:last-child { border-bottom: none; padding-bottom: 0; }
-        .data-label { font-weight: 600; color: var(--text-secondary); min-width: 100px; flex-shrink: 0; }
-        .data-value { color: var(--text-primary); flex: 1; white-space: pre-wrap; word-break: break-word; }
-        .suggestion-box { margin-top: 15px; padding: 15px; border-radius: 8px; background: #eff6ff; border: 1px solid #bfdbfe; }
-        .suggestion-box strong { display: block; margin-bottom: 8px; color: #1e40af; }
-        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 1000; backdrop-filter: blur(4px); }
-        .modal.hidden { display: none; }
-        .modal-content {
-            background: white; border-radius: 12px; max-width: 95vw; max-height: 90vh;
-            display: flex; flex-direction: column; box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
-        }
-        @media (min-width: 768px) { #submitModal .modal-content, #recordsModal .modal-content { width: 70vw; } }
-        .modal-header { padding: 1.5rem; border-bottom: 1px solid var(--border-color); }
-        .modal-header h3 { margin: 0; font-size: 1.5rem; color: var(--text-primary); }
-        .modal-body { padding: 1.5rem; overflow-y: auto; }
-        .modal-footer { padding: 1rem 1.5rem; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end; gap: 10px; background-color: #f9fafb; border-bottom-left-radius: 12px; border-bottom-right-radius: 12px; }
-        .modal-footer .btn { width: auto; margin-top: 0; }
-        .loading-message, .empty-message { text-align: center; color: var(--text-secondary); padding: 2rem; }
-        .message { margin-top: 20px; padding: 12px 16px; border-radius: 8px; display: none; }
-        .message.show { display: block; }
-        .message.error { background: #fee2e2; color: #991b1b; }
-        .message.success { background: #dcfce7; color: #166534; }
-        .message.info { background: #e0f2fe; color: #075985; }
-        .form-actions { display: flex; gap: 10px; margin-top: 20px; }
 
-        .form-group { position: relative; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: var(--font-family-main);
+            background-color: var(--background-color);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+
+        .screen {
+            background: var(--surface-color);
+            border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            max-width: 70vw;
+            width: 100%;
+            overflow: hidden;
+            animation: fadeIn 0.5s ease-in-out;
+            border: 1px solid var(--border-color);
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .screen.hidden {
+            display: none;
+        }
+
+        header {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 24px 30px;
+            text-align: center;
+            position: relative;
+        }
+
+        header h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin: 0;
+        }
+
+        .btn-back {
+            position: absolute;
+            left: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .btn-back:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        main {
+            padding: 32px;
+            max-height: 75vh;
+            overflow-y: auto;
+        }
+
+        section {
+            margin-bottom: 28px;
+        }
+
+        section:last-child {
+            margin-bottom: 0;
+        }
+
+        h2 {
+            font-size: 1.25rem;
+            margin-bottom: 16px;
+            color: var(--text-primary);
+            font-weight: 700;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 12px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        input,
+        textarea {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: all 0.2s ease;
+            background: #f9fafb;
+            font-family: inherit;
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 120px;
+        }
+
+        input:focus,
+        textarea:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            background: white;
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            width: 100%;
+            margin-top: 10px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: var(--primary-hover);
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background: #e5e7eb;
+            color: #374151;
+        }
+
+        .btn-secondary:hover {
+            background: #d1d5db;
+        }
+
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+
+        .info-card {
+            background: #f9fafb;
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+        }
+
+        .info-card strong {
+            color: var(--primary-color);
+        }
+
+        .info-card-actions {
+            margin-top: 20px;
+            display: flex;
+            gap: 12px;
+        }
+
+        .info-card-actions .btn {
+            width: 100%;
+            margin: 0;
+        }
+
+        .assignment-card {
+            background: var(--surface-color);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1rem 1.25rem;
+            margin-bottom: 1rem;
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+
+        .assignment-card:hover {
+            border-color: var(--primary-color);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            transform: translateY(-2px);
+        }
+
+        .assignment-card h4 {
+            color: var(--primary-color);
+            margin-bottom: 4px;
+            font-size: 1.1rem;
+        }
+
+        .assignment-meta {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        .assignment-card-disabled {
+            background: #f3f4f6;
+            cursor: not-allowed;
+            opacity: 0.7;
+            position: relative;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1rem 1.25rem;
+            margin-bottom: 1rem;
+        }
+
+        .assignment-card-disabled h4 {
+            color: var(--text-secondary);
+        }
+
+        .assignment-card-disabled:hover {
+            transform: none;
+            box-shadow: none;
+        }
+
+        .submission-badge {
+            background-color: var(--secondary-color);
+            color: white;
+            font-size: 0.75rem;
+            font-weight: 600;
+            padding: 4px 8px;
+            border-radius: 12px;
+            margin-left: 8px;
+            vertical-align: middle;
+        }
+
+        .record-card {
+            background: var(--surface-color);
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .record-card.comment {
+            border-left: 4px solid var(--primary-color);
+        }
+
+        .record-card.notification {
+            border-left: 4px solid #0ea5e9;
+        }
+
+        .data-row {
+            display: flex;
+            align-items: flex-start;
+            margin: 10px 0;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #f3f4f6;
+        }
+
+        .data-row:last-child {
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+
+        .data-label {
+            font-weight: 600;
+            color: var(--text-secondary);
+            min-width: 100px;
+            flex-shrink: 0;
+        }
+
+        .data-value {
+            color: var(--text-primary);
+            flex: 1;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .suggestion-box {
+            margin-top: 15px;
+            padding: 15px;
+            border-radius: 8px;
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+        }
+
+        .suggestion-box strong {
+            display: block;
+            margin-bottom: 8px;
+            color: #1e40af;
+        }
+
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            backdrop-filter: blur(4px);
+        }
+
+        .modal.hidden {
+            display: none;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 12px;
+            max-width: 95vw;
+            max-height: 90vh;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+        }
+
+        @media (min-width: 768px) {
+
+            #submitModal .modal-content,
+            #recordsModal .modal-content {
+                width: 70vw;
+            }
+        }
+
+        .modal-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .modal-header h3 {
+            margin: 0;
+            font-size: 1.5rem;
+            color: var(--text-primary);
+        }
+
+        .modal-body {
+            padding: 1.5rem;
+            overflow-y: auto;
+        }
+
+        .modal-footer {
+            padding: 1rem 1.5rem;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            background-color: #f9fafb;
+            border-bottom-left-radius: 12px;
+            border-bottom-right-radius: 12px;
+        }
+
+        .modal-footer .btn {
+            width: auto;
+            margin-top: 0;
+        }
+
+        .loading-message,
+        .empty-message {
+            text-align: center;
+            color: var(--text-secondary);
+            padding: 2rem;
+        }
+
+        .message {
+            margin-top: 20px;
+            padding: 12px 16px;
+            border-radius: 8px;
+            display: none;
+        }
+
+        .message.show {
+            display: block;
+        }
+
+        .message.error {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .message.success {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .message.info {
+            background: #e0f2fe;
+            color: #075985;
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .form-group {
+            position: relative;
+        }
+
         .btn-math-editor {
             position: absolute;
             top: 0;
@@ -139,13 +492,17 @@
             cursor: pointer;
             transition: background-color 0.2s ease;
         }
-        .btn-math-editor:hover { background: #e0e7ff; }
+
+        .btn-math-editor:hover {
+            background: #e0e7ff;
+        }
 
         .question-actions {
             display: flex;
             gap: 8px;
             margin-top: 8px;
         }
+
         .btn-save-question {
             background: #10b981;
             color: white;
@@ -160,16 +517,90 @@
             align-items: center;
             gap: 4px;
         }
-        .btn-save-question:hover { background: #059669; }
-        .btn-save-question:disabled { background: #9ca3af; cursor: not-allowed; }
-        .btn-save-question.saved { background: #22c55e; }
+
+        .btn-save-question:hover {
+            background: #059669;
+        }
+
+        .btn-save-question:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+        }
+
+        .btn-save-question.saved {
+            background: #22c55e;
+        }
+
         .save-status {
             font-size: 0.8rem;
             color: #10b981;
             font-weight: 500;
             display: none;
         }
-        .save-status.show { display: inline-block; }
+
+        .save-status.show {
+            display: inline-block;
+        }
+
+        /* 실시간 수식 미리보기 스타일 */
+        .math-live-preview {
+            margin-top: 8px;
+            padding: 10px;
+            border: 1px dashed var(--border-color);
+            border-radius: 8px;
+            background: #fafafa;
+            min-height: 40px;
+            font-size: 1rem;
+            color: var(--text-primary);
+            display: none;
+            /* 내용이 없으면 숨김 */
+        }
+
+        .math-live-preview.active {
+            display: block;
+        }
+
+        /* 토글형 입력창 스타일 */
+        .input-wrapper {
+            position: relative;
+            width: 100%;
+        }
+
+        .math-preview-mode {
+            width: 100%;
+            min-height: 120px;
+            padding: 12px 16px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            background: #fff;
+            cursor: text;
+            white-space: pre-wrap;
+            /* 줄바꿈 보존 */
+            transition: all 0.2s ease;
+            display: none;
+        }
+
+        .math-preview-mode.active {
+            display: block;
+        }
+
+        .math-preview-mode:hover {
+            border-color: var(--primary-color);
+            background: #f9fafb;
+        }
+
+        .math-preview-mode.empty {
+            color: #9ca3af;
+        }
+
+        /* 편집 모드일 때 textarea 스타일 */
+        textarea.edit-mode {
+            display: block;
+        }
+
+        textarea.hidden-mode {
+            display: none;
+        }
 
         .exam-mode-indicator {
             position: fixed;
@@ -186,11 +617,23 @@
             animation: pulse 2s infinite;
             display: none;
         }
-        .exam-mode-indicator.active { display: block; }
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.7; }
+
+        .exam-mode-indicator.active {
+            display: block;
         }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.7;
+            }
+        }
+
         .exam-warning-overlay {
             position: fixed;
             top: 0;
@@ -205,14 +648,28 @@
             flex-direction: column;
             color: white;
         }
-        .exam-warning-overlay.show { display: flex; }
+
+        .exam-warning-overlay.show {
+            display: flex;
+        }
+
         .exam-warning-content {
             text-align: center;
             max-width: 600px;
             padding: 40px;
         }
-        .exam-warning-content h2 { font-size: 2.5rem; margin-bottom: 20px; }
-        .exam-warning-content p { font-size: 1.2rem; line-height: 1.8; margin-bottom: 30px; }
+
+        .exam-warning-content h2 {
+            font-size: 2.5rem;
+            margin-bottom: 20px;
+        }
+
+        .exam-warning-content p {
+            font-size: 1.2rem;
+            line-height: 1.8;
+            margin-bottom: 30px;
+        }
+
         .exam-violation-count {
             background: rgba(255, 255, 255, 0.2);
             padding: 10px 20px;
@@ -228,53 +685,99 @@
             gap: 1rem;
             height: 60vh;
         }
+
         @media (min-width: 768px) {
-            #mathModal .modal-body { grid-template-columns: 2fr 1fr; grid-template-rows: auto 1fr; }
+            #mathModal .modal-body {
+                grid-template-columns: 2fr 1fr;
+                grid-template-rows: auto 1fr;
+            }
         }
 
         .math-palette {
             grid-column: 1 / -1;
-            display: flex; flex-wrap: wrap; gap: 6px; padding-bottom: 1rem; border-bottom: 1px solid var(--border-color);
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
         }
+
         @media (min-width: 768px) {
-            .math-palette { grid-column: 1 / 2; grid-row: 1 / 2; border-bottom: none; }
+            .math-palette {
+                grid-column: 1 / 2;
+                grid-row: 1 / 2;
+                border-bottom: none;
+            }
         }
 
         .math-palette button {
-            background: #fff; border: 1px solid var(--border-color); border-radius: 4px; padding: 5px 10px;
-            cursor: pointer; font-size: 1rem; font-family: serif;
+            background: #fff;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            padding: 5px 10px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-family: serif;
         }
-        .math-palette button:hover { background: #f3f4f6; }
 
-        #mathInput { min-height: 150px; resize: none; font-family: 'Courier New', Courier, monospace; }
+        .math-palette button:hover {
+            background: #f3f4f6;
+        }
+
+        #mathInput {
+            min-height: 150px;
+            resize: none;
+            font-family: 'Courier New', Courier, monospace;
+        }
+
         #mathPreview {
-            padding: 1rem; border: 1px solid var(--border-color); border-radius: 8px;
-            background: #f9fafb; min-height: 150px; display: flex; align-items: center; justify-content: center;
-            font-size: 1.2rem; overflow-y: auto;
-        }
-        @media (min-width: 768px) {
-            #mathInput { grid-column: 1 / 2; grid-row: 2 / 3; }
-            #mathPreview { grid-column: 2 / 3; grid-row: 1 / 3; }
+            padding: 1rem;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            background: #f9fafb;
+            min-height: 150px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            overflow-y: auto;
         }
 
+        @media (min-width: 768px) {
+            #mathInput {
+                grid-column: 1 / 2;
+                grid-row: 2 / 3;
+            }
+
+            #mathPreview {
+                grid-column: 2 / 3;
+                grid-row: 1 / 3;
+            }
+        }
     </style>
 </head>
+
 <body>
 
     <section id="loginScreen" class="screen">
-        <header><h1>🎓 문현고 과제제출 시스템</h1></header>
+        <header>
+            <h1 class="school-title-text">🎓 과제제출 시스템</h1>
+        </header>
         <main>
             <form id="loginForm">
-                <div class="form-group"><label for="studentId">학번</label><input type="text" id="studentId" placeholder="5자리 숫자" required></div>
-                <div class="form-group"><label for="password">비밀번호</label><input type="password" id="password" required></div>
+                <div class="form-group"><label for="studentId">학번</label><input type="text" id="studentId"
+                        placeholder="5자리 숫자" required></div>
+                <div class="form-group"><label for="password">비밀번호</label><input type="password" id="password" required>
+                </div>
                 <button type="submit" class="btn btn-primary">로그인</button>
                 <div id="loginMessage" class="message"></div>
             </form>
         </main>
     </section>
-
     <section id="menuScreen" class="screen hidden">
-        <header><h1>🎓 문현고 과제제출 시스템</h1></header>
+        <header>
+            <h1 class="school-title-text">🎓 과제제출 시스템</h1>
+        </header>
         <main>
             <section>
                 <h2>🧑‍🎓 학생 정보</h2>
@@ -287,20 +790,41 @@
                     </div>
                 </div>
             </section>
-            <section><h2>📝 과제 목록</h2><div id="assignmentsList"><div class="loading-message">과제 목록을 불러오는 중...</div></div></section>
-            <section><h2>📊 내 기록 (교사 코멘트)</h2><div id="myRecordsList"><div class="loading-message">기록을 불러오는 중...</div></div></section>
-            <section><h2>📢 알림</h2><div id="myNotificationsList"><div class="loading-message">알림을 불러오는 중...</div></div></section>
+            <section>
+                <h2>📝 과제 목록</h2>
+                <div id="assignmentsList">
+                    <div class="loading-message">과제 목록을 불러오는 중...</div>
+                </div>
+            </section>
+            <section>
+                <h2>📊 내 기록 (교사 코멘트)</h2>
+                <div id="myRecordsList">
+                    <div class="loading-message">기록을 불러오는 중...</div>
+                </div>
+            </section>
+            <section>
+                <h2>📢 알림</h2>
+                <div id="myNotificationsList">
+                    <div class="loading-message">알림을 불러오는 중...</div>
+                </div>
+            </section>
         </main>
     </section>
-    
+
     <section id="passwordChangeScreen" class="screen hidden">
-        <header><button class="btn-back" onclick="showMenu()">← 뒤로</button><h1>🔑 비밀번호 변경</h1></header>
+        <header><button class="btn-back" onclick="showMenu()">← 뒤로</button>
+            <h1>🔑 비밀번호 변경</h1>
+        </header>
         <main>
             <form id="passwordChangeForm">
-                <div class="form-group"><label for="currentPassword">현재 비밀번호</label><input type="password" id="currentPassword" required autocomplete="current-password"></div>
-                <div class="form-group"><label for="newPassword">새 비밀번호</label><input type="password" id="newPassword" required autocomplete="new-password"></div>
-                <div class="form-group"><label for="confirmPassword">새 비밀번호 확인</label><input type="password" id="confirmPassword" required autocomplete="new-password"></div>
-                <div class="form-actions"><button type="submit" class="btn btn-primary">변경하기</button><button type="button" class="btn btn-secondary" onclick="showMenu()">취소</button></div>
+                <div class="form-group"><label for="currentPassword">현재 비밀번호</label><input type="password"
+                        id="currentPassword" required autocomplete="current-password"></div>
+                <div class="form-group"><label for="newPassword">새 비밀번호</label><input type="password" id="newPassword"
+                        required autocomplete="new-password"></div>
+                <div class="form-group"><label for="confirmPassword">새 비밀번호 확인</label><input type="password"
+                        id="confirmPassword" required autocomplete="new-password"></div>
+                <div class="form-actions"><button type="submit" class="btn btn-primary">변경하기</button><button
+                        type="button" class="btn btn-secondary" onclick="showMenu()">취소</button></div>
                 <div id="passwordChangeMessage" class="message"></div>
             </form>
         </main>
@@ -308,17 +832,30 @@
 
     <div id="submitModal" class="modal hidden">
         <div class="modal-content">
-            <div class="modal-header"><h3 id="submitModalTitle">과제 제출</h3></div>
-            <div class="modal-body"><form id="assignmentSubmitForm"><div id="questionsContainer"><div class="loading-message">질문을 불러오는 중...</div></div></form></div>
-            <div class="modal-footer"><button type="button" id="cancelSubmitBtn" onclick="hideSubmitModal()" class="btn btn-secondary">취소</button><button type="button" onclick="submitAssignment()" class="btn btn-primary submit-btn">제출하기</button></div>
+            <div class="modal-header">
+                <h3 id="submitModalTitle">과제 제출</h3>
+            </div>
+            <div class="modal-body">
+                <form id="assignmentSubmitForm">
+                    <div id="questionsContainer">
+                        <div class="loading-message">질문을 불러오는 중...</div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer"><button type="button" id="cancelSubmitBtn" onclick="hideSubmitModal()"
+                    class="btn btn-secondary">취소</button><button type="button" onclick="submitAssignment()"
+                    class="btn btn-primary submit-btn">제출하기</button></div>
         </div>
     </div>
 
     <div id="recordsModal" class="modal hidden">
         <div class="modal-content">
-            <div class="modal-header"><h3 id="recordsModalTitle">기록 보기</h3></div>
+            <div class="modal-header">
+                <h3 id="recordsModalTitle">기록 보기</h3>
+            </div>
             <div class="modal-body" id="recordsModalBody"></div>
-            <div class="modal-footer"><button type="button" onclick="hideRecordsModal()" class="btn btn-secondary">닫기</button></div>
+            <div class="modal-footer"><button type="button" onclick="hideRecordsModal()"
+                    class="btn btn-secondary">닫기</button></div>
         </div>
     </div>
 
@@ -350,817 +887,985 @@
             <div class="exam-violation-count">
                 위반 횟수: <span id="examViolationCount">0</span>회
             </div>
-            <button onclick="returnToExam()" class="btn btn-primary" style="margin-top: 30px; width: auto; padding: 15px 40px; font-size: 1.1rem;">시험 화면으로 돌아가기</button>
+            <button onclick="returnToExam()" class="btn btn-primary"
+                style="margin-top: 30px; width: auto; padding: 15px 40px; font-size: 1.1rem;">시험 화면으로 돌아가기</button>
         </div>
     </div>
 
     <script>
-    const API_BASE = window.location.hostname === 'localhost' ? 'http://localhost:3000/api' : '/api';
-    let currentStudentId = '';
-    let currentStudentName = '';
-    let activeTextareaId = null;
-    let savedCursorPosition = { start: 0, end: 0 };
-    let previewTimeout = null;
-    let examModeActive = false;
-    let examModeViolations = 0;
-    let examModeWarningShown = false;
-    let examModeMaxViolations = 3; // 기본값
-    let examModeForceFullscreen = false;
-    let examModeListenersActive = true; // 이벤트 리스너 활성화 상태
-    let examModeAssignmentId = null; // 현재 시험 과제 ID
-    let examModeAssignmentName = null; // 현재 시험 과제명
+        const API_BASE = window.location.hostname === 'localhost' ? 'http://localhost:3000/api' : '/api';
+        let currentStudentId = '';
+        let currentStudentName = '';
+        let activeTextareaId = null;
+        let savedCursorPosition = { start: 0, end: 0 };
+        let previewTimeout = null;
+        let examModeActive = false;
+        let examModeViolations = 0;
+        let examModeWarningShown = false;
+        let examModeMaxViolations = 3; // 기본값
+        let examModeForceFullscreen = false;
+        let examModeListenersActive = true; // 이벤트 리스너 활성화 상태
+        let examModeAssignmentId = null; // 현재 시험 과제 ID
+        let examModeAssignmentName = null; // 현재 시험 과제명
 
-    document.addEventListener('DOMContentLoaded', () => {
-        document.getElementById('loginForm').addEventListener('submit', handleLogin);
-        document.getElementById('logoutBtn').addEventListener('click', logout);
-        document.getElementById('changePasswordBtn').addEventListener('click', showPasswordChangeScreen);
-        document.getElementById('passwordChangeForm').addEventListener('submit', handlePasswordChange);
-        document.getElementById('mathInput').addEventListener('input', updateMathPreview);
-    });
+        document.addEventListener('DOMContentLoaded', () => {
+            updateSchoolInfo(); // 학교 정보 업데이트
+            document.getElementById('loginForm').addEventListener('submit', handleLogin);
+            document.getElementById('logoutBtn').addEventListener('click', logout);
+            document.getElementById('changePasswordBtn').addEventListener('click', showPasswordChangeScreen);
+            document.getElementById('passwordChangeForm').addEventListener('submit', handlePasswordChange);
+            document.getElementById('mathInput').addEventListener('input', updateMathPreview);
+        });
 
-    async function handleLogin(event) {
-        event.preventDefault();
-        const studentId = document.getElementById('studentId').value.trim();
-        const password = document.getElementById('password').value.trim();
-        if (!/^[0-9]{5}$/.test(studentId)) {
-            showMessage('loginMessage', '학번은 5자리 숫자여야 합니다.', 'error'); return;
+        // 학교 정보 업데이트 함수
+        function updateSchoolInfo() {
+            if (typeof SCHOOL_NAME !== 'undefined' && SCHOOL_NAME) {
+                document.title = `${SCHOOL_NAME} 과제제출 시스템`;
+                const titles = document.querySelectorAll('.school-title-text');
+                titles.forEach(el => {
+                    el.textContent = `🎓 ${SCHOOL_NAME} 과제제출 시스템`;
+                });
+            }
         }
-        const loginBtn = event.target.querySelector('button[type="submit"]');
-        loginBtn.disabled = true; loginBtn.textContent = '로그인 중...';
-        try {
-            const response = await fetch(`${API_BASE}/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ studentId, password }) });
-            const result = await response.json();
-            if (result.success) {
-                currentStudentId = result.studentId; currentStudentName = result.name;
-                showMenu();
-            } else { showMessage('loginMessage', result.message, 'error'); }
-        } catch (error) { showMessage('loginMessage', '서버에 연결할 수 없습니다.', 'error');
-        } finally { loginBtn.disabled = false; loginBtn.textContent = '로그인'; }
-    }
 
-    function logout() {
-        currentStudentId = ''; currentStudentName = ''; document.getElementById('loginForm').reset();
-        hideMessage('loginMessage');
-        document.getElementById('loginScreen').classList.remove('hidden');
-        document.getElementById('menuScreen').classList.add('hidden');
-        document.getElementById('passwordChangeScreen').classList.add('hidden');
-    }
-
-    function showMenu() {
-        document.getElementById('studentName').textContent = currentStudentName;
-        document.getElementById('studentIdDisplay').textContent = currentStudentId;
-        document.getElementById('loginScreen').classList.add('hidden');
-        document.getElementById('menuScreen').classList.remove('hidden');
-        document.getElementById('passwordChangeScreen').classList.add('hidden');
-        loadAllData();
-    }
-    
-    function showPasswordChangeScreen() {
-        document.getElementById('menuScreen').classList.add('hidden');
-        document.getElementById('passwordChangeScreen').classList.remove('hidden');
-        document.getElementById('passwordChangeForm').reset();
-        hideMessage('passwordChangeMessage');
-    }
-
-    function loadAllData() { loadAssignments(); loadMyRecords(); }
-
-    async function loadAssignments() {
-        const listEl = document.getElementById('assignmentsList');
-        listEl.innerHTML = '<div class="loading-message">과제 목록을 불러오는 중...</div>';
-        try {
-            const response = await fetch(`${API_BASE}/assignments?studentId=${currentStudentId}`);
-            const result = await response.json();
-            if (result.success) { displayAssignments(result.assignments || []);
-            } else { listEl.innerHTML = `<div class="empty-message">${result.message}</div>`; }
-        } catch (error) { listEl.innerHTML = '<div class="empty-message">과제 목록을 불러오지 못했습니다.</div>'; }
-    }
-
-    function displayAssignments(assignments) {
-        const listEl = document.getElementById('assignmentsList');
-        if (assignments.length === 0) {
-            listEl.innerHTML = '<div class="empty-message">진행 중인 과제가 없습니다.</div>'; return;
+        async function handleLogin(event) {
+            event.preventDefault();
+            const studentId = document.getElementById('studentId').value.trim();
+            const password = document.getElementById('password').value.trim();
+            if (!/^[0-9]{5}$/.test(studentId)) {
+                showMessage('loginMessage', '학번은 5자리 숫자여야 합니다.', 'error'); return;
+            }
+            const loginBtn = event.target.querySelector('button[type="submit"]');
+            loginBtn.disabled = true; loginBtn.textContent = '로그인 중...';
+            try {
+                const response = await fetch(`${API_BASE}/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ studentId, password }) });
+                const result = await response.json();
+                if (result.success) {
+                    currentStudentId = result.studentId; currentStudentName = result.name;
+                    showMenu();
+                } else { showMessage('loginMessage', result.message, 'error'); }
+            } catch (error) {
+                showMessage('loginMessage', '서버에 연결할 수 없습니다.', 'error');
+            } finally { loginBtn.disabled = false; loginBtn.textContent = '로그인'; }
         }
-        listEl.innerHTML = assignments.map(assignment => {
-            const isSubmitted = assignment.submitted;
-            const allowResubmit = assignment.resubmissionAllowed;
-            const isLocked = isSubmitted && !allowResubmit;
 
-            const cardClass = isLocked ? 'assignment-card-disabled' : 'assignment-card';
-            const badge = isLocked ? '<span class="submission-badge">제출완료</span>' : '';
-            const dueDateText = assignment.dueDate || '기한 없음';
+        function logout() {
+            currentStudentId = ''; currentStudentName = ''; document.getElementById('loginForm').reset();
+            hideMessage('loginMessage');
+            document.getElementById('loginScreen').classList.remove('hidden');
+            document.getElementById('menuScreen').classList.add('hidden');
+            document.getElementById('passwordChangeScreen').classList.add('hidden');
+        }
 
-            return `
+        function showMenu() {
+            document.getElementById('studentName').textContent = currentStudentName;
+            document.getElementById('studentIdDisplay').textContent = currentStudentId;
+            document.getElementById('loginScreen').classList.add('hidden');
+            document.getElementById('menuScreen').classList.remove('hidden');
+            document.getElementById('passwordChangeScreen').classList.add('hidden');
+            loadAllData();
+        }
+
+        function showPasswordChangeScreen() {
+            document.getElementById('menuScreen').classList.add('hidden');
+            document.getElementById('passwordChangeScreen').classList.remove('hidden');
+            document.getElementById('passwordChangeForm').reset();
+            hideMessage('passwordChangeMessage');
+        }
+
+        function loadAllData() { loadAssignments(); loadMyRecords(); }
+
+        async function loadAssignments() {
+            const listEl = document.getElementById('assignmentsList');
+            listEl.innerHTML = '<div class="loading-message">과제 목록을 불러오는 중...</div>';
+            try {
+                const response = await fetch(`${API_BASE}/assignments?studentId=${currentStudentId}`);
+                const result = await response.json();
+                if (result.success) {
+                    displayAssignments(result.assignments || []);
+                } else { listEl.innerHTML = `<div class="empty-message">${result.message}</div>`; }
+            } catch (error) { listEl.innerHTML = '<div class="empty-message">과제 목록을 불러오지 못했습니다.</div>'; }
+        }
+
+        function displayAssignments(assignments) {
+            const listEl = document.getElementById('assignmentsList');
+            if (assignments.length === 0) {
+                listEl.innerHTML = '<div class="empty-message">진행 중인 과제가 없습니다.</div>'; return;
+            }
+            listEl.innerHTML = assignments.map(assignment => {
+                const isSubmitted = assignment.submitted;
+                const allowResubmit = assignment.resubmissionAllowed;
+                const isLocked = isSubmitted && !allowResubmit;
+                const cardClass = isLocked ? 'assignment-card-disabled' : 'assignment-card';
+                const badge = isLocked ? '<span class="submission-badge">제출완료</span>' : '';
+                const dueDateText = assignment.dueDate || '기한 없음';
+
+                return `
                 <div class="${cardClass}" data-assignment-id="${escapeHTML(assignment.id)}" data-assignment-name="${escapeHTML(assignment.name)}" data-is-locked="${isLocked}">
                     <h4>${escapeHTML(assignment.name)}${badge}</h4>
                     <div class="assignment-meta"><span>마감: ${dueDateText}</span></div>
                 </div>
             `;
-        }).join('');
+            }).join('');
 
-        listEl.querySelectorAll('.assignment-card').forEach(card => {
-            const isLocked = card.dataset.isLocked === 'true';
-            if (!isLocked) {
-                card.addEventListener('click', () => {
-                    showSubmitModal(card.dataset.assignmentId, card.dataset.assignmentName);
-                });
+            listEl.querySelectorAll('.assignment-card').forEach(card => {
+                const isLocked = card.dataset.isLocked === 'true';
+                if (!isLocked) {
+                    card.addEventListener('click', () => {
+                        showSubmitModal(card.dataset.assignmentId, card.dataset.assignmentName);
+                    });
+                }
+            });
+        }
+
+        async function loadMyRecords() {
+            const recordsEl = document.getElementById('myRecordsList');
+            const notificationsEl = document.getElementById('myNotificationsList');
+            recordsEl.innerHTML = '<div class="loading-message">기록을 불러오는 중...</div>';
+            notificationsEl.innerHTML = '<div class="loading-message">알림을 불러오는 중...</div>';
+            try {
+                const response = await fetch(`${API_BASE}/my-records?studentId=${currentStudentId}`);
+                const result = await response.json();
+                if (!result.success) throw new Error(result.message);
+                const allRecords = result.records || [];
+                const comments = allRecords.filter(r => r.type === 'comment');
+                const notifications = allRecords.filter(r => r.type === 'notification');
+                displayRecordGroups(recordsEl, groupRecords(comments), 'comment');
+                displayRecordGroups(notificationsEl, groupRecords(notifications), 'notification');
+            } catch (error) {
+                recordsEl.innerHTML = `<div class="empty-message">기록 조회 실패: ${error.message}</div>`;
+                notificationsEl.innerHTML = `<div class="empty-message">알림 조회 실패: ${error.message}</div>`;
             }
-        });
-    }
-    
-    async function loadMyRecords() {
-        const recordsEl = document.getElementById('myRecordsList');
-        const notificationsEl = document.getElementById('myNotificationsList');
-        recordsEl.innerHTML = '<div class="loading-message">기록을 불러오는 중...</div>';
-        notificationsEl.innerHTML = '<div class="loading-message">알림을 불러오는 중...</div>';
-        try {
-            const response = await fetch(`${API_BASE}/my-records?studentId=${currentStudentId}`);
-            const result = await response.json();
-            if (!result.success) throw new Error(result.message);
-            const allRecords = result.records || [];
-            const comments = allRecords.filter(r => r.type === 'comment');
-            const notifications = allRecords.filter(r => r.type === 'notification');
-            displayRecordGroups(recordsEl, groupRecords(comments), 'comment');
-            displayRecordGroups(notificationsEl, groupRecords(notifications), 'notification');
-        } catch (error) {
-            recordsEl.innerHTML = `<div class="empty-message">기록 조회 실패: ${error.message}</div>`;
-            notificationsEl.innerHTML = `<div class="empty-message">알림 조회 실패: ${error.message}</div>`;
         }
-    }
 
-    function groupRecords(records) {
-        return records.reduce((acc, record) => {
-            if (!acc[record.sheetName]) acc[record.sheetName] = [];
-            acc[record.sheetName].push(record); return acc;
-        }, {});
-    }
-
-    function displayRecordGroups(element, groupedRecords, type) {
-        const groups = Object.entries(groupedRecords);
-        if (groups.length === 0) {
-            const message = type === 'comment' ? "공개된 교사 코멘트가 없습니다." : "새로운 알림이 없습니다.";
-            element.innerHTML = `<div class="empty-message">${message}</div>`; return;
+        function groupRecords(records) {
+            return records.reduce((acc, record) => {
+                if (!acc[record.sheetName]) acc[record.sheetName] = [];
+                acc[record.sheetName].push(record); return acc;
+            }, {});
         }
-        element.innerHTML = groups.map(([sheetName, records]) => {
-            return `<div class="assignment-card" data-sheet-name="${escapeHTML(sheetName)}" data-record-type="${type}">
+
+        function displayRecordGroups(element, groupedRecords, type) {
+            const groups = Object.entries(groupedRecords);
+            if (groups.length === 0) {
+                const message = type === 'comment' ? "공개된 교사 코멘트가 없습니다." : "새로운 알림이 없습니다.";
+                element.innerHTML = `<div class="empty-message">${message}</div>`; return;
+            }
+            element.innerHTML = groups.map(([sheetName, records]) => {
+                return `<div class="assignment-card" data-sheet-name="${escapeHTML(sheetName)}" data-record-type="${type}">
                 <h4>${escapeHTML(sheetName)}</h4>
                 <div class="assignment-meta"><span>총 ${records.length}개의 항목 보기</span></div>
             </div>`;
-        }).join('');
+            }).join('');
 
-        element.querySelectorAll('.assignment-card').forEach((card, index) => {
-            card.addEventListener('click', () => {
-                showRecordsModal({ 
-                    sheetName: groups[index][0], 
-                    records: groups[index][1], 
-                    type: card.dataset.recordType 
+            element.querySelectorAll('.assignment-card').forEach((card, index) => {
+                card.addEventListener('click', () => {
+                    showRecordsModal({
+                        sheetName: groups[index][0],
+                        records: groups[index][1],
+                        type: card.dataset.recordType
+                    });
                 });
             });
-        });
-    }
+        }
 
-    function typesetMath(element) {
-        setTimeout(() => { 
-            if (window.MathJax && window.MathJax.typesetPromise) {
-                window.MathJax.typesetPromise([element]).catch(err => console.error('MathJax 렌더링 오류:', err));
-            }
-        }, 0);
-    }
+        function typesetMath(element) {
+            setTimeout(() => {
+                if (window.MathJax && window.MathJax.typesetPromise) {
+                    window.MathJax.typesetPromise([element]).catch(err => console.error('MathJax 렌더링 오류:', err));
+                }
+            }, 0);
+        }
 
-    function showRecordsModal(group) {
-        const modal = document.getElementById('recordsModal');
-        const titleEl = document.getElementById('recordsModalTitle');
-        const bodyEl = document.getElementById('recordsModalBody');
-        const title = group.type === 'comment' ? `📊 ${group.sheetName} (교사 코멘트)` : `📢 ${group.sheetName} (알림)`;
-        titleEl.textContent = title;
+        function showRecordsModal(group) {
+            const modal = document.getElementById('recordsModal');
+            const titleEl = document.getElementById('recordsModalTitle');
+            const bodyEl = document.getElementById('recordsModalBody');
+            const title = group.type === 'comment' ? `📊 ${group.sheetName} (교사 코멘트)` : `📢 ${group.sheetName} (알림)`;
+            titleEl.textContent = title;
 
-        // 모든 record 표시 (건의사항 입력창 제외)
-        let bodyHtml = group.records.map((record, index) => {
-            return `<div class="record-card ${record.type}">
+            // 모든 record 표시 (건의사항 입력창 제외)
+            let bodyHtml = group.records.map((record, index) => {
+                return `<div class="record-card ${record.type}">
                 <div class="data-row">
                     <div class="data-label">${record.label}:</div>
                     <div class="data-value">${record.value || '-'}</div>
                 </div>
             </div>`;
-        }).join('');
+            }).join('');
 
-        // 건의사항 입력창이 필요한지 확인 (records 중 하나라도 hasSuggestion이 true면)
-        const needsSuggestion = group.records.some(r => r.hasSuggestion);
+            // 건의사항 입력창이 필요한지 확인 (records 중 하나라도 hasSuggestion이 true면)
+            const needsSuggestion = group.records.some(r => r.hasSuggestion);
 
-        if (needsSuggestion) {
-            // 첫 번째 record의 suggestion 값을 사용 (모두 같은 시트니까)
-            const existingSuggestion = group.records.find(r => r.suggestion)?.suggestion || '';
-            const suggestionId = `modal-suggestion-group`;
+            if (needsSuggestion) {
+                // 첫 번째 record의 suggestion 값을 사용 (모두 같은 시트니까)
+                const existingSuggestion = group.records.find(r => r.suggestion)?.suggestion || '';
+                const suggestionId = `modal-suggestion-group`;
 
-            bodyHtml += `<div class="suggestion-box">
+                bodyHtml += `<div class="suggestion-box">
                 <strong>💡 건의사항:</strong>
                 <div>
                     <textarea id="${suggestionId}" class="suggestion-input" rows="3" placeholder="이 과제에 대한 건의사항을 입력하세요...">${escapeHTML(existingSuggestion)}</textarea>
                     <button class="btn btn-primary" style="width:auto; padding: 8px 16px; margin-top: 8px;" data-sheet-name="${escapeHTML(group.sheetName)}" data-suggestion-id="${suggestionId}">저장</button>
                 </div>
             </div>`;
+            }
+
+            bodyEl.innerHTML = bodyHtml;
+
+            // 저장 버튼에 이벤트 리스너 추가
+            bodyEl.querySelectorAll('button[data-suggestion-id]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    saveSuggestion(btn.dataset.sheetName, btn.dataset.suggestionId);
+                });
+            });
+
+            modal.classList.remove('hidden');
+            typesetMath(bodyEl);
         }
 
-        bodyEl.innerHTML = bodyHtml;
+        function hideRecordsModal() { document.getElementById('recordsModal').classList.add('hidden'); }
 
-        // 저장 버튼에 이벤트 리스너 추가
-        bodyEl.querySelectorAll('button[data-suggestion-id]').forEach(btn => {
-            btn.addEventListener('click', () => {
-                saveSuggestion(btn.dataset.sheetName, btn.dataset.suggestionId);
-            });
-        });
+        async function showSubmitModal(assignmentId, assignmentName) {
+            const modal = document.getElementById('submitModal');
+            const titleEl = document.getElementById('submitModalTitle');
+            const questionsContainer = document.getElementById('questionsContainer');
+            const form = document.getElementById('assignmentSubmitForm');
 
-        modal.classList.remove('hidden');
-        typesetMath(bodyEl);
-    }
+            modal.classList.remove('hidden');
+            titleEl.textContent = assignmentName;
+            form.dataset.assignmentId = assignmentId;
+            questionsContainer.innerHTML = '<div class="loading-message">질문을 불러오는 중...</div>';
 
-    function hideRecordsModal() { document.getElementById('recordsModal').classList.add('hidden'); }
-    
-    async function showSubmitModal(assignmentId, assignmentName) {
-        const modal = document.getElementById('submitModal');
-        const titleEl = document.getElementById('submitModalTitle');
-        const questionsContainer = document.getElementById('questionsContainer');
-        const form = document.getElementById('assignmentSubmitForm');
+            try {
+                const response = await fetch(`${API_BASE}/assignment-detail?assignmentId=${assignmentId}&studentId=${currentStudentId}`);
+                const result = await response.json();
+                if (!result.success) throw new Error(result.message);
 
-        modal.classList.remove('hidden');
-        titleEl.textContent = assignmentName;
-        form.dataset.assignmentId = assignmentId;
-        questionsContainer.innerHTML = '<div class="loading-message">질문을 불러오는 중...</div>';
+                // 시험 모드 체크
+                if (result.examMode === true) {
+                    examModeMaxViolations = result.maxViolations || 3;
+                    examModeForceFullscreen = result.forceFullscreen || false;
+                    examModeAssignmentId = assignmentId;
+                    examModeAssignmentName = assignmentName;
+                    enableExamMode();
+                }
 
-        try {
-            const response = await fetch(`${API_BASE}/assignment-detail?assignmentId=${assignmentId}&studentId=${currentStudentId}`);
-            const result = await response.json();
-            if (!result.success) throw new Error(result.message);
+                if (result.questions && result.questions.length > 0) {
+                    questionsContainer.innerHTML = result.questions.map(q => {
+                        const draft = loadDraft(assignmentId, currentStudentId, q.column);
+                        const answer = draft || q.answer;
+                        const textareaId = `question-${q.column}`;
+                        const previewId = `preview-${q.column}`;
+                        const saveButtonId = `save-${q.column}`;
+                        const statusId = `status-${q.column}`;
 
-            // 시험 모드 체크
-            if (result.examMode === true) {
-                examModeMaxViolations = result.maxViolations || 3;
-                examModeForceFullscreen = result.forceFullscreen || false;
-                examModeAssignmentId = assignmentId;
-                examModeAssignmentName = assignmentName;
-                enableExamMode();
-            }
-            
-            if (result.questions && result.questions.length > 0) {
-                questionsContainer.innerHTML = result.questions.map(q => {
-                    const draft = loadDraft(assignmentId, currentStudentId, q.column);
-                    const answer = draft || q.answer;
-                    const textareaId = `question-${q.column}`;
-                    const saveButtonId = `save-${q.column}`;
-                    const statusId = `status-${q.column}`;
-                    return `
+                        // 값이 있으면 미리보기 모드, 없으면 편집 모드로 시작
+                        const hasContent = answer && answer.trim().length > 0;
+                        const initialTextareaClass = hasContent ? 'hidden-mode' : 'edit-mode';
+                        const initialPreviewClass = hasContent ? 'active' : '';
+                        const previewContent = hasContent ? answer : '답변을 입력하려면 여기를 클릭하세요...';
+                        const emptyClass = hasContent ? '' : 'empty';
+
+                        return `
                         <div class="form-group">
                             <label for="${textareaId}">${escapeHTML(q.question)}</label>
                             <button type="button" class="btn-math-editor" data-textarea-id="${textareaId}">∑ 수식 입력</button>
-                            <textarea id="${textareaId}" name="${escapeHTML(q.column)}" rows="4" data-assignment-id="${escapeHTML(assignmentId)}" data-student-id="${escapeHTML(currentStudentId)}" data-question-column="${escapeHTML(q.column)}">${escapeHTML(answer)}</textarea>
+                            
+                            <div class="input-wrapper">
+                                <textarea id="${textareaId}" class="${initialTextareaClass}" name="${escapeHTML(q.column)}" rows="4" 
+                                    data-assignment-id="${escapeHTML(assignmentId)}" 
+                                    data-student-id="${escapeHTML(currentStudentId)}" 
+                                    data-question-column="${escapeHTML(q.column)}" 
+                                    data-preview-id="${previewId}">${escapeHTML(answer)}</textarea>
+                                <div id="${previewId}" class="math-preview-mode ${initialPreviewClass} ${emptyClass}" 
+                                    data-textarea-id="${textareaId}">${escapeHTML(previewContent)}</div>
+                            </div>
+
                             <div class="question-actions">
                                 <button type="button" class="btn-save-question" id="${saveButtonId}" data-textarea-id="${textareaId}" data-question-column="${escapeHTML(q.column)}">💾 저장</button>
                                 <span class="save-status" id="${statusId}">✓ 저장됨</span>
                             </div>
                         </div>`;
-                }).join('');
+                    }).join('');
 
-                questionsContainer.querySelectorAll('.btn-math-editor').forEach(btn => {
-                    btn.addEventListener('click', () => {
-                        openMathEditor(btn.dataset.textareaId);
+                    // 이벤트 리스너 설정
+
+                    // 1. 수식 입력 버튼 -> 편집 모드 전환 및 에디터 열기
+                    questionsContainer.querySelectorAll('.btn-math-editor').forEach(btn => {
+                        btn.addEventListener('click', () => {
+                            const textareaId = btn.dataset.textareaId;
+                            switchToEditMode(textareaId);
+                            openMathEditor(textareaId);
+                        });
                     });
-                });
 
-                questionsContainer.querySelectorAll('.btn-save-question').forEach(btn => {
-                    btn.addEventListener('click', () => {
-                        saveQuestion(btn.dataset.textareaId, btn.dataset.questionColumn);
+                    // 2. 저장 버튼
+                    questionsContainer.querySelectorAll('.btn-save-question').forEach(btn => {
+                        btn.addEventListener('click', () => {
+                            saveQuestion(btn.dataset.textareaId, btn.dataset.questionColumn);
+                        });
                     });
-                });
 
-                questionsContainer.querySelectorAll('textarea').forEach(ta => {
-                    ta.addEventListener('input', (e) => {
-                        saveDraft(e.target.dataset.assignmentId, e.target.dataset.studentId, e.target.dataset.questionColumn, e.target.value);
-                        // 저장 상태 숨기기 (수정되었으므로)
-                        const statusId = `status-${e.target.dataset.questionColumn}`;
-                        const statusEl = document.getElementById(statusId);
-                        if (statusEl) statusEl.classList.remove('show');
+                    // 3. Textarea 및 Preview 모드 전환 이벤트
+                    questionsContainer.querySelectorAll('textarea').forEach(ta => {
+                        const previewId = ta.dataset.previewId;
+
+                        // 입력 시 자동 저장 및 미리보기 업데이트
+                        ta.addEventListener('input', (e) => {
+                            const val = e.target.value;
+                            saveDraft(e.target.dataset.assignmentId, e.target.dataset.studentId, e.target.dataset.questionColumn, val);
+
+                            const statusId = `status-${e.target.dataset.questionColumn}`;
+                            const statusEl = document.getElementById(statusId);
+                            if (statusEl) statusEl.classList.remove('show');
+
+                            // 실시간 미리보기 업데이트
+                            const previewEl = document.getElementById(previewId);
+                            if (previewEl) {
+                                if (val.trim()) {
+                                    previewEl.textContent = val;
+                                    previewEl.classList.add('active');
+                                    typesetMath(previewEl);
+                                } else {
+                                    previewEl.textContent = '';
+                                    previewEl.classList.remove('active');
+                                }
+                            }
+                        });
+
+                        // 포커스 잃으면(Blur) -> 보기 모드로 전환
+                        ta.addEventListener('blur', () => {
+                            switchToPreviewMode(ta.id, previewId);
+                        });
+
+                        // 복붙 방지
+                        preventCopyPaste(ta);
                     });
-                    // 복붙 방지 적용
-                    preventCopyPaste(ta);
-                });
 
-                typesetMath(questionsContainer);
-            } else {
-                questionsContainer.innerHTML = '<div class="empty-message">이 과제에는 설정된 질문이 없습니다.</div>';
+                    questionsContainer.querySelectorAll('.math-preview-mode').forEach(preview => {
+                        // 미리보기 클릭 시 -> 편집 모드로 전환
+                        preview.addEventListener('click', () => {
+                            switchToEditMode(preview.dataset.textareaId);
+                        });
+                    });
+
+                    // 초기 렌더링
+                    typesetMath(questionsContainer);
+                } else {
+                    questionsContainer.innerHTML = '<div class="empty-message">이 과제에는 설정된 질문이 없습니다.</div>';
+                }
+            } catch (error) {
+                questionsContainer.innerHTML = `<div class="empty-message">질문을 불러오는 데 실패했습니다: ${error.message}</div>`;
             }
-        } catch (error) {
-            questionsContainer.innerHTML = `<div class="empty-message">질문을 불러오는 데 실패했습니다: ${error.message}</div>`;
         }
-    }
 
-    function hideSubmitModal() {
-        if (examModeActive) {
-            // 확인 대화상자 표시 시 이벤트 리스너 일시 중지
-            examModeListenersActive = false;
-            const shouldClose = confirm('시험 모드가 활성화되어 있습니다. 정말로 종료하시겠습니까?\n\n주의: 제출하지 않고 종료하면 답안이 저장되지 않을 수 있습니다.');
+        // 편집 모드로 전환 (Textarea 보이기)
+        function switchToEditMode(textareaId) {
+            const textarea = document.getElementById(textareaId);
+            const previewId = textarea.dataset.previewId;
+            const preview = document.getElementById(previewId);
 
-            if (!shouldClose) {
-                // 취소하면 이벤트 리스너 재활성화
-                setTimeout(() => {
-                    examModeListenersActive = true;
-                }, 500);
+            if (textarea.classList.contains('edit-mode')) return;
+
+            preview.classList.remove('active');
+            textarea.classList.remove('hidden-mode');
+            textarea.classList.add('edit-mode');
+            textarea.focus();
+        }
+
+        // 보기 모드로 전환 (Preview 보이기 + 렌더링)
+        function switchToPreviewMode(textareaId, previewId) {
+            const textarea = document.getElementById(textareaId);
+            const preview = document.getElementById(previewId);
+            const val = textarea.value;
+
+            textarea.classList.remove('edit-mode');
+            textarea.classList.add('hidden-mode');
+            preview.classList.add('active');
+
+            if (val && val.trim().length > 0) {
+                preview.textContent = val;
+                preview.classList.remove('empty');
+                typesetMath(preview);
+            } else {
+                preview.textContent = '답변을 입력하려면 여기를 클릭하세요...';
+                preview.classList.add('empty');
+            }
+        }
+
+        function hideSubmitModal() {
+            if (examModeActive) {
+                examModeListenersActive = false;
+                const shouldClose = confirm('시험 모드가 활성화되어 있습니다. 정말로 종료하시겠습니까?\n\n주의: 제출하지 않고 종료하면 답안이 저장되지 않을 수 있습니다.');
+
+                if (!shouldClose) {
+                    setTimeout(() => {
+                        examModeListenersActive = true;
+                    }, 500);
+                    return;
+                }
+                disableExamMode();
+            }
+            document.getElementById('submitModal').classList.add('hidden');
+        }
+
+        async function saveQuestion(textareaId, questionColumn) {
+            const textarea = document.getElementById(textareaId);
+            if (!textarea) {
+                console.error('textarea를 찾을 수 없습니다:', textareaId);
                 return;
             }
-            disableExamMode();
-        }
-        document.getElementById('submitModal').classList.add('hidden');
-    }
 
-    async function saveQuestion(textareaId, questionColumn) {
-        const textarea = document.getElementById(textareaId);
-        if (!textarea) {
-            console.error('textarea를 찾을 수 없습니다:', textareaId);
-            return;
-        }
+            const form = document.getElementById('assignmentSubmitForm');
+            const assignmentId = form.dataset.assignmentId;
+            const answer = textarea.value;
 
-        const form = document.getElementById('assignmentSubmitForm');
-        const assignmentId = form.dataset.assignmentId;
-        const answer = textarea.value;
+            const saveButtonId = `save-${questionColumn}`;
+            const statusId = `status-${questionColumn}`;
+            const saveBtn = document.getElementById(saveButtonId);
+            const statusEl = document.getElementById(statusId);
 
-        const saveButtonId = `save-${questionColumn}`;
-        const statusId = `status-${questionColumn}`;
-        const saveBtn = document.getElementById(saveButtonId);
-        const statusEl = document.getElementById(statusId);
+            if (!saveBtn) return;
 
-        if (!saveBtn) return;
+            const originalText = saveBtn.textContent;
+            saveBtn.disabled = true;
+            saveBtn.textContent = '저장 중...';
+            statusEl.classList.remove('show');
 
-        const originalText = saveBtn.textContent;
-        saveBtn.disabled = true;
-        saveBtn.textContent = '저장 중...';
-        statusEl.classList.remove('show');
+            // 시험모드일 경우 이벤트 리스너 일시 중지
+            const wasListenersActive = examModeListenersActive;
+            if (examModeActive) {
+                examModeListenersActive = false;
+            }
 
-        // 시험모드일 경우 이벤트 리스너 일시 중지
-        const wasListenersActive = examModeListenersActive;
-        if (examModeActive) {
-            examModeListenersActive = false;
-        }
+            try {
+                const response = await fetch(`${API_BASE}/submit-assignment`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        studentId: currentStudentId,
+                        assignmentId: assignmentId,
+                        questionColumn: questionColumn,
+                        answer: answer,
+                        mode: 'single'
+                    })
+                });
 
-        try {
-            const response = await fetch(`${API_BASE}/submit-assignment`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    studentId: currentStudentId,
-                    assignmentId: assignmentId,
-                    questionColumn: questionColumn,
-                    answer: answer,
-                    mode: 'single'
-                })
-            });
+                const result = await response.json();
 
-            const result = await response.json();
+                if (result.success) {
+                    saveBtn.classList.add('saved');
+                    saveBtn.textContent = '✓ 저장완료';
+                    statusEl.classList.add('show');
 
-            if (result.success) {
-                saveBtn.classList.add('saved');
-                saveBtn.textContent = '✓ 저장완료';
-                statusEl.classList.add('show');
-
-                setTimeout(() => {
-                    saveBtn.classList.remove('saved');
-                    saveBtn.textContent = originalText;
-                    // 이벤트 리스너 재활성화
+                    setTimeout(() => {
+                        saveBtn.classList.remove('saved');
+                        saveBtn.textContent = originalText;
+                        // 이벤트 리스너 재활성화
+                        if (examModeActive && wasListenersActive) {
+                            setTimeout(() => {
+                                examModeListenersActive = true;
+                            }, 300);
+                        }
+                    }, 2000);
+                } else {
+                    // 실패 시 alert 전에 리스너 비활성화 확인
+                    if (examModeActive) {
+                        examModeListenersActive = false;
+                    }
+                    alert(`저장 실패: ${result.message}`);
+                    // alert 종료 후 재활성화
                     if (examModeActive && wasListenersActive) {
                         setTimeout(() => {
                             examModeListenersActive = true;
                         }, 300);
                     }
-                }, 2000);
-            } else {
-                // 실패 시 alert 전에 리스너 비활성화 확인
+                }
+            } catch (error) {
+                console.error('질문 저장 실패:', error);
+                // 오류 시 alert 전에 리스너 비활성화 확인
                 if (examModeActive) {
                     examModeListenersActive = false;
                 }
-                alert(`저장 실패: ${result.message}`);
+                alert('저장 중 오류가 발생했습니다.');
                 // alert 종료 후 재활성화
                 if (examModeActive && wasListenersActive) {
                     setTimeout(() => {
                         examModeListenersActive = true;
                     }, 300);
                 }
-            }
-        } catch (error) {
-            console.error('질문 저장 실패:', error);
-            // 오류 시 alert 전에 리스너 비활성화 확인
-            if (examModeActive) {
-                examModeListenersActive = false;
-            }
-            alert('저장 중 오류가 발생했습니다.');
-            // alert 종료 후 재활성화
-            if (examModeActive && wasListenersActive) {
-                setTimeout(() => {
-                    examModeListenersActive = true;
-                }, 300);
-            }
-        } finally {
-            saveBtn.disabled = false;
-            // 성공 케이스가 아닌 경우에만 여기서 재활성화
-            if (examModeActive && wasListenersActive && !saveBtn.classList.contains('saved')) {
-                setTimeout(() => {
-                    examModeListenersActive = true;
-                }, 300);
-            }
-        }
-    }
-
-    async function submitAssignment() {
-        // 시험모드일 경우 이벤트 리스너 일시 중지 (제출 과정에서 발생하는 이벤트 무시)
-        const wasListenersActive = examModeListenersActive;
-        if (examModeActive) {
-            examModeListenersActive = false;
-        }
-
-        const form = document.getElementById('assignmentSubmitForm');
-        const assignmentId = form.dataset.assignmentId;
-        const answers = {};
-        const questions = [];
-        form.querySelectorAll('textarea').forEach(ta => { answers[ta.name] = ta.value; questions.push({column: ta.name}); });
-        const submitBtn = document.querySelector('#submitModal .submit-btn');
-        submitBtn.disabled = true; submitBtn.textContent = '제출 중...';
-        try {
-            const response = await fetch(`${API_BASE}/submit-assignment`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ studentId: currentStudentId, assignmentId, answers }) });
-            const result = await response.json();
-            if (result.success) {
-                clearDraft(assignmentId, currentStudentId, questions);
-                if (examModeActive) {
-                    disableExamMode();
-                    // alert 실행 전 리스너 비활성화 확인
-                    examModeListenersActive = false;
-                    alert('과제가 성공적으로 제출되었습니다.\n시험 모드가 해제되었습니다.');
-                } else {
-                    alert('과제가 성공적으로 제출되었습니다.');
-                }
-                hideSubmitModal();
-                loadAssignments();
-            } else {
-                // 실패 시 alert 전에 리스너 비활성화
-                if (examModeActive) {
-                    examModeListenersActive = false;
-                }
-                alert(`제출 실패: ${result.message}`);
-                // 제출 실패 시 이벤트 리스너 복구
-                if (examModeActive && wasListenersActive) {
+            } finally {
+                saveBtn.disabled = false;
+                // 성공 케이스가 아닌 경우에만 여기서 재활성화
+                if (examModeActive && wasListenersActive && !saveBtn.classList.contains('saved')) {
                     setTimeout(() => {
                         examModeListenersActive = true;
                     }, 300);
                 }
             }
-        } catch (error) {
-            // 오류 시 alert 전에 리스너 비활성화
+        }
+
+        async function submitAssignment() {
+            // 시험모드일 경우 이벤트 리스너 일시 중지 (제출 과정에서 발생하는 이벤트 무시)
+            const wasListenersActive = examModeListenersActive;
             if (examModeActive) {
                 examModeListenersActive = false;
             }
-            alert('제출 중 오류가 발생했습니다.');
-            // 제출 오류 시 이벤트 리스너 복구
-            if (examModeActive && wasListenersActive) {
-                setTimeout(() => {
-                    examModeListenersActive = true;
-                }, 300);
-            }
-        } finally { submitBtn.disabled = false; submitBtn.textContent = '제출하기'; }
-    }
-    
-    function saveSuggestion(sheetName, textareaId) {
-        const textarea = document.getElementById(textareaId);
-        if (!textarea) {
-            console.error('textarea를 찾을 수 없습니다:', textareaId);
-            return;
+
+            const form = document.getElementById('assignmentSubmitForm');
+            const assignmentId = form.dataset.assignmentId;
+            const answers = {};
+            const questions = [];
+            form.querySelectorAll('textarea').forEach(ta => { answers[ta.name] = ta.value; questions.push({ column: ta.name }); });
+            const submitBtn = document.querySelector('#submitModal .submit-btn');
+            submitBtn.disabled = true; submitBtn.textContent = '제출 중...';
+            try {
+                const response = await fetch(`${API_BASE}/submit-assignment`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ studentId: currentStudentId, assignmentId, answers }) });
+                const result = await response.json();
+                if (result.success) {
+                    clearDraft(assignmentId, currentStudentId, questions);
+                    if (examModeActive) {
+                        disableExamMode();
+                        // alert 실행 전 리스너 비활성화 확인
+                        examModeListenersActive = false;
+                        alert('과제가 성공적으로 제출되었습니다.\n시험 모드가 해제되었습니다.');
+                    } else {
+                        alert('과제가 성공적으로 제출되었습니다.');
+                    }
+                    hideSubmitModal();
+                    loadAssignments();
+                } else {
+                    // 실패 시 alert 전에 리스너 비활성화
+                    if (examModeActive) {
+                        examModeListenersActive = false;
+                    }
+                    alert(`제출 실패: ${result.message}`);
+                    // 제출 실패 시 이벤트 리스너 복구
+                    if (examModeActive && wasListenersActive) {
+                        setTimeout(() => {
+                            examModeListenersActive = true;
+                        }, 300);
+                    }
+                }
+            } catch (error) {
+                // 오류 시 alert 전에 리스너 비활성화
+                if (examModeActive) {
+                    examModeListenersActive = false;
+                }
+                alert('제출 중 오류가 발생했습니다.');
+                // 제출 오류 시 이벤트 리스너 복구
+                if (examModeActive && wasListenersActive) {
+                    setTimeout(() => {
+                        examModeListenersActive = true;
+                    }, 300);
+                }
+            } finally { submitBtn.disabled = false; submitBtn.textContent = '제출하기'; }
         }
-        const suggestion = textarea.value;
-        const saveBtn = textarea.nextElementSibling;
-        if (!saveBtn) {
-            console.error('저장 버튼을 찾을 수 없습니다.');
-            return;
-        }
-        const originalText = saveBtn.textContent;
-        saveBtn.disabled = true; saveBtn.textContent = '저장 중...';
-        fetch(`${API_BASE}/my-records`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ studentId: currentStudentId, sheetName, suggestion }) })
-        .then(res => res.json()).then(result => {
-            if (result.success) {
-                saveBtn.style.backgroundColor = '#22c55e'; saveBtn.textContent = '저장됨';
-                setTimeout(() => { saveBtn.style.backgroundColor = ''; saveBtn.textContent = originalText; saveBtn.disabled = false; }, 3000);
-            } else { alert('저장 실패: ' + result.message); saveBtn.disabled = false; saveBtn.textContent = originalText; }
-        }).catch(error => { console.error('건의사항 저장 실패:', error); alert('건의사항 저장 중 오류가 발생했습니다.'); saveBtn.disabled = false; saveBtn.textContent = originalText; });
-    }
 
-    async function handlePasswordChange(event) {
-        event.preventDefault();
-        const currentPassword = document.getElementById('currentPassword').value;
-        const newPassword = document.getElementById('newPassword').value;
-        const confirmPassword = document.getElementById('confirmPassword').value;
-        if (newPassword !== confirmPassword) { showMessage('passwordChangeMessage', '새 비밀번호가 일치하지 않습니다.', 'error'); return; }
-        if (newPassword.length < 4) { showMessage('passwordChangeMessage', '새 비밀번호는 4자 이상이어야 합니다.', 'error'); return; }
-        const changeBtn = event.target.querySelector('button[type="submit"]');
-        changeBtn.disabled = true; changeBtn.textContent = '변경 중...';
-        showMessage('passwordChangeMessage', '비밀번호를 변경하고 있습니다...', 'info');
-        try {
-            const response = await fetch(`${API_BASE}/change-password`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ studentId: currentStudentId, currentPassword, newPassword }) });
-            const result = await response.json();
-            if (result.success) {
-                showMessage('passwordChangeMessage', '비밀번호가 성공적으로 변경되었습니다. 3초 후 메뉴로 돌아갑니다.', 'success');
-                setTimeout(() => {
-                    document.getElementById('passwordChangeForm').reset();
-                    showMenu();
-                }, 3000);
-            } else { showMessage('passwordChangeMessage', result.message, 'error'); changeBtn.disabled = false; changeBtn.textContent = '변경하기'; }
-        } catch (error) { showMessage('passwordChangeMessage', '서버에 연결할 수 없습니다.', 'error'); changeBtn.disabled = false; changeBtn.textContent = '변경하기'; }
-    }
-
-    function showMessage(elementId, message, type) { const el = document.getElementById(elementId); el.textContent = message; el.className = `message show ${type}`; }
-    function hideMessage(elementId) { const el = document.getElementById(elementId); el.className = 'message'; }
-    function escapeHTML(str) { if (str === null || str === undefined) return ''; return str.toString().replace(/[&<>"']/g, match => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[match])); }
-
-    function saveDraft(assignmentId, studentId, questionColumn, value) {
-        try { localStorage.setItem(`draft-${assignmentId}-${studentId}-${questionColumn}`, value); } catch (e) { console.error("임시 저장 실패:", e); }
-    }
-    function loadDraft(assignmentId, studentId, questionColumn) {
-        try { return localStorage.getItem(`draft-${assignmentId}-${studentId}-${questionColumn}`) || ''; } catch (e) { console.error("임시 저장 불러오기 실패:", e); return ''; }
-    }
-    function clearDraft(assignmentId, studentId, questions) {
-        try { questions.forEach(q => { localStorage.removeItem(`draft-${assignmentId}-${studentId}-${q.column}`); }); } catch (e) { console.error("임시 저장 삭제 실패:", e); }
-    }
-
-    function openMathEditor(textareaId) {
-        const textarea = document.getElementById(textareaId);
-        if (!textarea) {
-            console.error('textarea를 찾을 수 없습니다:', textareaId);
-            return;
-        }
-        
-        activeTextareaId = textareaId;
-        savedCursorPosition = {
-            start: textarea.selectionStart,
-            end: textarea.selectionEnd
-        };
-        
-        const modal = document.getElementById('mathModal');
-        modal.classList.remove('hidden');
-        
-        const paletteContainer = document.getElementById('mathPaletteContainer');
-        if (paletteContainer.children.length === 0) {
-            populateMathPalette();
-        }
-        
-        document.getElementById('mathInput').value = '';
-        document.getElementById('mathPreview').innerHTML = '<span style="color: #9ca3af;">수식 미리보기</span>';
-    }
-
-    function closeMathEditor() {
-        document.getElementById('mathModal').classList.add('hidden');
-        activeTextareaId = null;
-        savedCursorPosition = { start: 0, end: 0 };
-    }
-
-    function populateMathPalette() {
-        const mathSymbols = [
-            { display: 'x²', code: 'x^2 ', offset: 3 }, { display: 'xⁿ', code: 'x^{}', offset: 2 },
-            { display: 'xₙ', code: 'x_{}', offset: 2 }, { display: '√a', code: '\\sqrt{} ', offset: 6 },
-            { display: 'ⁿ√a', code: '\\sqrt[]{} ', offset: 7 }, { display: '∑', code: '\\sum_{k=1}^{n} ', offset: 14 },
-            { display: '∫', code: '\\int_{a}^{b} ', offset: 11 }, { display: 'a/b', code: '\\frac{}{} ', offset: 6 },
-            { display: 'α', code: '\\alpha ' }, { display: 'β', code: '\\beta ' }, { display: 'π', code: '\\pi ' },
-            { display: 'θ', code: '\\theta ' }, { display: '∞', code: '\\infty ' }, { display: '≠', code: '\\neq ' },
-            { display: '≤', code: '\\leq ' }, { display: '≥', code: '\\geq ' }, { display: '±', code: '\\pm ' },
-        ];
-        
-        const paletteContainer = document.getElementById('mathPaletteContainer');
-        paletteContainer.innerHTML = mathSymbols.map(s => 
-            `<button type="button" title="${escapeHTML(s.code.trim())}" data-symbol='${escapeHTML(JSON.stringify(s))}'>${s.display}</button>`
-        ).join('');
-
-        paletteContainer.querySelectorAll('button').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const symbol = JSON.parse(btn.dataset.symbol);
-                insertMathSymbol(symbol);
-            });
-        });
-    }
-
-    function insertMathSymbol(symbol) {
-        const textarea = document.getElementById('mathInput');
-        const start = textarea.selectionStart;
-        const end = textarea.selectionEnd;
-        const text = textarea.value;
-        const textToInsert = symbol.code;
-        const cursorOffset = symbol.offset !== undefined ? symbol.offset : textToInsert.length;
-
-        textarea.value = text.substring(0, start) + textToInsert + text.substring(end);
-        textarea.selectionStart = textarea.selectionEnd = start + cursorOffset;
-        textarea.focus();
-        textarea.dispatchEvent(new Event('input', { bubbles: true }));
-    }
-
-    function updateMathPreview() {
-        clearTimeout(previewTimeout);
-        previewTimeout = setTimeout(() => {
-            const preview = document.getElementById('mathPreview');
-            const latex = document.getElementById('mathInput').value;
-            
-            if (latex.trim() === '') {
-                preview.innerHTML = '<span style="color: #9ca3af;">수식 미리보기</span>';
+        function saveSuggestion(sheetName, textareaId) {
+            const textarea = document.getElementById(textareaId);
+            if (!textarea) {
+                console.error('textarea를 찾을 수 없습니다:', textareaId);
                 return;
             }
-            
-            preview.innerHTML = `$$${latex}$$`;
-            
-            if (window.MathJax && window.MathJax.typesetPromise) {
-                MathJax.typesetPromise([preview]).catch(err => {
-                    console.error('MathJax 렌더링 오류:', err);
-                    preview.innerHTML = '<span style="color: #ef4444;">수식 렌더링 실패</span>';
-                });
-            } else {
-                preview.innerHTML = '<span style="color: #f59e0b;">MathJax 로딩 중...</span>';
+            const suggestion = textarea.value;
+            const saveBtn = textarea.nextElementSibling;
+            if (!saveBtn) {
+                console.error('저장 버튼을 찾을 수 없습니다.');
+                return;
             }
-        }, 300);
-    }
-    
-    function confirmMathInput() {
-        if (!activeTextareaId) {
-            console.error('활성화된 textarea가 없습니다.');
-            return;
+            const originalText = saveBtn.textContent;
+            saveBtn.disabled = true; saveBtn.textContent = '저장 중...';
+            fetch(`${API_BASE}/my-records`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ studentId: currentStudentId, sheetName, suggestion }) })
+                .then(res => res.json()).then(result => {
+                    if (result.success) {
+                        saveBtn.style.backgroundColor = '#22c55e'; saveBtn.textContent = '저장됨';
+                        setTimeout(() => { saveBtn.style.backgroundColor = ''; saveBtn.textContent = originalText; saveBtn.disabled = false; }, 3000);
+                    } else { alert('저장 실패: ' + result.message); saveBtn.disabled = false; saveBtn.textContent = originalText; }
+                }).catch(error => { console.error('건의사항 저장 실패:', error); alert('건의사항 저장 중 오류가 발생했습니다.'); saveBtn.disabled = false; saveBtn.textContent = originalText; });
         }
-        
-        const mainTextarea = document.getElementById(activeTextareaId);
-        if (!mainTextarea) {
-            console.error('textarea를 찾을 수 없습니다:', activeTextareaId);
+
+        async function handlePasswordChange(event) {
+            event.preventDefault();
+            const currentPassword = document.getElementById('currentPassword').value;
+            const newPassword = document.getElementById('newPassword').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+            if (newPassword !== confirmPassword) { showMessage('passwordChangeMessage', '새 비밀번호가 일치하지 않습니다.', 'error'); return; }
+            if (newPassword.length < 4) { showMessage('passwordChangeMessage', '새 비밀번호는 4자 이상이어야 합니다.', 'error'); return; }
+            const changeBtn = event.target.querySelector('button[type="submit"]');
+            changeBtn.disabled = true; changeBtn.textContent = '변경 중...';
+            showMessage('passwordChangeMessage', '비밀번호를 변경하고 있습니다...', 'info');
+            try {
+                const response = await fetch(`${API_BASE}/change-password`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ studentId: currentStudentId, currentPassword, newPassword }) });
+                const result = await response.json();
+                if (result.success) {
+                    showMessage('passwordChangeMessage', '비밀번호가 성공적으로 변경되었습니다. 3초 후 메뉴로 돌아갑니다.', 'success');
+                    setTimeout(() => {
+                        document.getElementById('passwordChangeForm').reset();
+                        showMenu();
+                    }, 3000);
+                } else { showMessage('passwordChangeMessage', result.message, 'error'); changeBtn.disabled = false; changeBtn.textContent = '변경하기'; }
+            } catch (error) { showMessage('passwordChangeMessage', '서버에 연결할 수 없습니다.', 'error'); changeBtn.disabled = false; changeBtn.textContent = '변경하기'; }
+        }
+
+        function showMessage(elementId, message, type) { const el = document.getElementById(elementId); el.textContent = message; el.className = `message show ${type}`; }
+        function hideMessage(elementId) { const el = document.getElementById(elementId); el.className = 'message'; }
+        function escapeHTML(str) { if (str === null || str === undefined) return ''; return str.toString().replace(/[&<>"']/g, match => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[match])); }
+
+        function loadDraft(assignmentId, studentId, questionColumn) {
+            try { return localStorage.getItem(`draft-${assignmentId}-${studentId}-${questionColumn}`) || ''; } catch (e) { console.error("임시 저장 불러오기 실패:", e); return ''; }
+        }
+        function clearDraft(assignmentId, studentId, questions) {
+            try { questions.forEach(q => { localStorage.removeItem(`draft-${assignmentId}-${studentId}-${q.column}`); }); } catch (e) { console.error("임시 저장 삭제 실패:", e); }
+        }
+
+        function openMathEditor(textareaId) {
+            const textarea = document.getElementById(textareaId);
+            if (!textarea) {
+                console.error('textarea를 찾을 수 없습니다:', textareaId);
+                return;
+            }
+
+            activeTextareaId = textareaId;
+            savedCursorPosition = {
+                start: textarea.selectionStart,
+                end: textarea.selectionEnd
+            };
+
+            const modal = document.getElementById('mathModal');
+            modal.classList.remove('hidden');
+
+            const paletteContainer = document.getElementById('mathPaletteContainer');
+            if (paletteContainer.children.length === 0) {
+                populateMathPalette();
+            }
+
+            document.getElementById('mathInput').value = '';
+            document.getElementById('mathPreview').innerHTML = '<span style="color: #9ca3af;">수식 미리보기</span>';
+        }
+
+        function closeMathEditor() {
+            document.getElementById('mathModal').classList.add('hidden');
+            activeTextareaId = null;
+            savedCursorPosition = { start: 0, end: 0 };
+        }
+
+        function populateMathPalette() {
+            const mathSymbols = [
+                { display: 'x²', code: 'x^2 ', offset: 3 }, { display: 'xⁿ', code: 'x^{}', offset: 2 },
+                { display: 'xₙ', code: 'x_{}', offset: 2 }, { display: '√a', code: '\\sqrt{} ', offset: 6 },
+                { display: 'ⁿ√a', code: '\\sqrt[]{} ', offset: 7 }, { display: '∑', code: '\\sum_{k=1}^{n} ', offset: 14 },
+                { display: '∫', code: '\\int_{a}^{b} ', offset: 11 }, { display: 'a/b', code: '\\frac{}{} ', offset: 6 },
+                { display: 'α', code: '\\alpha ' }, { display: 'β', code: '\\beta ' }, { display: 'π', code: '\\pi ' },
+                { display: 'θ', code: '\\theta ' }, { display: '∞', code: '\\infty ' }, { display: '≠', code: '\\neq ' },
+                { display: '≤', code: '\\leq ' }, { display: '≥', code: '\\geq ' }, { display: '±', code: '\\pm ' },
+            ];
+
+            const paletteContainer = document.getElementById('mathPaletteContainer');
+            paletteContainer.innerHTML = mathSymbols.map(s =>
+                `<button type="button" title="${escapeHTML(s.code.trim())}" data-symbol='${escapeHTML(JSON.stringify(s))}'>${s.display}</button>`
+            ).join('');
+
+            paletteContainer.querySelectorAll('button').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const symbol = JSON.parse(btn.dataset.symbol);
+                    insertMathSymbol(symbol);
+                });
+            });
+        }
+
+        function insertMathSymbol(symbol) {
+            const textarea = document.getElementById('mathInput');
+            const start = textarea.selectionStart;
+            const end = textarea.selectionEnd;
+            const text = textarea.value;
+            const textToInsert = symbol.code;
+            const cursorOffset = symbol.offset !== undefined ? symbol.offset : textToInsert.length;
+
+            textarea.value = text.substring(0, start) + textToInsert + text.substring(end);
+            textarea.selectionStart = textarea.selectionEnd = start + cursorOffset;
+            textarea.focus();
+            textarea.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+
+        function updateMathPreview() {
+            clearTimeout(previewTimeout);
+            previewTimeout = setTimeout(() => {
+                const preview = document.getElementById('mathPreview');
+                const latex = document.getElementById('mathInput').value;
+
+                if (latex.trim() === '') {
+                    preview.innerHTML = '<span style="color: #9ca3af;">수식 미리보기</span>';
+                    return;
+                }
+
+                preview.innerHTML = `$$${latex}$$`;
+
+                if (window.MathJax && window.MathJax.typesetPromise) {
+                    MathJax.typesetPromise([preview]).catch(err => {
+                        console.error('MathJax 렌더링 오류:', err);
+                        preview.innerHTML = '<span style="color: #ef4444;">수식 렌더링 실패</span>';
+                    });
+                } else {
+                    preview.innerHTML = '<span style="color: #f59e0b;">MathJax 로딩 중...</span>';
+                }
+            }, 300);
+        }
+
+        function confirmMathInput() {
+            if (!activeTextareaId) {
+                console.error('활성화된 textarea가 없습니다.');
+                return;
+            }
+
+            const mainTextarea = document.getElementById(activeTextareaId);
+            if (!mainTextarea) {
+                console.error('textarea를 찾을 수 없습니다:', activeTextareaId);
+                closeMathEditor();
+                return;
+            }
+
+            const latex = document.getElementById('mathInput').value;
+
+            if (latex.trim()) {
+                const start = savedCursorPosition.start;
+                const end = savedCursorPosition.end;
+                const text = mainTextarea.value;
+                const textToInsert = ` $${latex.trim()}$ `;
+
+                mainTextarea.value = text.substring(0, start) + textToInsert + text.substring(end);
+                mainTextarea.selectionStart = mainTextarea.selectionEnd = start + textToInsert.length;
+                mainTextarea.focus();
+                mainTextarea.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+
             closeMathEditor();
-            return;
-        }
-        
-        const latex = document.getElementById('mathInput').value;
-        
-        if (latex.trim()) {
-            const start = savedCursorPosition.start;
-            const end = savedCursorPosition.end;
-            const text = mainTextarea.value;
-            const textToInsert = ` $${latex.trim()}$ `;
-
-            mainTextarea.value = text.substring(0, start) + textToInsert + text.substring(end);
-            mainTextarea.selectionStart = mainTextarea.selectionEnd = start + textToInsert.length;
-            mainTextarea.focus();
-            mainTextarea.dispatchEvent(new Event('input', { bubbles: true }));
-        }
-        
-        closeMathEditor();
-    }
-
-    // 복사/붙여넣기 방지 함수
-    function preventCopyPaste(element) {
-        // 붙여넣기 방지
-        element.addEventListener('paste', function(e) {
-            e.preventDefault();
-            showMessage('submitMessage', '붙여넣기가 비활성화되어 있습니다. 직접 입력해주세요.', 'error');
-            setTimeout(() => hideMessage('submitMessage'), 3000);
-            return false;
-        });
-
-        // 복사 방지
-        element.addEventListener('copy', function(e) {
-            e.preventDefault();
-            return false;
-        });
-
-        // 잘라내기 방지
-        element.addEventListener('cut', function(e) {
-            e.preventDefault();
-            return false;
-        });
-
-        // 우클릭 메뉴 방지
-        element.addEventListener('contextmenu', function(e) {
-            e.preventDefault();
-            return false;
-        });
-
-        // 드래그 앤 드롭 방지
-        element.addEventListener('drop', function(e) {
-            e.preventDefault();
-            return false;
-        });
-    }
-
-    // 시험 모드 활성화
-    function enableExamMode() {
-        examModeActive = true;
-        examModeViolations = 0;
-        examModeWarningShown = false;
-        examModeListenersActive = true;
-
-        // 시험 모드 표시
-        updateExamModeIndicator();
-
-        // 취소 버튼 비활성화
-        const cancelBtn = document.getElementById('cancelSubmitBtn');
-        if (cancelBtn) {
-            cancelBtn.disabled = true;
-            cancelBtn.style.opacity = '0.5';
-            cancelBtn.style.cursor = 'not-allowed';
         }
 
-        // 강제 전체화면이 설정된 경우에만 전체화면 요청
-        if (examModeForceFullscreen) {
-            enterFullscreen();
+        // 복사/붙여넣기 방지 함수
+        function preventCopyPaste(element) {
+            // 붙여넣기 방지
+            element.addEventListener('paste', function (e) {
+                e.preventDefault();
+                showMessage('submitMessage', '붙여넣기가 비활성화되어 있습니다. 직접 입력해주세요.', 'error');
+                setTimeout(() => hideMessage('submitMessage'), 3000);
+                return false;
+            });
+
+            // 복사 방지
+            element.addEventListener('copy', function (e) {
+                e.preventDefault();
+                return false;
+            });
+
+            // 잘라내기 방지
+            element.addEventListener('cut', function (e) {
+                e.preventDefault();
+                return false;
+            });
+
+            // 우클릭 메뉴 방지
+            element.addEventListener('contextmenu', function (e) {
+                e.preventDefault();
+                return false;
+            });
+
+            // 드래그 앤 드롭 방지
+            element.addEventListener('drop', function (e) {
+                e.preventDefault();
+                return false;
+            });
         }
 
-        // 이벤트 리스너 추가
-        document.addEventListener('visibilitychange', handleVisibilityChange);
-        window.addEventListener('blur', handleWindowBlur);
-        window.addEventListener('beforeunload', handleBeforeUnload);
+        // 시험 모드 활성화
+        function enableExamMode() {
+            examModeActive = true;
+            examModeViolations = 0;
+            examModeWarningShown = false;
+            examModeListenersActive = true;
 
-        // 강제 전체화면이 설정된 경우에만 전체화면 이탈 감지
-        if (examModeForceFullscreen) {
-            document.addEventListener('fullscreenchange', handleFullscreenChange);
+            // 시험 모드 표시
+            updateExamModeIndicator();
+
+            // 취소 버튼 비활성화
+            const cancelBtn = document.getElementById('cancelSubmitBtn');
+            if (cancelBtn) {
+                cancelBtn.disabled = true;
+                cancelBtn.style.opacity = '0.5';
+                cancelBtn.style.cursor = 'not-allowed';
+            }
+
+            // 강제 전체화면이 설정된 경우에만 전체화면 요청
+            if (examModeForceFullscreen) {
+                enterFullscreen();
+            }
+
+            // 이벤트 리스너 추가
+            document.addEventListener('visibilitychange', handleVisibilityChange);
+            window.addEventListener('blur', handleWindowBlur);
+            window.addEventListener('beforeunload', handleBeforeUnload);
+
+            // 강제 전체화면이 설정된 경우에만 전체화면 이탈 감지
+            if (examModeForceFullscreen) {
+                document.addEventListener('fullscreenchange', handleFullscreenChange);
+            }
+
+            // 뒤로가기 방지
+            history.pushState(null, '', location.href);
+            window.addEventListener('popstate', preventBackNavigation);
+
+            console.log('시험 모드 활성화됨 (최대 위반 횟수:', examModeMaxViolations, '회)');
+        }
+
+        // 시험 모드 표시 업데이트
+        function updateExamModeIndicator() {
+            const indicator = document.getElementById('examModeIndicator');
+            indicator.textContent = `🔒 시험 모드 | 위반 ${examModeViolations}/${examModeMaxViolations}회`;
+            indicator.classList.add('active');
+        }
+
+        // 시험 모드 비활성화
+        function disableExamMode(autoSubmitted = false) {
+            // 위반 사항이 있는 경우에만 로그 기록
+            if (examModeActive && examModeViolations > 0) {
+                const details = autoSubmitted
+                    ? `자동 제출됨 (총 위반 횟수: ${examModeViolations}회, 최대 허용: ${examModeMaxViolations}회)`
+                    : `정상 제출됨 (총 위반 횟수: ${examModeViolations}회, 최대 허용: ${examModeMaxViolations}회)`;
+                logExamEvent('시험로그', 0, details);
+            }
+
+            examModeActive = false;
+
+            // 시험 모드 표시 제거
+            document.getElementById('examModeIndicator').classList.remove('active');
+            document.getElementById('examWarningOverlay').classList.remove('show');
+
+            // 이벤트 리스너 제거
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+            window.removeEventListener('blur', handleWindowBlur);
+            window.removeEventListener('beforeunload', handleBeforeUnload);
+            document.removeEventListener('fullscreenchange', handleFullscreenChange);
+            window.removeEventListener('popstate', preventBackNavigation);
+
+            // 전체화면 해제
+            exitFullscreen();
+
+            // 취소 버튼 활성화
+            const cancelBtn = document.getElementById('cancelSubmitBtn');
+            if (cancelBtn) {
+                cancelBtn.disabled = false;
+                cancelBtn.style.opacity = '1';
+                cancelBtn.style.cursor = 'pointer';
+            }
+
+            // 시험 관련 변수 초기화
+            examModeAssignmentId = null;
+            examModeAssignmentName = null;
+
+            console.log('시험 모드 비활성화됨');
+        }
+
+        // 전체화면 진입
+        function enterFullscreen() {
+            const elem = document.documentElement;
+            if (elem.requestFullscreen) {
+                elem.requestFullscreen().catch(err => {
+                    console.log('전체화면 요청 실패:', err);
+                });
+            } else if (elem.webkitRequestFullscreen) {
+                elem.webkitRequestFullscreen();
+            } else if (elem.msRequestFullscreen) {
+                elem.msRequestFullscreen();
+            }
+        }
+
+        // 전체화면 해제
+        function exitFullscreen() {
+            if (document.exitFullscreen) {
+                document.exitFullscreen().catch(err => {
+                    console.log('전체화면 해제 실패:', err);
+                });
+            } else if (document.webkitExitFullscreen) {
+                document.webkitExitFullscreen();
+            } else if (document.msExitFullscreen) {
+                document.msExitFullscreen();
+            }
+        }
+
+        // 화면 전환 감지
+        function handleVisibilityChange() {
+            if (!examModeActive || !examModeListenersActive) return;
+
+            if (document.hidden) {
+                examModeViolations++;
+                updateExamModeIndicator();
+
+                // 최대 위반 횟수 체크
+                if (examModeViolations >= examModeMaxViolations) {
+                    // 자동제출 실행
+                    autoSubmitExam();
+                } else {
+                    showExamWarning('다른 탭이나 창으로 전환했습니다!');
+                }
+            }
+        }
+
+        // 윈도우 포커스 아웃 감지
+        function handleWindowBlur() {
+            if (!examModeActive || !examModeListenersActive) return;
+
+            // blur는 alert나 모달로 인해서도 발생할 수 있으므로
+            // visibilitychange와 중복 카운트를 피하기 위해
+            // document.hidden 상태가 아닐 때만 카운트
+            if (!document.hidden) {
+                examModeViolations++;
+                updateExamModeIndicator();
+
+                // 최대 위반 횟수 체크
+                if (examModeViolations >= examModeMaxViolations) {
+                    // 자동제출 실행
+                    autoSubmitExam();
+                } else {
+                    showExamWarning('시험 화면에서 벗어났습니다!');
+                }
+            }
+        }
+
+        // 페이지 이탈 방지
+        function handleBeforeUnload(e) {
+            if (!examModeActive) return;
+
+            e.preventDefault();
+            e.returnValue = '시험이 진행 중입니다. 정말로 나가시겠습니까?';
+            return e.returnValue;
+        }
+
+        // 전체화면 해제 감지
+        function handleFullscreenChange() {
+            if (!examModeActive || !examModeListenersActive || !examModeForceFullscreen) return;
+
+            if (!document.fullscreenElement && !document.webkitFullscreenElement && !document.msFullscreenElement) {
+                examModeViolations++;
+                updateExamModeIndicator();
+
+                // 최대 위반 횟수 체크
+                if (examModeViolations >= examModeMaxViolations) {
+                    // 자동제출 실행
+                    autoSubmitExam();
+                } else {
+                    showExamWarning('전체화면에서 벗어났습니다!');
+                    // 다시 전체화면으로
+                    setTimeout(enterFullscreen, 1000);
+                }
+            }
         }
 
         // 뒤로가기 방지
-        history.pushState(null, '', location.href);
-        window.addEventListener('popstate', preventBackNavigation);
+        function preventBackNavigation(e) {
+            if (!examModeActive || !examModeListenersActive) return;
 
-        console.log('시험 모드 활성화됨 (최대 위반 횟수:', examModeMaxViolations, '회)');
-    }
-
-    // 시험 모드 표시 업데이트
-    function updateExamModeIndicator() {
-        const indicator = document.getElementById('examModeIndicator');
-        indicator.textContent = `🔒 시험 모드 | 위반 ${examModeViolations}/${examModeMaxViolations}회`;
-        indicator.classList.add('active');
-    }
-
-    // 시험 모드 비활성화
-    function disableExamMode(autoSubmitted = false) {
-        // 위반 사항이 있는 경우에만 로그 기록
-        if (examModeActive && examModeViolations > 0) {
-            const details = autoSubmitted
-                ? `자동 제출됨 (총 위반 횟수: ${examModeViolations}회, 최대 허용: ${examModeMaxViolations}회)`
-                : `정상 제출됨 (총 위반 횟수: ${examModeViolations}회, 최대 허용: ${examModeMaxViolations}회)`;
-            logExamEvent('시험로그', 0, details);
-        }
-
-        examModeActive = false;
-
-        // 시험 모드 표시 제거
-        document.getElementById('examModeIndicator').classList.remove('active');
-        document.getElementById('examWarningOverlay').classList.remove('show');
-
-        // 이벤트 리스너 제거
-        document.removeEventListener('visibilitychange', handleVisibilityChange);
-        window.removeEventListener('blur', handleWindowBlur);
-        window.removeEventListener('beforeunload', handleBeforeUnload);
-        document.removeEventListener('fullscreenchange', handleFullscreenChange);
-        window.removeEventListener('popstate', preventBackNavigation);
-
-        // 전체화면 해제
-        exitFullscreen();
-
-        // 취소 버튼 활성화
-        const cancelBtn = document.getElementById('cancelSubmitBtn');
-        if (cancelBtn) {
-            cancelBtn.disabled = false;
-            cancelBtn.style.opacity = '1';
-            cancelBtn.style.cursor = 'pointer';
-        }
-
-        // 시험 관련 변수 초기화
-        examModeAssignmentId = null;
-        examModeAssignmentName = null;
-
-        console.log('시험 모드 비활성화됨');
-    }
-
-    // 전체화면 진입
-    function enterFullscreen() {
-        const elem = document.documentElement;
-        if (elem.requestFullscreen) {
-            elem.requestFullscreen().catch(err => {
-                console.log('전체화면 요청 실패:', err);
-            });
-        } else if (elem.webkitRequestFullscreen) {
-            elem.webkitRequestFullscreen();
-        } else if (elem.msRequestFullscreen) {
-            elem.msRequestFullscreen();
-        }
-    }
-
-    // 전체화면 해제
-    function exitFullscreen() {
-        if (document.exitFullscreen) {
-            document.exitFullscreen().catch(err => {
-                console.log('전체화면 해제 실패:', err);
-            });
-        } else if (document.webkitExitFullscreen) {
-            document.webkitExitFullscreen();
-        } else if (document.msExitFullscreen) {
-            document.msExitFullscreen();
-        }
-    }
-
-    // 화면 전환 감지
-    function handleVisibilityChange() {
-        if (!examModeActive || !examModeListenersActive) return;
-
-        if (document.hidden) {
+            history.pushState(null, '', location.href);
             examModeViolations++;
             updateExamModeIndicator();
 
@@ -1169,244 +1874,176 @@
                 // 자동제출 실행
                 autoSubmitExam();
             } else {
-                showExamWarning('다른 탭이나 창으로 전환했습니다!');
+                showExamWarning('뒤로가기는 사용할 수 없습니다!');
             }
         }
-    }
 
-    // 윈도우 포커스 아웃 감지
-    function handleWindowBlur() {
-        if (!examModeActive || !examModeListenersActive) return;
+        // 경고 표시
+        function showExamWarning(message) {
+            // 이벤트 리스너 일시 중지 (경고 표시 시 blur 이벤트 방지)
+            examModeListenersActive = false;
 
-        // blur는 alert나 모달로 인해서도 발생할 수 있으므로
-        // visibilitychange와 중복 카운트를 피하기 위해
-        // document.hidden 상태가 아닐 때만 카운트
-        if (!document.hidden) {
-            examModeViolations++;
-            updateExamModeIndicator();
+            const overlay = document.getElementById('examWarningOverlay');
+            const messageEl = document.getElementById('examWarningMessage');
+            const countEl = document.getElementById('examViolationCount');
 
-            // 최대 위반 횟수 체크
-            if (examModeViolations >= examModeMaxViolations) {
-                // 자동제출 실행
-                autoSubmitExam();
-            } else {
-                showExamWarning('시험 화면에서 벗어났습니다!');
+            messageEl.innerHTML = `${message}<br>다시 시험 화면으로 돌아가 주세요.<br><br><strong style="color: #ffd700;">위반 ${examModeViolations}/${examModeMaxViolations}회</strong>`;
+            countEl.textContent = examModeViolations;
+            overlay.classList.add('show');
+
+            // 1초 후 이벤트 리스너 재활성화
+            setTimeout(() => {
+                examModeListenersActive = true;
+            }, 1000);
+        }
+
+        // 시험 화면으로 복귀
+        function returnToExam() {
+            document.getElementById('examWarningOverlay').classList.remove('show');
+
+            if (examModeForceFullscreen) {
+                enterFullscreen();
             }
-        }
-    }
 
-    // 페이지 이탈 방지
-    function handleBeforeUnload(e) {
-        if (!examModeActive) return;
-
-        e.preventDefault();
-        e.returnValue = '시험이 진행 중입니다. 정말로 나가시겠습니까?';
-        return e.returnValue;
-    }
-
-    // 전체화면 해제 감지
-    function handleFullscreenChange() {
-        if (!examModeActive || !examModeListenersActive || !examModeForceFullscreen) return;
-
-        if (!document.fullscreenElement && !document.webkitFullscreenElement && !document.msFullscreenElement) {
-            examModeViolations++;
-            updateExamModeIndicator();
-
-            // 최대 위반 횟수 체크
-            if (examModeViolations >= examModeMaxViolations) {
-                // 자동제출 실행
-                autoSubmitExam();
-            } else {
-                showExamWarning('전체화면에서 벗어났습니다!');
-                // 다시 전체화면으로
-                setTimeout(enterFullscreen, 1000);
-            }
-        }
-    }
-
-    // 뒤로가기 방지
-    function preventBackNavigation(e) {
-        if (!examModeActive || !examModeListenersActive) return;
-
-        history.pushState(null, '', location.href);
-        examModeViolations++;
-        updateExamModeIndicator();
-
-        // 최대 위반 횟수 체크
-        if (examModeViolations >= examModeMaxViolations) {
-            // 자동제출 실행
-            autoSubmitExam();
-        } else {
-            showExamWarning('뒤로가기는 사용할 수 없습니다!');
-        }
-    }
-
-    // 경고 표시
-    function showExamWarning(message) {
-        // 이벤트 리스너 일시 중지 (경고 표시 시 blur 이벤트 방지)
-        examModeListenersActive = false;
-
-        const overlay = document.getElementById('examWarningOverlay');
-        const messageEl = document.getElementById('examWarningMessage');
-        const countEl = document.getElementById('examViolationCount');
-
-        messageEl.innerHTML = `${message}<br>다시 시험 화면으로 돌아가 주세요.<br><br><strong style="color: #ffd700;">위반 ${examModeViolations}/${examModeMaxViolations}회</strong>`;
-        countEl.textContent = examModeViolations;
-        overlay.classList.add('show');
-
-        // 1초 후 이벤트 리스너 재활성화
-        setTimeout(() => {
-            examModeListenersActive = true;
-        }, 1000);
-    }
-
-    // 시험 화면으로 복귀
-    function returnToExam() {
-        document.getElementById('examWarningOverlay').classList.remove('show');
-
-        if (examModeForceFullscreen) {
-            enterFullscreen();
-        }
-
-        // 포커스를 다시 문서로
-        window.focus();
-
-        // 이벤트 리스너 재활성화
-        setTimeout(() => {
-            examModeListenersActive = true;
-        }, 500);
-    }
-
-    
-    // ★ 추가: 키보드 단축키 차단
-    function handleKeyDown(e) {
-        if (!examModeActive) return;
-
-        // Alt+Tab, Ctrl+W, F11, ESC 등 차단
-        if (e.altKey && e.key === 'Tab') {
-            e.preventDefault();
-            examModeViolations++;
-            showExamWarning('Alt+Tab 사용이 감지되었습니다!');
-            return false;
-        }
-
-        if (e.ctrlKey && (e.key === 'w' || e.key === 'W')) {
-            e.preventDefault();
-            showExamWarning('창 닫기 시도가 감지되었습니다!');
-            return false;
-        }
-
-        if (e.key === 'F11') {
-            e.preventDefault();
-            return false;
-        }
-
-        if (e.key === 'Escape' && document.fullscreenElement) {
-            e.preventDefault();
-            return false;
-        }
-
-        // Windows 키, 개발자도구 단축키 차단
-        if (e.key === 'Meta' || e.metaKey) {
-            e.preventDefault();
-            return false;
-        }
-
-        if (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'i' || e.key === 'J' || e.key === 'j' || e.key === 'C' || e.key === 'c')) {
-            e.preventDefault();
-            examModeViolations++;
-            showExamWarning('개발자도구 사용이 감지되었습니다!');
-            return false;
-        }
-
-        if (e.key === 'F12') {
-            e.preventDefault();
-            examModeViolations++;
-            showExamWarning('개발자도구 사용이 감지되었습니다!');
-            return false;
-        }
-    }
-
-    // ★ 추가: 마우스 우클릭 차단
-    function handleContextMenu(e) {
-        if (!examModeActive) return;
-
-        e.preventDefault();
-        // 경고 없이 조용히 차단 (너무 많은 경고 방지)
-        return false;
-    }
-
-    // ★ 추가: 복사/붙여넣기 차단
-    function handleCopyPaste(e) {
-        if (!examModeActive) return;
-
-        e.preventDefault();
-        // 경고 없이 조용히 차단
-        return false;
-    }
-
-    // ★ 추가: 포커스 강제 회복
-    function enforceFocus() {
-        if (!examModeActive) return;
-
-        if (!document.hasFocus()) {
+            // 포커스를 다시 문서로
             window.focus();
+
+            // 이벤트 리스너 재활성화
+            setTimeout(() => {
+                examModeListenersActive = true;
+            }, 500);
         }
 
-        // 전체화면 이탈 시 복구
-        if (!document.fullscreenElement && !document.webkitFullscreenElement) {
-            enterFullscreen();
+        // ★ 추가: 키보드 단축키 차단
+        function handleKeyDown(e) {
+            if (!examModeActive) return;
+
+            // Alt+Tab, Ctrl+W, F11, ESC 등 차단
+            if (e.altKey && e.key === 'Tab') {
+                e.preventDefault();
+                examModeViolations++;
+                showExamWarning('Alt+Tab 사용이 감지되었습니다!');
+                return false;
+            }
+
+            if (e.ctrlKey && (e.key === 'w' || e.key === 'W')) {
+                e.preventDefault();
+                showExamWarning('창 닫기 시도가 감지되었습니다!');
+                return false;
+            }
+
+            if (e.key === 'F11') {
+                e.preventDefault();
+                return false;
+            }
+
+            if (e.key === 'Escape' && document.fullscreenElement) {
+                e.preventDefault();
+                return false;
+            }
+
+            // Windows 키, 개발자도구 단축키 차단
+            if (e.key === 'Meta' || e.metaKey) {
+                e.preventDefault();
+                return false;
+            }
+
+            if (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'i' || e.key === 'J' || e.key === 'j' || e.key === 'C' || e.key === 'c')) {
+                e.preventDefault();
+                examModeViolations++;
+                showExamWarning('개발자도구 사용이 감지되었습니다!');
+                return false;
+            }
+
+            if (e.key === 'F12') {
+                e.preventDefault();
+                examModeViolations++;
+                showExamWarning('개발자도구 사용이 감지되었습니다!');
+                return false;
+            }
         }
-    }
 
-    // 자동 제출 (위반 횟수 초과 시)
-    async function autoSubmitExam() {
-        // 이벤트 리스너 비활성화하여 추가 위반 방지
-        examModeListenersActive = false;
+        // ★ 추가: 마우스 우클릭 차단
+        function handleContextMenu(e) {
+            if (!examModeActive) return;
 
-        // 경고 오버레이 제거
-        document.getElementById('examWarningOverlay').classList.remove('show');
-
-        // 사용자에게 알림 (이미 리스너 비활성화됨)
-        alert(`⚠️ 경고\n\n화면 이탈이 ${examModeMaxViolations}회를 초과하여 자동으로 제출됩니다.`);
-
-        // 제출 실행
-        try {
-            await submitAssignment();
-        } catch (error) {
-            console.error('자동 제출 실패:', error);
-            // 오류 alert (이미 리스너 비활성화됨)
-            alert('자동 제출 중 오류가 발생했습니다. 수동으로 제출해주세요.');
+            e.preventDefault();
+            // 경고 없이 조용히 차단 (너무 많은 경고 방지)
+            return false;
         }
 
-        // 시험 모드 비활성화 (자동제출 플래그 전달)
-        disableExamMode(true);
-    }
+        // ★ 추가: 복사/붙여넣기 차단
+        function handleCopyPaste(e) {
+            if (!examModeActive) return;
 
-    // 시험 로그 기록 (서버에 로깅)
-    async function logExamEvent(eventType, duration, details) {
-        if (!examModeAssignmentId) {
-            console.error('시험 과제 ID가 없습니다.');
-            return;
+            e.preventDefault();
+            // 경고 없이 조용히 차단
+            return false;
         }
 
-        try {
-            await fetch(`${API_BASE}/Exam-log`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    studentId: currentStudentId,
-                    assignmentId: examModeAssignmentId,
-                    eventType: eventType,
-                    duration: duration || 0,
-                    details: details || ''
-                })
-            });
-            console.log(`📊 시험 로그 기록: ${eventType} - ${details}`);
-        } catch (error) {
-            console.error('시험 로그 기록 실패:', error);
+        // ★ 추가: 포커스 강제 회복
+        function enforceFocus() {
+            if (!examModeActive) return;
+
+            if (!document.hasFocus()) {
+                window.focus();
+            }
+
+            // 전체화면 이탈 시 복구
+            if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+                enterFullscreen();
+            }
         }
-    }
-</script>
+
+        // 자동 제출 (위반 횟수 초과 시)
+        async function autoSubmitExam() {
+            // 이벤트 리스너 비활성화하여 추가 위반 방지
+            examModeListenersActive = false;
+
+            // 경고 오버레이 제거
+            document.getElementById('examWarningOverlay').classList.remove('show');
+
+            // 사용자에게 알림 (이미 리스너 비활성화됨)
+            alert(`⚠️ 경고\n\n화면 이탈이 ${examModeMaxViolations}회를 초과하여 자동으로 제출됩니다.`);
+
+            // 제출 실행
+            try {
+                await submitAssignment();
+            } catch (error) {
+                console.error('자동 제출 실패:', error);
+                // 오류 alert (이미 리스너 비활성화됨)
+                alert('자동 제출 중 오류가 발생했습니다. 수동으로 제출해주세요.');
+            }
+
+            // 시험 모드 비활성화 (자동제출 플래그 전달)
+            disableExamMode(true);
+        }
+
+        // 시험 로그 기록 (서버에 로깅)
+        async function logExamEvent(eventType, duration, details) {
+            if (!examModeAssignmentId) {
+                console.error('시험 과제 ID가 없습니다.');
+                return;
+            }
+
+            try {
+                await fetch(`${API_BASE}/Exam-log`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        studentId: currentStudentId,
+                        assignmentId: examModeAssignmentId,
+                        eventType: eventType,
+                        duration: duration || 0,
+                        details: details || ''
+                    })
+                });
+                console.log(`📊 시험 로그 기록: ${eventType} - ${details}`);
+            } catch (error) {
+                console.error('시험 로그 기록 실패:', error);
+            }
+        }
+    </script>
 </body>
+
 </html>

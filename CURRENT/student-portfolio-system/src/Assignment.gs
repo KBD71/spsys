@@ -68,6 +68,7 @@ function createAssignmentSheetFromSidebar(data) {
     var newSheetHeaders = newSheet.getRange(1, 1, 1, newSheet.getLastColumn()).getValues()[0];
     var maxQuestionsInTemplate = newSheetHeaders.filter(h => h.startsWith('질문')).length;
     
+
     // 템플릿의 질문 개수보다 적으면 불필요한 질문 열 삭제
     if (questions.length < maxQuestionsInTemplate) {
       var startDeleteColName = `질문${questions.length + 1}`;
@@ -75,6 +76,29 @@ function createAssignmentSheetFromSidebar(data) {
       if (startDeleteColIndex > 0) {
         newSheet.deleteColumns(startDeleteColIndex, maxQuestionsInTemplate - questions.length);
       }
+    }
+
+    // ★★★ 시험모드일 경우: 질문 컬럼을 '풀이'와 '답'으로 분리 ★★★
+    if (examMode) {
+      // 뒤에서부터 처리해야 인덱스가 밀리지 않음
+      for (var i = questions.length; i >= 1; i--) {
+        var questionColName = `질문${i}`;
+        var questionColIndex = newSheetHeaders.indexOf(questionColName) + 1; // 1-based index
+        
+        if (questionColIndex > 0) {
+          // 1. 현재 컬럼(질문i)을 '질문i_풀이'로 변경
+          newSheet.getRange(1, questionColIndex).setValue(`${questionColName}_풀이`);
+          
+          // 2. 그 뒤에 새 컬럼 삽입
+          newSheet.insertColumnAfter(questionColIndex);
+          
+          // 3. 새 컬럼 헤더를 '질문i_답'으로 설정
+          newSheet.getRange(1, questionColIndex + 1).setValue(`${questionColName}_답`);
+          
+          // (선택사항) 스타일 복사 등을 할 수도 있지만, 기본 삽입으로 충분함
+        }
+      }
+      Logger.log(`[시험모드] ${questions.length}개 질문에 대해 풀이/답 컬럼 분리 완료`);
     }
 
     newSheet.activate();

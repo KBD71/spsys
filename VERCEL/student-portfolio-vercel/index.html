@@ -913,7 +913,7 @@
     </div>
 
     <script>
-        const API_BASE = "https://script.google.com/macros/s/AKfycbz1k-48iL91G_gY9uFk_Fk8B1h6k8_j9m1n/exec";
+        const API_BASE = "/api";
         let currentStudentId = '';
         let currentStudentName = '';
         let activeTextareaId = null;
@@ -1064,10 +1064,10 @@
                     examModeForceFullscreen = result.forceFullscreen || false;
                     examModeAssignmentId = assignmentId;
                     examModeAssignmentName = assignmentName;
-                    
+
                     // 시험 모드 경고 및 활성화
                     const startExam = confirm(`이 과제는 '시험 모드'가 적용됩니다.\n\n- 화면 이탈 시 경고가 발생하며, ${examModeMaxViolations}회 위반 시 자동 제출됩니다.\n- 복사/붙여넣기가 금지됩니다.\n${examModeForceFullscreen ? '- 전체화면이 강제됩니다.\n' : ''}\n시작하시겠습니까?`);
-                    
+
                     if (startExam) {
                         enableExamMode();
                     } else {
@@ -1078,16 +1078,16 @@
 
                 // 질문 렌더링
                 questionsContainer.innerHTML = '';
-                
+
                 // ★★★ 수정된 부분: examMode 또는 separateSolution일 경우 분리된 UI 렌더링 ★★★
                 const useSplitFields = result.examMode || result.separateSolution;
 
                 result.questions.forEach((q, index) => {
                     const questionDiv = document.createElement('div');
                     questionDiv.className = 'question-card';
-                    
+
                     let html = `<div class="question-text"><strong>Q${index + 1}.</strong> ${escapeHTML(q.question)}</div>`;
-                    
+
                     if (useSplitFields) {
                         // 풀이/답 분리 렌더링
                         html += `
@@ -1123,7 +1123,7 @@
                             </div>
                         `;
                     }
-                    
+
                     questionDiv.innerHTML = html;
                     questionsContainer.appendChild(questionDiv);
 
@@ -1690,7 +1690,7 @@
             // 뒤로가기 방지
             history.pushState(null, '', location.href);
             window.addEventListener('popstate', preventBackNavigation);
-            
+
             // 키보드/마우스 차단 이벤트 추가
             window.addEventListener('keydown', handleKeyDown);
             window.addEventListener('contextmenu', handleContextMenu);
@@ -1733,7 +1733,7 @@
             window.removeEventListener('beforeunload', handleBeforeUnload);
             document.removeEventListener('fullscreenchange', handleFullscreenChange);
             window.removeEventListener('popstate', preventBackNavigation);
-            
+
             // 키보드/마우스 차단 이벤트 제거
             window.removeEventListener('keydown', handleKeyDown);
             window.removeEventListener('contextmenu', handleContextMenu);
@@ -2040,4 +2040,3 @@
 </body>
 
 </html>
-

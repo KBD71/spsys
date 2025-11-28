@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>과제제출 시스템</title>
-    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <!-- <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script> -->
     <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     <style>
         :root {
@@ -621,10 +621,10 @@
 
         function updateSchoolInfo() {
             if (typeof SCHOOL_NAME !== 'undefined') {
-                document.title = ${SCHOOL_NAME} 과제제출 시스템;
+                document.title = `${SCHOOL_NAME} 과제제출 시스템`;
                 const titles = document.querySelectorAll('.school-title-text');
                 titles.forEach(el => {
-                    el.textContent =   과제제출 시스템;
+                    el.textContent = `🎓 ${SCHOOL_NAME} 과제제출 시스템`;
                 });
             }
         }
@@ -639,7 +639,7 @@
             const loginBtn = event.target.querySelector('button[type="submit"]');
             loginBtn.disabled = true; loginBtn.textContent = '로그인 중...';
             try {
-                const response = await fetch(${API_BASE}/login, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ studentId, password }) });
+                const response = await fetch(`${API_BASE}/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ studentId, password }) });
                 const result = await response.json();
                 if (result.success) {
                     currentStudentId = result.studentId; currentStudentName = result.name;
@@ -679,11 +679,11 @@
             const listEl = document.getElementById('assignmentsList');
             listEl.innerHTML = '<div class="loading-message">과제 목록을 불러오는 중...</div>';
             try {
-                const response = await fetch(${API_BASE}/assignments?studentId=);
+                const response = await fetch(`${API_BASE}/assignments?studentId=${currentStudentId}`);
                 const result = await response.json();
                 if (result.success) {
                     displayAssignments(result.assignments || []);
-                } else { listEl.innerHTML = <div class="empty-message"></div>; }
+                } else { listEl.innerHTML = `<div class="empty-message">${result.message}</div>`; }
             } catch (error) { listEl.innerHTML = '<div class="empty-message">과제 목록을 불러오지 못했습니다.</div>'; }
         }
 
@@ -700,12 +700,12 @@
                 const badge = isLocked ? '<span class="submission-badge">제출완료</span>' : '';
                 const dueDateText = assignment.dueDate || '기한 없음';
 
-                return 
-                <div class="" data-assignment-id="" data-assignment-name="" data-is-locked="">
-                    <h4></h4>
-                    <div class="assignment-meta"><span>마감: </span></div>
+                return `
+                <div class="${cardClass}" data-assignment-id="${escapeHTML(assignment.id)}" data-assignment-name="${escapeHTML(assignment.name)}" data-is-locked="${isLocked}">
+                    <h4>${escapeHTML(assignment.name)}${badge}</h4>
+                    <div class="assignment-meta"><span>마감: ${dueDateText}</span></div>
                 </div>
-            ;
+            `;
             }).join('');
 
             listEl.querySelectorAll('.assignment-card').forEach(card => {
@@ -724,17 +724,17 @@
             const questionsContainer = document.getElementById('questionsContainer');
             const form = document.getElementById('assignmentSubmitForm');
 
-            titleEl.textContent = ${assignmentName} 제출;
+            titleEl.textContent = `${assignmentName} 제출`;
             questionsContainer.innerHTML = '<div class="loading-message">과제 정보를 불러오는 중...</div>';
             form.dataset.assignmentId = assignmentId;
             modal.classList.remove('hidden');
 
             try {
-                const response = await fetch(${API_BASE}/assignment-detail?assignmentId=&studentId=);
+                const response = await fetch(`${API_BASE}/assignment-detail?assignmentId=${assignmentId}&studentId=${currentStudentId}`);
                 const result = await response.json();
 
                 if (!result.success) {
-                    questionsContainer.innerHTML = <div class="empty-message"></div>;
+                    questionsContainer.innerHTML = `<div class="empty-message">${result.message}</div>`;
                     return;
                 }
 
@@ -745,7 +745,7 @@
                     examModeAssignmentId = assignmentId;
                     examModeAssignmentName = assignmentName;
 
-                    const startExam = confirm(이 과제는 '시험 모드'가 적용됩니다.\n\n- 화면 이탈 시 경고가 발생하며, 회 위반 시 자동 제출됩니다.\n- 복사/붙여넣기가 금지됩니다.\n\n시작하시겠습니까?);
+                    const startExam = confirm(`이 과제는 '시험 모드'가 적용됩니다.\n\n - 화면 이탈 시 경고가 발생하며, ${examModeMaxViolations}회 위반 시 자동 제출됩니다.\n - 복사/붙여넣기가 금지됩니다.\n\n시작하시겠습니까?`);
 
                     if (startExam) {
                         enableExamMode();
@@ -761,87 +761,87 @@
                 result.questions.forEach((q, index) => {
                     const questionDiv = document.createElement('div');
                     questionDiv.className = 'question-card';
-                    
+
                     let inputHtml = '';
                     if (useSplitFields) {
                         // 분리된 필드 (풀이/정답)
                         const savedSolution = loadDraft(assignmentId, currentStudentId, q.column + '_solution');
                         const savedAnswer = loadDraft(assignmentId, currentStudentId, q.column);
 
-                        inputHtml = 
-                        <div class="split-fields-container">
-                            <div class="field-group">
-                                <label class="field-label">풀이 과정</label>
-                                <div class="input-wrapper">
-                                    <textarea name="_solution" id="solution_" class="edit-mode" placeholder="풀이 과정을 입력하세요..."></textarea>
-                                    <div id="preview_solution_" class="math-preview-mode empty">답변을 입력하려면 여기를 클릭하세요...</div>
-                                    <button type="button" class="btn-math-editor" onclick="openMathEditor('solution_')">Math Editor</button>
+                        inputHtml = `
+                            <div class="split-fields-container">
+                                <div class="field-group">
+                                    <label class="field-label">풀이 과정</label>
+                                    <div class="input-wrapper">
+                                        <textarea name="${q.column}_solution" id="solution_${index}" class="edit-mode" placeholder="풀이 과정을 입력하세요...">${savedSolution}</textarea>
+                                        <div id="preview_solution_${index}" class="math-preview-mode empty">답변을 입력하려면 여기를 클릭하세요...</div>
+                                        <button type="button" class="btn-math-editor" onclick="openMathEditor('solution_${index}')">Math Editor</button>
+                                    </div>
                                 </div>
-                            </div>
-                            <div class="field-group">
-                                <label class="field-label">정답</label>
-                                <div class="input-wrapper">
-                                    <textarea name="" id="answer_" class="edit-mode short-input" placeholder="정답을 입력하세요..."></textarea>
-                                    <div id="preview_answer_" class="math-preview-mode empty" style="min-height: 60px;">답변을 입력하려면 여기를 클릭하세요...</div>
-                                    <button type="button" class="btn-math-editor" onclick="openMathEditor('answer_')">Math Editor</button>
+                                <div class="field-group">
+                                    <label class="field-label">정답</label>
+                                    <div class="input-wrapper">
+                                        <textarea name="${q.column}" id="answer_${index}" class="edit-mode short-input" placeholder="정답을 입력하세요...">${savedAnswer}</textarea>
+                                        <div id="preview_answer_${index}" class="math-preview-mode empty" style="min-height: 60px;">답변을 입력하려면 여기를 클릭하세요...</div>
+                                        <button type="button" class="btn-math-editor" onclick="openMathEditor('answer_${index}')">Math Editor</button>
+                                    </div>
                                 </div>
-                            </div>
-                        </div>;
+                            </div>`;
                     } else {
                         // 단일 필드
                         const savedValue = loadDraft(assignmentId, currentStudentId, q.column);
-                        inputHtml = 
-                        <div class="input-wrapper">
-                            <textarea name="" id="answer_" class="edit-mode" placeholder="답변을 입력하세요..."></textarea>
-                            <div id="preview_answer_" class="math-preview-mode empty">답변을 입력하려면 여기를 클릭하세요...</div>
-                            <button type="button" class="btn-math-editor" onclick="openMathEditor('answer_')">Math Editor</button>
-                        </div>;
+                        inputHtml = `
+                            <div class="input-wrapper">
+                                <textarea name="${q.column}" id="answer_${index}" class="edit-mode" placeholder="답변을 입력하세요...">${savedValue}</textarea>
+                                <div id="preview_answer_${index}" class="math-preview-mode empty">답변을 입력하려면 여기를 클릭하세요...</div>
+                                <button type="button" class="btn-math-editor" onclick="openMathEditor('answer_${index}')">Math Editor</button>
+                            </div>`;
                     }
 
-                    questionDiv.innerHTML = 
+                    questionDiv.innerHTML = `
                         <div class="question-header">
-                            <h4>문제 </h4>
+                            <h4>문제 ${index + 1}</h4>
                             <div class="question-actions">
-                                <button type="button" id="save-" class="btn-save-question" onclick="saveQuestion('answer_', '')">
+                                <button type="button" id="save-${index}" class="btn-save-question" onclick="saveQuestion('answer_${index}', '${q.column}')">
                                      저장
                                 </button>
-                                <span id="status-" class="save-status"> 저장됨</span>
+                                <span id="status-${index}" class="save-status">✓ 저장됨</span>
                             </div>
                         </div>
-                        <div class="question-content"></div>
-                        
-                    ;
+                        <div class="question-content">${q.question}</div>
+                        ${inputHtml}
+                    `;
                     questionsContainer.appendChild(questionDiv);
 
                     // 이벤트 리스너 추가
                     if (useSplitFields) {
-                        const solTa = document.getElementById(solution_);
-                        const solPrev = document.getElementById(preview_solution_);
+                        const solTa = document.getElementById(`solution_${index}`);
+                        const solPrev = document.getElementById(`preview_solution_${index}`);
                         solTa.addEventListener('blur', () => {
                             saveDraft(assignmentId, currentStudentId, q.column + '_solution', solTa.value);
-                            switchToPreviewMode(solution_, preview_solution_);
+                            switchToPreviewMode(`solution_${index}`, `preview_solution_${index}`);
                         });
-                        solPrev.addEventListener('click', () => switchToEditMode(solution_, preview_solution_));
-                        
-                        const ansTa = document.getElementById(nswer_);
-                        const ansPrev = document.getElementById(preview_answer_);
+                        solPrev.addEventListener('click', () => switchToEditMode(`solution_${index}`, `preview_solution_${index}`));
+
+                        const ansTa = document.getElementById(`answer_${index}`);
+                        const ansPrev = document.getElementById(`preview_answer_${index}`);
                         ansTa.addEventListener('blur', () => {
                             saveDraft(assignmentId, currentStudentId, q.column, ansTa.value);
-                            switchToPreviewMode(nswer_, preview_answer_);
+                            switchToPreviewMode(`answer_${index}`, `preview_answer_${index}`);
                         });
-                        ansPrev.addEventListener('click', () => switchToEditMode(nswer_, preview_answer_));
+                        ansPrev.addEventListener('click', () => switchToEditMode(`answer_${index}`, `preview_answer_${index}`));
 
-                        if (solTa.value.trim()) switchToPreviewMode(solution_, preview_solution_);
-                        if (ansTa.value.trim()) switchToPreviewMode(nswer_, preview_answer_);
+                        if (solTa.value.trim()) switchToPreviewMode(`solution_${index}`, `preview_solution_${index}`);
+                        if (ansTa.value.trim()) switchToPreviewMode(`answer_${index}`, `preview_answer_${index}`);
                     } else {
-                        const textarea = document.getElementById(nswer_);
-                        const preview = document.getElementById(preview_answer_);
+                        const textarea = document.getElementById(`answer_${index}`);
+                        const preview = document.getElementById(`preview_answer_${index}`);
                         textarea.addEventListener('blur', () => {
                             saveDraft(assignmentId, currentStudentId, q.column, textarea.value);
-                            switchToPreviewMode(nswer_, preview_answer_);
+                            switchToPreviewMode(`answer_${index}`, `preview_answer_${index}`);
                         });
-                        preview.addEventListener('click', () => switchToEditMode(nswer_, preview_answer_));
-                        if (textarea.value.trim()) switchToPreviewMode(nswer_, preview_answer_);
+                        preview.addEventListener('click', () => switchToEditMode(`answer_${index}`, `preview_answer_${index}`));
+                        if (textarea.value.trim()) switchToPreviewMode(`answer_${index}`, `preview_answer_${index}`);
                     }
 
                     if (result.examMode) {
@@ -864,7 +864,7 @@
             recordsEl.innerHTML = '<div class="loading-message">기록을 불러오는 중...</div>';
             notificationsEl.innerHTML = '<div class="loading-message">알림을 불러오는 중...</div>';
             try {
-                const response = await fetch(${API_BASE}/my-records?studentId=);
+                const response = await fetch(`${API_BASE}/my-records?studentId=${currentStudentId}`);
                 const result = await response.json();
                 if (!result.success) throw new Error(result.message);
                 const allRecords = result.records || [];
@@ -873,8 +873,8 @@
                 displayRecordGroups(recordsEl, groupRecords(comments), 'comment');
                 displayRecordGroups(notificationsEl, groupRecords(notifications), 'notification');
             } catch (error) {
-                recordsEl.innerHTML = <div class="empty-message">기록 조회 실패: </div>;
-                notificationsEl.innerHTML = <div class="empty-message">알림 조회 실패: </div>;
+                recordsEl.innerHTML = `<div class="empty-message">기록 조회 실패: ${error.message}</div>`;
+                notificationsEl.innerHTML = `<div class="empty-message">알림 조회 실패: ${error.message}</div>`;
             }
         }
 
@@ -889,13 +889,13 @@
             const groups = Object.entries(groupedRecords);
             if (groups.length === 0) {
                 const message = type === 'comment' ? "공개된 교사 코멘트가 없습니다." : "새로운 알림이 없습니다.";
-                element.innerHTML = <div class="empty-message"></div>; return;
+                element.innerHTML = `<div class="empty-message">${message}</div>`; return;
             }
             element.innerHTML = groups.map(([sheetName, records]) => {
-                return <div class="assignment-card" data-sheet-name="" data-record-type="">
-                <h4></h4>
-                <div class="assignment-meta"><span>총 개의 항목 보기</span></div>
-            </div>;
+                return `<div class="assignment-card" data-sheet-name="${escapeHTML(sheetName)}" data-record-type="${type}">
+                    <h4>${escapeHTML(sheetName)}</h4>
+                    <div class="assignment-meta"><span>총 ${records.length}개의 항목 보기</span></div>
+                </div>`;
             }).join('');
 
             element.querySelectorAll('.assignment-card').forEach((card, index) => {
@@ -921,31 +921,31 @@
             const modal = document.getElementById('recordsModal');
             const titleEl = document.getElementById('recordsModalTitle');
             const bodyEl = document.getElementById('recordsModalBody');
-            const title = group.type === 'comment' ?   (교사 코멘트) :   (알림);
+            const title = group.type === 'comment' ? `${group.sheetName} (교사 코멘트)` : `${group.sheetName} (알림)`;
             titleEl.textContent = title;
 
             let bodyHtml = group.records.map((record, index) => {
-                return <div class="record-card ">
-                <div class="data-row">
-                    <div class="data-label">:</div>
-                    <div class="data-value"></div>
-                </div>
-            </div>;
+                return `<div class="record-card ${record.read ? 'read' : ''}">
+                    <div class="data-row">
+                        <div class="data-label">${record.date}:</div>
+                        <div class="data-value">${record.content}</div>
+                    </div>
+                </div>`;
             }).join('');
 
             const needsSuggestion = group.records.some(r => r.hasSuggestion);
 
             if (needsSuggestion) {
                 const existingSuggestion = group.records.find(r => r.suggestion)?.suggestion || '';
-                const suggestionId = modal-suggestion-group;
+                const suggestionId = `modal-suggestion-${group.sheetName}`;
 
-                bodyHtml += <div class="suggestion-box">
-                <strong> 건의사항:</strong>
-                <div>
-                    <textarea id="" class="suggestion-input" rows="3" placeholder="이 과제에 대한 건의사항을 입력하세요..."></textarea>
-                    <button class="btn btn-primary" style="width:auto; padding: 8px 16px; margin-top: 8px;" data-sheet-name="" data-suggestion-id="">저장</button>
-                </div>
-            </div>;
+                bodyHtml += `<div class="suggestion-box">
+                    <strong>${group.sheetName} 건의사항:</strong>
+                    <div>
+                        <textarea id="${suggestionId}" class="suggestion-input" rows="3" placeholder="이 과제에 대한 건의사항을 입력하세요...">${existingSuggestion}</textarea>
+                        <button class="btn btn-primary" style="width:auto; padding: 8px 16px; margin-top: 8px;" data-sheet-name="${group.sheetName}" data-suggestion-id="${suggestionId}">저장</button>
+                    </div>
+                </div>`;
             }
 
             bodyEl.innerHTML = bodyHtml;
@@ -985,7 +985,7 @@
             preview.classList.remove('active');
             textarea.classList.remove('hidden-mode');
             textarea.classList.add('edit-mode');
-            
+
             textarea.focus();
         }
 
@@ -1016,8 +1016,9 @@
             const assignmentId = form.dataset.assignmentId;
             const answer = textarea.value;
 
-            const saveButtonId = save-;
-            const statusId = status-;
+            const index = textareaId.split('_')[1];
+            const saveButtonId = `save-${index}`;
+            const statusId = `status-${index}`;
             const saveBtn = document.getElementById(saveButtonId);
             const statusEl = document.getElementById(statusId);
 
@@ -1034,7 +1035,7 @@
             }
 
             try {
-                const response = await fetch(${API_BASE}/submit-assignment, {
+                const response = await fetch(`${API_BASE}/submit-assignment`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -1066,7 +1067,7 @@
                     if (examModeActive) {
                         examModeListenersActive = false;
                     }
-                    alert(저장 실패: );
+                    alert(`저장 실패: ${result.message}`);
                     if (examModeActive && wasListenersActive) {
                         setTimeout(() => {
                             examModeListenersActive = true;
@@ -1108,7 +1109,7 @@
             const submitBtn = document.querySelector('#submitModal .submit-btn');
             submitBtn.disabled = true; submitBtn.textContent = '제출 중...';
             try {
-                const response = await fetch(${API_BASE}/submit-assignment, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ studentId: currentStudentId, assignmentId, answers }) });
+                const response = await fetch(`${API_BASE}/submit-assignment`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ studentId: currentStudentId, assignmentId, answers }) });
                 const result = await response.json();
                 if (result.success) {
                     clearDraft(assignmentId, currentStudentId, questions);
@@ -1125,7 +1126,7 @@
                     if (examModeActive) {
                         examModeListenersActive = false;
                     }
-                    alert(제출 실패: );
+                    alert(`제출 실패: ${result.message}`);
                     if (examModeActive && wasListenersActive) {
                         setTimeout(() => {
                             examModeListenersActive = true;
@@ -1159,7 +1160,7 @@
             }
             const originalText = saveBtn.textContent;
             saveBtn.disabled = true; saveBtn.textContent = '저장 중...';
-            fetch(${API_BASE}/my-records, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ studentId: currentStudentId, sheetName, suggestion }) })
+            fetch(`${API_BASE}/my-records`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ studentId: currentStudentId, sheetName, suggestion }) })
                 .then(res => res.json()).then(result => {
                     if (result.success) {
                         saveBtn.style.backgroundColor = '#22c55e'; saveBtn.textContent = '저장됨';
@@ -1179,7 +1180,7 @@
             changeBtn.disabled = true; changeBtn.textContent = '변경 중...';
             showMessage('passwordChangeMessage', '비밀번호를 변경하고 있습니다...', 'info');
             try {
-                const response = await fetch(${API_BASE}/change-password, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ studentId: currentStudentId, currentPassword, newPassword }) });
+                const response = await fetch(`${API_BASE}/change-password`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ studentId: currentStudentId, currentPassword, newPassword }) });
                 const result = await response.json();
                 if (result.success) {
                     showMessage('passwordChangeMessage', '비밀번호가 성공적으로 변경되었습니다. 3초 후 메뉴로 돌아갑니다.', 'success');
@@ -1191,19 +1192,19 @@
             } catch (error) { showMessage('passwordChangeMessage', '서버에 연결할 수 없습니다.', 'error'); changeBtn.disabled = false; changeBtn.textContent = '변경하기'; }
         }
 
-        function showMessage(elementId, message, type) { const el = document.getElementById(elementId); el.textContent = message; el.className = message show ; }
+        function showMessage(elementId, message, type) { const el = document.getElementById(elementId); el.textContent = message; el.className = `message ${type} show`; }
         function hideMessage(elementId) { const el = document.getElementById(elementId); el.className = 'message'; }
         function escapeHTML(str) { if (str === null || str === undefined) return ''; return str.toString().replace(/[&<>"']/g, match => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[match])); }
 
         function saveDraft(assignmentId, studentId, questionColumn, value) {
-            try { localStorage.setItem(draft---, value); } catch (e) { console.error("임시 저장 실패:", e); }
+            try { localStorage.setItem(`draft-${assignmentId}-${studentId}-${questionColumn}`, value); } catch (e) { console.error("임시 저장 실패:", e); }
         }
 
         function loadDraft(assignmentId, studentId, questionColumn) {
-            try { return localStorage.getItem(draft---) || ''; } catch (e) { console.error("임시 저장 불러오기 실패:", e); return ''; }
+            try { return localStorage.getItem(`draft-${assignmentId}-${studentId}-${questionColumn}`) || ''; } catch (e) { console.error("임시 저장 불러오기 실패:", e); return ''; }
         }
         function clearDraft(assignmentId, studentId, questions) {
-            try { questions.forEach(q => { localStorage.removeItem(draft---); }); } catch (e) { console.error("임시 저장 삭제 실패:", e); }
+            try { questions.forEach(q => { localStorage.removeItem(`draft-${assignmentId}-${studentId}-${q.column}`); }); } catch (e) { console.error("임시 저장 삭제 실패:", e); }
         }
 
         function openMathEditor(textareaId) {
@@ -1251,7 +1252,7 @@
 
             const paletteContainer = document.getElementById('mathPaletteContainer');
             paletteContainer.innerHTML = mathSymbols.map(s =>
-                <button type="button" title="" data-symbol=''></button>
+                `<button type="button" title="${s.display}" data-symbol='${JSON.stringify(s)}'>${s.display || s.code}</button>`
             ).join('');
 
             paletteContainer.querySelectorAll('button').forEach(btn => {
@@ -1287,7 +1288,7 @@
                     return;
                 }
 
-                preview.innerHTML = $c:\Users\matht\OneDrive - 문현고등학교\eduapp\spsys-main\VERCEL\student-portfolio-vercel{latex}c:\Users\matht\OneDrive - 문현고등학교\eduapp\spsys-main\VERCEL\student-portfolio-vercel;
+                preview.innerHTML = `$$${latex}$$`;
 
                 if (window.MathJax && window.MathJax.typesetPromise) {
                     MathJax.typesetPromise([preview]).catch(err => {
@@ -1319,7 +1320,7 @@
                 const start = savedCursorPosition.start;
                 const end = savedCursorPosition.end;
                 const text = mainTextarea.value;
-                const textToInsert =  c:\Users\matht\OneDrive - 문현고등학교\eduapp\spsys-main\VERCEL\student-portfolio-vercel{latex.trim()}$ ;
+                const textToInsert = ` $${latex.trim()}$ `;
 
                 mainTextarea.value = text.substring(0, start) + textToInsert + text.substring(end);
                 mainTextarea.selectionStart = mainTextarea.selectionEnd = start + textToInsert.length;
@@ -1393,25 +1394,25 @@
             window.addEventListener('blur', handleWindowBlur);
             window.addEventListener('beforeunload', handleBeforeUnload);
             document.addEventListener('fullscreenchange', handleFullscreenChange);
-            
+
             // 뒤로가기 방지
             history.pushState(null, null, location.href);
             window.addEventListener('popstate', preventBackNavigation);
 
             // 키보드 막기 (F12, Alt+Tab 등)
             document.addEventListener('keydown', handleKeyDown);
-            
+
             // 우클릭 막기
             document.addEventListener('contextmenu', handleContextMenu);
-            
+
             // 복사/붙여넣기 막기
             document.addEventListener('copy', handleCopyPaste);
             document.addEventListener('paste', handleCopyPaste);
             document.addEventListener('cut', handleCopyPaste);
-            
+
             // 포커스 강제
             document.addEventListener('click', enforceFocus);
-            
+
             showMessage('submitMessage', '시험 모드가 시작되었습니다. 화면을 이탈하면 경고가 발생합니다.', 'info');
         }
 
@@ -1422,25 +1423,25 @@
                 indicator.id = 'examModeIndicator';
                 indicator.style.cssText = 'position: fixed; top: 10px; right: 10px; background: #ef4444; color: white; padding: 8px 16px; border-radius: 20px; z-index: 9999; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.2); animation: pulse 2s infinite;';
                 document.body.appendChild(indicator);
-                
+
                 // Pulse animation
                 const style = document.createElement('style');
-                style.textContent = 
+                style.textContent = `
                     @keyframes pulse {
                         0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
                         70% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
                         100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
                     }
-                ;
+                `;
                 document.head.appendChild(style);
             }
-            indicator.textContent = 시험 모드 작동 중 (위반: /);
+            indicator.textContent = `시험 모드 작동 중 (위반: ${examModeViolations}/${examModeMaxViolations})`;
         }
 
         function disableExamMode() {
             examModeActive = false;
             examModeListenersActive = false;
-            
+
             const indicator = document.getElementById('examModeIndicator');
             if (indicator) indicator.remove();
 
@@ -1495,7 +1496,7 @@
 
         function handleVisibilityChange() {
             if (!examModeActive || !examModeListenersActive) return;
-            
+
             if (document.hidden) {
                 showExamWarning('화면을 이탈했습니다!');
             }
@@ -1503,11 +1504,11 @@
 
         function handleWindowBlur() {
             if (!examModeActive || !examModeListenersActive) return;
-            
+
             // blur 이벤트는 너무 민감할 수 있으므로 약간의 지연을 둠
             setTimeout(() => {
                 if (document.activeElement === document.body || document.activeElement === null) {
-                   // showExamWarning('화면을 이탈했습니다!'); // blur는 오탐이 많아서 일단 주석 처리하거나 신중하게 사용
+                    // showExamWarning('화면을 이탈했습니다!'); // blur는 오탐이 많아서 일단 주석 처리하거나 신중하게 사용
                 }
             }, 100);
         }
@@ -1520,7 +1521,7 @@
 
         function handleFullscreenChange() {
             if (!examModeActive || !examModeListenersActive || !examModeForceFullscreen) return;
-            
+
             if (!document.fullscreenElement) {
                 showExamWarning('전체화면을 유지해야 합니다!');
                 // 다시 전체화면 시도 (사용자 상호작용 필요할 수 있음)
@@ -1540,13 +1541,13 @@
 
         function showExamWarning(reason) {
             if (!examModeActive) return;
-            
+
             examModeViolations++;
             updateExamModeIndicator();
-            
-            const msg = [경고 /] \n\n회 위반 시 시험이 자동 종료되고 제출됩니다.;
+
+            const msg = `[경고 ${examModeViolations}/${examModeMaxViolations}]\n\n${examModeMaxViolations}회 위반 시 시험이 자동 종료되고 제출됩니다.`;
             alert(msg);
-            
+
             logExamEvent(reason);
 
             if (examModeViolations >= examModeMaxViolations) {
@@ -1561,10 +1562,10 @@
 
         function handleKeyDown(e) {
             if (!examModeActive || !examModeListenersActive) return;
-            
+
             // F12, Alt+Tab(감지 어려움), PrintScreen, Ctrl+C/V 등
             if (
-                e.key === 'F12' || 
+                e.key === 'F12' ||
                 (e.ctrlKey && (e.key === 'c' || e.key === 'v' || e.key === 'x' || e.key === 'p')) ||
                 e.key === 'PrintScreen' ||
                 e.altKey
@@ -1591,18 +1592,18 @@
 
         async function autoSubmitExam() {
             if (!examModeActive) return;
-            
-            alert(위반 횟수 초과(회)로 인해 시험이 자동으로 제출됩니다.);
-            
+
+            alert(`위반 횟수 초과(${examModeMaxViolations}회)로 인해 시험이 자동으로 제출됩니다.`);
+
             // 리스너 비활성화하여 추가 경고 방지
             examModeListenersActive = false;
-            
+
             await submitAssignment();
         }
 
         async function logExamEvent(type) {
             try {
-                await fetch(${API_BASE}/log-exam-event, {
+                await fetch(`${API_BASE}/log-exam-event`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({

@@ -801,15 +801,15 @@
                     let inputHtml = '';
                     if (useSplitFields) {
                         // 분리된 필드 (풀이/정답)
-                        const savedSolution = loadDraft(assignmentId, currentStudentId, q.column + '_solution');
-                        const savedAnswer = loadDraft(assignmentId, currentStudentId, q.column);
+                        const savedSolution = loadDraft(assignmentId, currentStudentId, q.column + '_풀이');
+                        const savedAnswer = loadDraft(assignmentId, currentStudentId, q.column + '_답');
 
                         inputHtml = `
                             <div class="split-fields-container">
                                 <div class="field-group">
                                     <label class="field-label">풀이 과정</label>
                                     <div class="input-wrapper">
-                                        <textarea name="${q.column}_solution" id="solution_${index}" class="edit-mode large-input" placeholder="풀이 과정을 입력하세요...">${savedSolution}</textarea>
+                                        <textarea name="${q.column}_풀이" id="solution_${index}" class="edit-mode large-input" placeholder="풀이 과정을 입력하세요...">${savedSolution}</textarea>
                                         <div id="preview_solution_${index}" class="math-preview-mode large-preview empty">답변을 입력하려면 여기를 클릭하세요...</div>
                                         <button type="button" class="btn-math-editor" onclick="openMathEditor('solution_${index}')">Math Editor</button>
                                     </div>
@@ -817,7 +817,7 @@
                                 <div class="field-group">
                                     <label class="field-label">정답</label>
                                     <div class="input-wrapper">
-                                        <textarea name="${q.column}" id="answer_${index}" class="edit-mode short-input" placeholder="정답을 입력하세요...">${savedAnswer}</textarea>
+                                        <textarea name="${q.column}_답" id="answer_${index}" class="edit-mode short-input" placeholder="정답을 입력하세요...">${savedAnswer}</textarea>
                                         <div id="preview_answer_${index}" class="math-preview-mode short-preview empty">답변을 입력하려면 여기를 클릭하세요...</div>
                                         <button type="button" class="btn-math-editor" onclick="openMathEditor('answer_${index}')">Math Editor</button>
                                     </div>
@@ -838,7 +838,7 @@
                         <div class="question-header">
                             <h4>문제 ${index + 1}</h4>
                             <div class="question-actions">
-                                <button type="button" id="save-${index}" class="btn-save-question" onclick="saveQuestion('answer_${index}', '${q.column}')">
+                                <button type="button" id="save-${index}" class="btn-save-question" onclick="saveQuestion(${index}, '${q.column}')">
                                      저장
                                 </button>
                                 <span id="status-${index}" class="save-status">✓ 저장됨</span>
@@ -854,7 +854,7 @@
                         const solTa = document.getElementById(`solution_${index}`);
                         const solPrev = document.getElementById(`preview_solution_${index}`);
                         solTa.addEventListener('blur', () => {
-                            saveDraft(assignmentId, currentStudentId, q.column + '_solution', solTa.value);
+                            saveDraft(assignmentId, currentStudentId, q.column + '_풀이', solTa.value);
                             switchToPreviewMode(`solution_${index}`, `preview_solution_${index}`);
                         });
                         solPrev.addEventListener('click', () => switchToEditMode(`solution_${index}`, `preview_solution_${index}`));
@@ -862,7 +862,7 @@
                         const ansTa = document.getElementById(`answer_${index}`);
                         const ansPrev = document.getElementById(`preview_answer_${index}`);
                         ansTa.addEventListener('blur', () => {
-                            saveDraft(assignmentId, currentStudentId, q.column, ansTa.value);
+                            saveDraft(assignmentId, currentStudentId, q.column + '_답', ansTa.value);
                             switchToPreviewMode(`answer_${index}`, `preview_answer_${index}`);
                         });
                         ansPrev.addEventListener('click', () => switchToEditMode(`answer_${index}`, `preview_answer_${index}`));
@@ -1041,18 +1041,9 @@
             document.getElementById('submitModal').classList.add('hidden');
         }
 
-        async function saveQuestion(textareaId, questionColumn) {
-            const textarea = document.getElementById(textareaId);
-            if (!textarea) {
-                console.error('textarea를 찾을 수 없습니다:', textareaId);
-                return;
-            }
-
+        async function saveQuestion(index, questionColumn) {
             const form = document.getElementById('assignmentSubmitForm');
             const assignmentId = form.dataset.assignmentId;
-            const answer = textarea.value;
-
-            const index = textareaId.split('_')[1];
             const saveButtonId = `save-${index}`;
             const statusId = `status-${index}`;
             const saveBtn = document.getElementById(saveButtonId);
@@ -1066,69 +1057,98 @@
             statusEl.classList.remove('show');
 
             const wasListenersActive = examModeListenersActive;
-            if (examModeActive) {
-                examModeListenersActive = false;
-            }
+            if (examModeActive) examModeListenersActive = false;
 
             try {
-                const response = await fetch(`${API_BASE}/submit-assignment`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        studentId: currentStudentId,
-                        assignmentId: assignmentId,
-                        questionColumn: questionColumn,
-                        answer: answer,
-                        mode: 'single'
-                    })
-                });
+                const solutionTa = document.getElementById(`solution_${index}`);
+                const answerTa = document.getElementById(`answer_${index}`);
 
-                const result = await response.json();
+                // Split Mode
+                if (solutionTa && answerTa) {
+                    const solution = solutionTa.value;
+                    const answer = answerTa.value;
 
-                if (result.success) {
-                    saveBtn.classList.add('saved');
-                    saveBtn.textContent = ' 저장완료';
-                    statusEl.classList.add('show');
+                    // Save Solution
+                    const res1 = await fetch(`${API_BASE}/submit-assignment`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            studentId: currentStudentId,
+                            assignmentId: assignmentId,
+                            questionColumn: questionColumn + '_풀이',
+                            answer: solution,
+                            mode: 'single'
+                        })
+                    });
 
-                    setTimeout(() => {
-                        saveBtn.classList.remove('saved');
-                        saveBtn.textContent = originalText;
-                        if (examModeActive && wasListenersActive) {
-                            setTimeout(() => {
-                                examModeListenersActive = true;
-                            }, 300);
-                        }
-                    }, 2000);
-                } else {
-                    if (examModeActive) {
-                        examModeListenersActive = false;
+                    // Save Answer
+                    const res2 = await fetch(`${API_BASE}/submit-assignment`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            studentId: currentStudentId,
+                            assignmentId: assignmentId,
+                            questionColumn: questionColumn + '_답',
+                            answer: answer,
+                            mode: 'single'
+                        })
+                    });
+
+                    const result1 = await res1.json();
+                    const result2 = await res2.json();
+
+                    if (result1.success && result2.success) {
+                        showSaveSuccess(saveBtn, statusEl, originalText, wasListenersActive);
+                    } else {
+                        throw new Error(result1.message || result2.message);
                     }
-                    alert(`저장 실패: ${result.message}`);
-                    if (examModeActive && wasListenersActive) {
-                        setTimeout(() => {
-                            examModeListenersActive = true;
-                        }, 300);
+                }
+                // Single Mode
+                else {
+                    const textarea = document.getElementById(`answer_${index}`);
+                    const answer = textarea.value;
+
+                    const response = await fetch(`${API_BASE}/submit-assignment`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            studentId: currentStudentId,
+                            assignmentId: assignmentId,
+                            questionColumn: questionColumn,
+                            answer: answer,
+                            mode: 'single'
+                        })
+                    });
+
+                    const result = await response.json();
+                    if (result.success) {
+                        showSaveSuccess(saveBtn, statusEl, originalText, wasListenersActive);
+                    } else {
+                        throw new Error(result.message);
                     }
                 }
             } catch (error) {
                 console.error('질문 저장 실패:', error);
-                if (examModeActive) {
-                    examModeListenersActive = false;
-                }
-                alert('저장 중 오류가 발생했습니다.');
-                if (examModeActive && wasListenersActive) {
-                    setTimeout(() => {
-                        examModeListenersActive = true;
-                    }, 300);
-                }
+                alert(`저장 실패: ${error.message}`);
+                if (examModeActive && wasListenersActive) setTimeout(() => { examModeListenersActive = true; }, 300);
             } finally {
                 saveBtn.disabled = false;
-                if (examModeActive && wasListenersActive && !saveBtn.classList.contains('saved')) {
-                    setTimeout(() => {
-                        examModeListenersActive = true;
-                    }, 300);
-                }
+                if (saveBtn.textContent === '저장 중...') saveBtn.textContent = originalText;
             }
+        }
+
+        function showSaveSuccess(saveBtn, statusEl, originalText, wasListenersActive) {
+            saveBtn.classList.add('saved');
+            saveBtn.textContent = ' 저장완료';
+            statusEl.classList.add('show');
+
+            setTimeout(() => {
+                saveBtn.classList.remove('saved');
+                saveBtn.textContent = originalText;
+                if (examModeActive && wasListenersActive) {
+                    setTimeout(() => { examModeListenersActive = true; }, 300);
+                }
+            }, 2000);
         }
 
         async function submitAssignment() {

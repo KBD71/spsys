@@ -698,66 +698,102 @@
             display: flex;
             flex-wrap: wrap;
             gap: 6px;
-            padding-bottom: 1rem;
-            border-bottom: 1px solid var(--border-color);
-        }
-
-        @media (min-width: 768px) {
-            .math-palette {
-                grid-column: 1 / 2;
-                grid-row: 1 / 2;
-                border-bottom: none;
-            }
         }
 
         .math-palette button {
-            background: #fff;
-            border: 1px solid var(--border-color);
-            border-radius: 4px;
-            padding: 5px 10px;
+            padding: 6px 10px;
+            font-size: 1.1rem;
+            background: #f3f4f6;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
             cursor: pointer;
-            font-size: 1rem;
-            font-family: serif;
+            transition: all 0.2s ease;
         }
 
         .math-palette button:hover {
-            background: #f3f4f6;
+            background: #e5e7eb;
+            transform: translateY(-1px);
         }
 
         #mathInput {
-            min-height: 150px;
+            width: 100%;
+            height: 100%;
             resize: none;
             font-family: 'Courier New', Courier, monospace;
         }
 
         #mathPreview {
-            padding: 1rem;
             border: 1px solid var(--border-color);
             border-radius: 8px;
-            background: #f9fafb;
-            min-height: 150px;
+            padding: 1rem;
+            background: #fafafa;
+            overflow-y: auto;
             display: flex;
             align-items: center;
             justify-content: center;
             font-size: 1.2rem;
-            overflow-y: auto;
         }
 
-        @media (min-width: 768px) {
-            #mathInput {
-                grid-column: 1 / 2;
-                grid-row: 2 / 3;
-            }
+        /* 풀이/답 분리 스타일 */
+        .split-fields-container {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            margin-top: 10px;
+            background: #f8fafc;
+            padding: 16px;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+        }
 
-            #mathPreview {
-                grid-column: 2 / 3;
-                grid-row: 1 / 3;
-            }
+        .field-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .field-label {
+            font-weight: 600;
+            color: #475569;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .field-label::before {
+            content: '';
+            display: inline-block;
+            width: 4px;
+            height: 14px;
+            background-color: var(--primary-color);
+            border-radius: 2px;
+        }
+
+        .short-input {
+            min-height: 60px !important;
+            height: 60px;
         }
     </style>
 </head>
 
 <body>
+    <!-- 시험 모드 표시기 -->
+    <div id="examModeIndicator" class="exam-mode-indicator">
+        🔒 시험 모드 | 위반 0/3회
+    </div>
+
+    <!-- 시험 모드 경고 오버레이 -->
+    <div id="examWarningOverlay" class="exam-warning-overlay">
+        <div class="exam-warning-content">
+            <h2>⚠️ 경고</h2>
+            <p id="examWarningMessage">시험 화면에서 벗어났습니다!<br>다시 시험 화면으로 돌아가 주세요.</p>
+            <div class="exam-violation-count">위반 <span id="examViolationCount">0</span>/3회</div>
+            <button onclick="returnToExam()" class="btn btn-primary"
+                style="margin-top: 30px; background: white; color: #ef4444; border: none; font-size: 1.1rem; padding: 12px 30px;">시험
+                화면으로 복귀</button>
+        </div>
+    </div>
 
     <section id="loginScreen" class="screen">
         <header>
@@ -765,10 +801,10 @@
         </header>
         <main>
             <form id="loginForm">
-                <div class="form-group"><label for="studentId">학번</label><input type="text" id="studentId"
-                        placeholder="5자리 숫자" required></div>
-                <div class="form-group"><label for="password">비밀번호</label><input type="password" id="password" required>
-                </div>
+                <div class="form-group"><label for="studentId">학번 (5자리)</label><input type="text" id="studentId"
+                        placeholder="예: 10101" maxlength="5" required></div>
+                <div class="form-group"><label for="password">비밀번호</label><input type="password" id="password"
+                        placeholder="비밀번호를 입력하세요" required></div>
                 <button type="submit" class="btn btn-primary">로그인</button>
                 <div id="loginMessage" class="message"></div>
             </form>
@@ -876,50 +912,35 @@
         </div>
     </div>
 
-    <div id="examModeIndicator" class="exam-mode-indicator">
-        🔒 시험 모드 활성화
-    </div>
-
-    <div id="examWarningOverlay" class="exam-warning-overlay">
-        <div class="exam-warning-content">
-            <h2>⚠️ 경고!</h2>
-            <p id="examWarningMessage">시험 중 화면을 벗어났습니다!<br>다시 시험 화면으로 돌아가 주세요.</p>
-            <div class="exam-violation-count">
-                위반 횟수: <span id="examViolationCount">0</span>회
-            </div>
-            <button onclick="returnToExam()" class="btn btn-primary"
-                style="margin-top: 30px; width: auto; padding: 15px 40px; font-size: 1.1rem;">시험 화면으로 돌아가기</button>
-        </div>
-    </div>
-
     <script>
-        const API_BASE = window.location.hostname === 'localhost' ? 'http://localhost:3000/api' : '/api';
+        const API_BASE = "https://script.google.com/macros/s/AKfycbz1k-48iL91G_gY9uFk_Fk8B1h6k8_j9m1n/exec";
         let currentStudentId = '';
         let currentStudentName = '';
         let activeTextareaId = null;
         let savedCursorPosition = { start: 0, end: 0 };
         let previewTimeout = null;
+
+        // 시험 모드 관련 변수
         let examModeActive = false;
         let examModeViolations = 0;
+        let examModeMaxViolations = 3;
         let examModeWarningShown = false;
-        let examModeMaxViolations = 3; // 기본값
+        let examModeListenersActive = false;
+        let examModeAssignmentId = null;
+        let examModeAssignmentName = null;
         let examModeForceFullscreen = false;
-        let examModeListenersActive = true; // 이벤트 리스너 활성화 상태
-        let examModeAssignmentId = null; // 현재 시험 과제 ID
-        let examModeAssignmentName = null; // 현재 시험 과제명
 
         document.addEventListener('DOMContentLoaded', () => {
-            updateSchoolInfo(); // 학교 정보 업데이트
             document.getElementById('loginForm').addEventListener('submit', handleLogin);
             document.getElementById('logoutBtn').addEventListener('click', logout);
             document.getElementById('changePasswordBtn').addEventListener('click', showPasswordChangeScreen);
             document.getElementById('passwordChangeForm').addEventListener('submit', handlePasswordChange);
             document.getElementById('mathInput').addEventListener('input', updateMathPreview);
+            updateSchoolInfo();
         });
 
-        // 학교 정보 업데이트 함수
         function updateSchoolInfo() {
-            if (typeof SCHOOL_NAME !== 'undefined' && SCHOOL_NAME) {
+            if (typeof SCHOOL_NAME !== 'undefined') {
                 document.title = `${SCHOOL_NAME} 과제제출 시스템`;
                 const titles = document.querySelectorAll('.school-title-text');
                 titles.forEach(el => {
@@ -974,7 +995,6 @@
         }
 
         function loadAllData() { loadAssignments(); loadMyRecords(); }
-
         async function loadAssignments() {
             const listEl = document.getElementById('assignmentsList');
             listEl.innerHTML = '<div class="loading-message">과제 목록을 불러오는 중...</div>';
@@ -1016,6 +1036,108 @@
                     });
                 }
             });
+        }
+
+        async function showSubmitModal(assignmentId, assignmentName) {
+            const modal = document.getElementById('submitModal');
+            const titleEl = document.getElementById('submitModalTitle');
+            const questionsContainer = document.getElementById('questionsContainer');
+            const form = document.getElementById('assignmentSubmitForm');
+
+            titleEl.textContent = `${assignmentName} 제출`;
+            questionsContainer.innerHTML = '<div class="loading-message">과제 정보를 불러오는 중...</div>';
+            form.dataset.assignmentId = assignmentId;
+            modal.classList.remove('hidden');
+
+            try {
+                const response = await fetch(`${API_BASE}/assignment-detail?assignmentId=${assignmentId}&studentId=${currentStudentId}`);
+                const result = await response.json();
+
+                if (!result.success) {
+                    questionsContainer.innerHTML = `<div class="empty-message">${result.message}</div>`;
+                    return;
+                }
+
+                // 시험 모드 설정 (examMode가 true일 때만)
+                if (result.examMode) {
+                    examModeMaxViolations = result.maxViolations || 3;
+                    examModeForceFullscreen = result.forceFullscreen || false;
+                    examModeAssignmentId = assignmentId;
+                    examModeAssignmentName = assignmentName;
+                    
+                    // 시험 모드 경고 및 활성화
+                    const startExam = confirm(`이 과제는 '시험 모드'가 적용됩니다.\n\n- 화면 이탈 시 경고가 발생하며, ${examModeMaxViolations}회 위반 시 자동 제출됩니다.\n- 복사/붙여넣기가 금지됩니다.\n${examModeForceFullscreen ? '- 전체화면이 강제됩니다.\n' : ''}\n시작하시겠습니까?`);
+                    
+                    if (startExam) {
+                        enableExamMode();
+                    } else {
+                        hideSubmitModal();
+                        return;
+                    }
+                }
+
+                // 질문 렌더링
+                questionsContainer.innerHTML = '';
+                
+                // ★★★ 수정된 부분: examMode 또는 separateSolution일 경우 분리된 UI 렌더링 ★★★
+                const useSplitFields = result.examMode || result.separateSolution;
+
+                result.questions.forEach((q, index) => {
+                    const questionDiv = document.createElement('div');
+                    questionDiv.className = 'question-card';
+                    
+                    let html = `<div class="question-text"><strong>Q${index + 1}.</strong> ${escapeHTML(q.question)}</div>`;
+                    
+                    if (useSplitFields) {
+                        // 풀이/답 분리 렌더링
+                        html += `
+                            <div class="split-fields-container">
+                                <div class="field-group">
+                                    <label class="field-label">풀이과정</label>
+                                    <div class="input-wrapper">
+                                        <textarea name="${q.solutionColumn}" id="input-${q.solutionColumn}" class="math-input" placeholder="풀이과정을 입력하세요...">${escapeHTML(q.solution)}</textarea>
+                                        <button type="button" class="btn-math-editor" onclick="openMathEditor('input-${q.solutionColumn}')">∑</button>
+                                        <button type="button" class="btn-save-question" id="save-${q.solutionColumn}" onclick="saveQuestion('input-${q.solutionColumn}', '${q.solutionColumn}')">임시저장</button>
+                                        <div class="save-status" id="status-${q.solutionColumn}"></div>
+                                    </div>
+                                </div>
+                                <div class="field-group">
+                                    <label class="field-label">정답</label>
+                                    <div class="input-wrapper">
+                                        <textarea name="${q.answerColumn}" id="input-${q.answerColumn}" class="math-input short-input" placeholder="정답을 입력하세요...">${escapeHTML(q.answer)}</textarea>
+                                        <button type="button" class="btn-math-editor" onclick="openMathEditor('input-${q.answerColumn}')">∑</button>
+                                        <button type="button" class="btn-save-question" id="save-${q.answerColumn}" onclick="saveQuestion('input-${q.answerColumn}', '${q.answerColumn}')">임시저장</button>
+                                        <div class="save-status" id="status-${q.answerColumn}"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    } else {
+                        // 기존 단일 필드 렌더링
+                        html += `
+                            <div class="input-wrapper">
+                                <textarea name="${q.column}" id="input-${q.column}" class="math-input" placeholder="답변을 입력하세요...">${escapeHTML(q.answer)}</textarea>
+                                <button type="button" class="btn-math-editor" onclick="openMathEditor('input-${q.column}')">∑</button>
+                                <button type="button" class="btn-save-question" id="save-${q.column}" onclick="saveQuestion('input-${q.column}', '${q.column}')">임시저장</button>
+                                <div class="save-status" id="status-${q.column}"></div>
+                            </div>
+                        `;
+                    }
+                    
+                    questionDiv.innerHTML = html;
+                    questionsContainer.appendChild(questionDiv);
+
+                    // 복사/붙여넣기 방지 (시험모드일 때만)
+                    if (result.examMode) {
+                        const textareas = questionDiv.querySelectorAll('textarea');
+                        textareas.forEach(ta => preventCopyPaste(ta));
+                    }
+                });
+
+            } catch (error) {
+                console.error('과제 상세 조회 실패:', error);
+                questionsContainer.innerHTML = '<div class="empty-message">과제 정보를 불러오는 중 오류가 발생했습니다.</div>';
+            }
         }
 
         async function loadMyRecords() {
@@ -1121,157 +1243,6 @@
             });
 
             modal.classList.remove('hidden');
-            typesetMath(bodyEl);
-        }
-
-        function hideRecordsModal() { document.getElementById('recordsModal').classList.add('hidden'); }
-
-        async function showSubmitModal(assignmentId, assignmentName) {
-            const modal = document.getElementById('submitModal');
-            const titleEl = document.getElementById('submitModalTitle');
-            const questionsContainer = document.getElementById('questionsContainer');
-            const form = document.getElementById('assignmentSubmitForm');
-
-            modal.classList.remove('hidden');
-            titleEl.textContent = assignmentName;
-            form.dataset.assignmentId = assignmentId;
-            questionsContainer.innerHTML = '<div class="loading-message">질문을 불러오는 중...</div>';
-
-            try {
-                const response = await fetch(`${API_BASE}/assignment-detail?assignmentId=${assignmentId}&studentId=${currentStudentId}`);
-                const result = await response.json();
-                if (!result.success) throw new Error(result.message);
-
-                // 시험 모드 체크
-                if (result.examMode === true) {
-                    examModeMaxViolations = result.maxViolations || 3;
-                    examModeForceFullscreen = result.forceFullscreen || false;
-                    examModeAssignmentId = assignmentId;
-                    examModeAssignmentName = assignmentName;
-                    enableExamMode();
-                }
-
-                if (result.questions && result.questions.length > 0) {
-                    questionsContainer.innerHTML = result.questions.map(q => {
-                        const draft = loadDraft(assignmentId, currentStudentId, q.column);
-                        const answer = draft || q.answer;
-                        const textareaId = `question-${q.column}`;
-                        const previewId = `preview-${q.column}`;
-                        const saveButtonId = `save-${q.column}`;
-                        const statusId = `status-${q.column}`;
-
-                        // 값이 있으면 미리보기 모드, 없으면 편집 모드로 시작
-                        const hasContent = answer && answer.trim().length > 0;
-                        const initialTextareaClass = hasContent ? 'hidden-mode' : 'edit-mode';
-                        const initialPreviewClass = hasContent ? 'active' : '';
-                        const previewContent = hasContent ? answer : '답변을 입력하려면 여기를 클릭하세요...';
-                        const emptyClass = hasContent ? '' : 'empty';
-
-                        return `
-                        <div class="form-group">
-                            <label for="${textareaId}">${escapeHTML(q.question)}</label>
-                            <button type="button" class="btn-math-editor" data-textarea-id="${textareaId}">∑ 수식 입력</button>
-                            
-                            <div class="input-wrapper">
-                                <textarea id="${textareaId}" class="${initialTextareaClass}" name="${escapeHTML(q.column)}" rows="4" 
-                                    data-assignment-id="${escapeHTML(assignmentId)}" 
-                                    data-student-id="${escapeHTML(currentStudentId)}" 
-                                    data-question-column="${escapeHTML(q.column)}" 
-                                    data-preview-id="${previewId}">${escapeHTML(answer)}</textarea>
-                                <div id="${previewId}" class="math-preview-mode ${initialPreviewClass} ${emptyClass}" 
-                                    data-textarea-id="${textareaId}">${escapeHTML(previewContent)}</div>
-                            </div>
-
-                            <div class="question-actions">
-                                <button type="button" class="btn-save-question" id="${saveButtonId}" data-textarea-id="${textareaId}" data-question-column="${escapeHTML(q.column)}">💾 저장</button>
-                                <span class="save-status" id="${statusId}">✓ 저장됨</span>
-                            </div>
-                        </div>`;
-                    }).join('');
-
-                    // 이벤트 리스너 설정
-
-                    // 1. 수식 입력 버튼 -> 편집 모드 전환 및 에디터 열기
-                    questionsContainer.querySelectorAll('.btn-math-editor').forEach(btn => {
-                        btn.addEventListener('click', () => {
-                            const textareaId = btn.dataset.textareaId;
-                            switchToEditMode(textareaId);
-                            openMathEditor(textareaId);
-                        });
-                    });
-
-                    // 2. 저장 버튼
-                    questionsContainer.querySelectorAll('.btn-save-question').forEach(btn => {
-                        btn.addEventListener('click', () => {
-                            saveQuestion(btn.dataset.textareaId, btn.dataset.questionColumn);
-                        });
-                    });
-
-                    // 3. Textarea 및 Preview 모드 전환 이벤트
-                    questionsContainer.querySelectorAll('textarea').forEach(ta => {
-                        const previewId = ta.dataset.previewId;
-
-                        // 입력 시 자동 저장 및 미리보기 업데이트
-                        ta.addEventListener('input', (e) => {
-                            const val = e.target.value;
-                            saveDraft(e.target.dataset.assignmentId, e.target.dataset.studentId, e.target.dataset.questionColumn, val);
-
-                            const statusId = `status-${e.target.dataset.questionColumn}`;
-                            const statusEl = document.getElementById(statusId);
-                            if (statusEl) statusEl.classList.remove('show');
-
-                            // 실시간 미리보기 업데이트
-                            const previewEl = document.getElementById(previewId);
-                            if (previewEl) {
-                                if (val.trim()) {
-                                    previewEl.textContent = val;
-                                    previewEl.classList.add('active');
-                                    typesetMath(previewEl);
-                                } else {
-                                    previewEl.textContent = '';
-                                    previewEl.classList.remove('active');
-                                }
-                            }
-                        });
-
-                        // 포커스 잃으면(Blur) -> 보기 모드로 전환
-                        ta.addEventListener('blur', () => {
-                            switchToPreviewMode(ta.id, previewId);
-                        });
-
-                        // 복붙 방지
-                        preventCopyPaste(ta);
-                    });
-
-                    questionsContainer.querySelectorAll('.math-preview-mode').forEach(preview => {
-                        // 미리보기 클릭 시 -> 편집 모드로 전환
-                        preview.addEventListener('click', () => {
-                            switchToEditMode(preview.dataset.textareaId);
-                        });
-                    });
-
-                    // 초기 렌더링
-                    typesetMath(questionsContainer);
-                } else {
-                    questionsContainer.innerHTML = '<div class="empty-message">이 과제에는 설정된 질문이 없습니다.</div>';
-                }
-            } catch (error) {
-                questionsContainer.innerHTML = `<div class="empty-message">질문을 불러오는 데 실패했습니다: ${error.message}</div>`;
-            }
-        }
-
-        // 편집 모드로 전환 (Textarea 보이기)
-        function switchToEditMode(textareaId) {
-            const textarea = document.getElementById(textareaId);
-            const previewId = textarea.dataset.previewId;
-            const preview = document.getElementById(previewId);
-
-            if (textarea.classList.contains('edit-mode')) return;
-
-            preview.classList.remove('active');
-            textarea.classList.remove('hidden-mode');
-            textarea.classList.add('edit-mode');
-            textarea.focus();
         }
 
         // 보기 모드로 전환 (Preview 보이기 + 렌더링)
@@ -1513,6 +1484,10 @@
         function hideMessage(elementId) { const el = document.getElementById(elementId); el.className = 'message'; }
         function escapeHTML(str) { if (str === null || str === undefined) return ''; return str.toString().replace(/[&<>"']/g, match => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[match])); }
 
+        function saveDraft(assignmentId, studentId, questionColumn, value) {
+            try { localStorage.setItem(`draft-${assignmentId}-${studentId}-${questionColumn}`, value); } catch (e) { console.error("임시 저장 실패:", e); }
+        }
+
         function loadDraft(assignmentId, studentId, questionColumn) {
             try { return localStorage.getItem(`draft-${assignmentId}-${studentId}-${questionColumn}`) || ''; } catch (e) { console.error("임시 저장 불러오기 실패:", e); return ''; }
         }
@@ -1550,6 +1525,7 @@
             activeTextareaId = null;
             savedCursorPosition = { start: 0, end: 0 };
         }
+
 
         function populateMathPalette() {
             const mathSymbols = [
@@ -1714,6 +1690,16 @@
             // 뒤로가기 방지
             history.pushState(null, '', location.href);
             window.addEventListener('popstate', preventBackNavigation);
+            
+            // 키보드/마우스 차단 이벤트 추가
+            window.addEventListener('keydown', handleKeyDown);
+            window.addEventListener('contextmenu', handleContextMenu);
+            window.addEventListener('copy', handleCopyPaste);
+            window.addEventListener('paste', handleCopyPaste);
+            window.addEventListener('cut', handleCopyPaste);
+
+            // 포커스 강제 타이머 시작
+            setInterval(enforceFocus, 1000);
 
             console.log('시험 모드 활성화됨 (최대 위반 횟수:', examModeMaxViolations, '회)');
         }
@@ -1747,6 +1733,13 @@
             window.removeEventListener('beforeunload', handleBeforeUnload);
             document.removeEventListener('fullscreenchange', handleFullscreenChange);
             window.removeEventListener('popstate', preventBackNavigation);
+            
+            // 키보드/마우스 차단 이벤트 제거
+            window.removeEventListener('keydown', handleKeyDown);
+            window.removeEventListener('contextmenu', handleContextMenu);
+            window.removeEventListener('copy', handleCopyPaste);
+            window.removeEventListener('paste', handleCopyPaste);
+            window.removeEventListener('cut', handleCopyPaste);
 
             // 전체화면 해제
             exitFullscreen();
@@ -2047,3 +2040,4 @@
 </body>
 
 </html>
+

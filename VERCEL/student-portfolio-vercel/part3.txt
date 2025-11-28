@@ -1,0 +1,514 @@
+
+        function populateMathPalette() {
+            const mathSymbols = [
+                { display: 'x²', code: 'x^2 ', offset: 3 }, { display: 'xⁿ', code: 'x^{}', offset: 2 },
+                { display: 'xₙ', code: 'x_{}', offset: 2 }, { display: '√a', code: '\\sqrt{} ', offset: 6 },
+                { display: 'ⁿ√a', code: '\\sqrt[]{} ', offset: 7 }, { display: '∑', code: '\\sum_{k=1}^{n} ', offset: 14 },
+                { display: '∫', code: '\\int_{a}^{b} ', offset: 11 }, { display: 'a/b', code: '\\frac{}{} ', offset: 6 },
+                { display: 'α', code: '\\alpha ' }, { display: 'β', code: '\\beta ' }, { display: 'π', code: '\\pi ' },
+                { display: 'θ', code: '\\theta ' }, { display: '∞', code: '\\infty ' }, { display: '≠', code: '\\neq ' },
+                { display: '≤', code: '\\leq ' }, { display: '≥', code: '\\geq ' }, { display: '±', code: '\\pm ' },
+            ];
+
+            const paletteContainer = document.getElementById('mathPaletteContainer');
+            paletteContainer.innerHTML = mathSymbols.map(s =>
+                `<button type="button" title="${escapeHTML(s.code.trim())}" data-symbol='${escapeHTML(JSON.stringify(s))}'>${s.display}</button>`
+            ).join('');
+
+            paletteContainer.querySelectorAll('button').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const symbol = JSON.parse(btn.dataset.symbol);
+                    insertMathSymbol(symbol);
+                });
+            });
+        }
+
+        function insertMathSymbol(symbol) {
+            const textarea = document.getElementById('mathInput');
+            const start = textarea.selectionStart;
+            const end = textarea.selectionEnd;
+            const text = textarea.value;
+            const textToInsert = symbol.code;
+            const cursorOffset = symbol.offset !== undefined ? symbol.offset : textToInsert.length;
+
+            textarea.value = text.substring(0, start) + textToInsert + text.substring(end);
+            textarea.selectionStart = textarea.selectionEnd = start + cursorOffset;
+            textarea.focus();
+            textarea.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+
+        function updateMathPreview() {
+            clearTimeout(previewTimeout);
+            previewTimeout = setTimeout(() => {
+                const preview = document.getElementById('mathPreview');
+                const latex = document.getElementById('mathInput').value;
+
+                if (latex.trim() === '') {
+                    preview.innerHTML = '<span style="color: #9ca3af;">수식 미리보기</span>';
+                    return;
+                }
+
+                preview.innerHTML = `$$${latex}$$`;
+
+                if (window.MathJax && window.MathJax.typesetPromise) {
+                    MathJax.typesetPromise([preview]).catch(err => {
+                        console.error('MathJax 렌더링 오류:', err);
+                        preview.innerHTML = '<span style="color: #ef4444;">수식 렌더링 실패</span>';
+                    });
+                } else {
+                    preview.innerHTML = '<span style="color: #f59e0b;">MathJax 로딩 중...</span>';
+                }
+            }, 300);
+        }
+
+        function confirmMathInput() {
+            if (!activeTextareaId) {
+                console.error('활성화된 textarea가 없습니다.');
+                return;
+            }
+
+            const mainTextarea = document.getElementById(activeTextareaId);
+            if (!mainTextarea) {
+                console.error('textarea를 찾을 수 없습니다:', activeTextareaId);
+                closeMathEditor();
+                return;
+            }
+
+            const latex = document.getElementById('mathInput').value;
+
+            if (latex.trim()) {
+                const start = savedCursorPosition.start;
+                const end = savedCursorPosition.end;
+                const text = mainTextarea.value;
+                const textToInsert = ` $${latex.trim()}$ `;
+
+                mainTextarea.value = text.substring(0, start) + textToInsert + text.substring(end);
+                mainTextarea.selectionStart = mainTextarea.selectionEnd = start + textToInsert.length;
+                mainTextarea.focus();
+                mainTextarea.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+
+            closeMathEditor();
+        }
+
+        // 복사/붙여넣기 방지 함수
+        function preventCopyPaste(element) {
+            // 붙여넣기 방지
+            element.addEventListener('paste', function (e) {
+                e.preventDefault();
+                showMessage('submitMessage', '붙여넣기가 비활성화되어 있습니다. 직접 입력해주세요.', 'error');
+                setTimeout(() => hideMessage('submitMessage'), 3000);
+                return false;
+            });
+
+            // 복사 방지
+            element.addEventListener('copy', function (e) {
+                e.preventDefault();
+                return false;
+            });
+
+            // 잘라내기 방지
+            element.addEventListener('cut', function (e) {
+                e.preventDefault();
+                return false;
+            });
+
+            // 우클릭 메뉴 방지
+            element.addEventListener('contextmenu', function (e) {
+                e.preventDefault();
+                return false;
+            });
+
+            // 드래그 앤 드롭 방지
+            element.addEventListener('drop', function (e) {
+                e.preventDefault();
+                return false;
+            });
+        }
+
+        // 시험 모드 활성화
+        function enableExamMode() {
+            examModeActive = true;
+            examModeViolations = 0;
+            examModeWarningShown = false;
+            examModeListenersActive = true;
+
+            // 시험 모드 표시
+            updateExamModeIndicator();
+
+            // 취소 버튼 비활성화
+            const cancelBtn = document.getElementById('cancelSubmitBtn');
+            if (cancelBtn) {
+                cancelBtn.disabled = true;
+                cancelBtn.style.opacity = '0.5';
+                cancelBtn.style.cursor = 'not-allowed';
+            }
+
+            // 강제 전체화면이 설정된 경우에만 전체화면 요청
+            if (examModeForceFullscreen) {
+                enterFullscreen();
+            }
+
+            // 이벤트 리스너 추가
+            document.addEventListener('visibilitychange', handleVisibilityChange);
+            window.addEventListener('blur', handleWindowBlur);
+            window.addEventListener('beforeunload', handleBeforeUnload);
+
+            // 강제 전체화면이 설정된 경우에만 전체화면 이탈 감지
+            if (examModeForceFullscreen) {
+                document.addEventListener('fullscreenchange', handleFullscreenChange);
+            }
+
+            // 뒤로가기 방지
+            history.pushState(null, '', location.href);
+            window.addEventListener('popstate', preventBackNavigation);
+            
+            // 키보드/마우스 차단 이벤트 추가
+            window.addEventListener('keydown', handleKeyDown);
+            window.addEventListener('contextmenu', handleContextMenu);
+            window.addEventListener('copy', handleCopyPaste);
+            window.addEventListener('paste', handleCopyPaste);
+            window.addEventListener('cut', handleCopyPaste);
+
+            // 포커스 강제 타이머 시작
+            setInterval(enforceFocus, 1000);
+
+            console.log('시험 모드 활성화됨 (최대 위반 횟수:', examModeMaxViolations, '회)');
+        }
+
+        // 시험 모드 표시 업데이트
+        function updateExamModeIndicator() {
+            const indicator = document.getElementById('examModeIndicator');
+            indicator.textContent = `🔒 시험 모드 | 위반 ${examModeViolations}/${examModeMaxViolations}회`;
+            indicator.classList.add('active');
+        }
+
+        // 시험 모드 비활성화
+        function disableExamMode(autoSubmitted = false) {
+            // 위반 사항이 있는 경우에만 로그 기록
+            if (examModeActive && examModeViolations > 0) {
+                const details = autoSubmitted
+                    ? `자동 제출됨 (총 위반 횟수: ${examModeViolations}회, 최대 허용: ${examModeMaxViolations}회)`
+                    : `정상 제출됨 (총 위반 횟수: ${examModeViolations}회, 최대 허용: ${examModeMaxViolations}회)`;
+                logExamEvent('시험로그', 0, details);
+            }
+
+            examModeActive = false;
+
+            // 시험 모드 표시 제거
+            document.getElementById('examModeIndicator').classList.remove('active');
+            document.getElementById('examWarningOverlay').classList.remove('show');
+
+            // 이벤트 리스너 제거
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+            window.removeEventListener('blur', handleWindowBlur);
+            window.removeEventListener('beforeunload', handleBeforeUnload);
+            document.removeEventListener('fullscreenchange', handleFullscreenChange);
+            window.removeEventListener('popstate', preventBackNavigation);
+            
+            // 키보드/마우스 차단 이벤트 제거
+            window.removeEventListener('keydown', handleKeyDown);
+            window.removeEventListener('contextmenu', handleContextMenu);
+            window.removeEventListener('copy', handleCopyPaste);
+            window.removeEventListener('paste', handleCopyPaste);
+            window.removeEventListener('cut', handleCopyPaste);
+
+            // 전체화면 해제
+            exitFullscreen();
+
+            // 취소 버튼 활성화
+            const cancelBtn = document.getElementById('cancelSubmitBtn');
+            if (cancelBtn) {
+                cancelBtn.disabled = false;
+                cancelBtn.style.opacity = '1';
+                cancelBtn.style.cursor = 'pointer';
+            }
+
+            // 시험 관련 변수 초기화
+            examModeAssignmentId = null;
+            examModeAssignmentName = null;
+
+            console.log('시험 모드 비활성화됨');
+        }
+
+        // 전체화면 진입
+        function enterFullscreen() {
+            const elem = document.documentElement;
+            if (elem.requestFullscreen) {
+                elem.requestFullscreen().catch(err => {
+                    console.log('전체화면 요청 실패:', err);
+                });
+            } else if (elem.webkitRequestFullscreen) {
+                elem.webkitRequestFullscreen();
+            } else if (elem.msRequestFullscreen) {
+                elem.msRequestFullscreen();
+            }
+        }
+
+        // 전체화면 해제
+        function exitFullscreen() {
+            if (document.exitFullscreen) {
+                document.exitFullscreen().catch(err => {
+                    console.log('전체화면 해제 실패:', err);
+                });
+            } else if (document.webkitExitFullscreen) {
+                document.webkitExitFullscreen();
+            } else if (document.msExitFullscreen) {
+                document.msExitFullscreen();
+            }
+        }
+
+        // 화면 전환 감지
+        function handleVisibilityChange() {
+            if (!examModeActive || !examModeListenersActive) return;
+
+            if (document.hidden) {
+                examModeViolations++;
+                updateExamModeIndicator();
+
+                // 최대 위반 횟수 체크
+                if (examModeViolations >= examModeMaxViolations) {
+                    // 자동제출 실행
+                    autoSubmitExam();
+                } else {
+                    showExamWarning('다른 탭이나 창으로 전환했습니다!');
+                }
+            }
+        }
+
+        // 윈도우 포커스 아웃 감지
+        function handleWindowBlur() {
+            if (!examModeActive || !examModeListenersActive) return;
+
+            // blur는 alert나 모달로 인해서도 발생할 수 있으므로
+            // visibilitychange와 중복 카운트를 피하기 위해
+            // document.hidden 상태가 아닐 때만 카운트
+            if (!document.hidden) {
+                examModeViolations++;
+                updateExamModeIndicator();
+
+                // 최대 위반 횟수 체크
+                if (examModeViolations >= examModeMaxViolations) {
+                    // 자동제출 실행
+                    autoSubmitExam();
+                } else {
+                    showExamWarning('시험 화면에서 벗어났습니다!');
+                }
+            }
+        }
+
+        // 페이지 이탈 방지
+        function handleBeforeUnload(e) {
+            if (!examModeActive) return;
+
+            e.preventDefault();
+            e.returnValue = '시험이 진행 중입니다. 정말로 나가시겠습니까?';
+            return e.returnValue;
+        }
+
+        // 전체화면 해제 감지
+        function handleFullscreenChange() {
+            if (!examModeActive || !examModeListenersActive || !examModeForceFullscreen) return;
+
+            if (!document.fullscreenElement && !document.webkitFullscreenElement && !document.msFullscreenElement) {
+                examModeViolations++;
+                updateExamModeIndicator();
+
+                // 최대 위반 횟수 체크
+                if (examModeViolations >= examModeMaxViolations) {
+                    // 자동제출 실행
+                    autoSubmitExam();
+                } else {
+                    showExamWarning('전체화면에서 벗어났습니다!');
+                    // 다시 전체화면으로
+                    setTimeout(enterFullscreen, 1000);
+                }
+            }
+        }
+
+        // 뒤로가기 방지
+        function preventBackNavigation(e) {
+            if (!examModeActive || !examModeListenersActive) return;
+
+            history.pushState(null, '', location.href);
+            examModeViolations++;
+            updateExamModeIndicator();
+
+            // 최대 위반 횟수 체크
+            if (examModeViolations >= examModeMaxViolations) {
+                // 자동제출 실행
+                autoSubmitExam();
+            } else {
+                showExamWarning('뒤로가기는 사용할 수 없습니다!');
+            }
+        }
+
+        // 경고 표시
+        function showExamWarning(message) {
+            // 이벤트 리스너 일시 중지 (경고 표시 시 blur 이벤트 방지)
+            examModeListenersActive = false;
+
+            const overlay = document.getElementById('examWarningOverlay');
+            const messageEl = document.getElementById('examWarningMessage');
+            const countEl = document.getElementById('examViolationCount');
+
+            messageEl.innerHTML = `${message}<br>다시 시험 화면으로 돌아가 주세요.<br><br><strong style="color: #ffd700;">위반 ${examModeViolations}/${examModeMaxViolations}회</strong>`;
+            countEl.textContent = examModeViolations;
+            overlay.classList.add('show');
+
+            // 1초 후 이벤트 리스너 재활성화
+            setTimeout(() => {
+                examModeListenersActive = true;
+            }, 1000);
+        }
+
+        // 시험 화면으로 복귀
+        function returnToExam() {
+            document.getElementById('examWarningOverlay').classList.remove('show');
+
+            if (examModeForceFullscreen) {
+                enterFullscreen();
+            }
+
+            // 포커스를 다시 문서로
+            window.focus();
+
+            // 이벤트 리스너 재활성화
+            setTimeout(() => {
+                examModeListenersActive = true;
+            }, 500);
+        }
+
+        // ★ 추가: 키보드 단축키 차단
+        function handleKeyDown(e) {
+            if (!examModeActive) return;
+
+            // Alt+Tab, Ctrl+W, F11, ESC 등 차단
+            if (e.altKey && e.key === 'Tab') {
+                e.preventDefault();
+                examModeViolations++;
+                showExamWarning('Alt+Tab 사용이 감지되었습니다!');
+                return false;
+            }
+
+            if (e.ctrlKey && (e.key === 'w' || e.key === 'W')) {
+                e.preventDefault();
+                showExamWarning('창 닫기 시도가 감지되었습니다!');
+                return false;
+            }
+
+            if (e.key === 'F11') {
+                e.preventDefault();
+                return false;
+            }
+
+            if (e.key === 'Escape' && document.fullscreenElement) {
+                e.preventDefault();
+                return false;
+            }
+
+            // Windows 키, 개발자도구 단축키 차단
+            if (e.key === 'Meta' || e.metaKey) {
+                e.preventDefault();
+                return false;
+            }
+
+            if (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'i' || e.key === 'J' || e.key === 'j' || e.key === 'C' || e.key === 'c')) {
+                e.preventDefault();
+                examModeViolations++;
+                showExamWarning('개발자도구 사용이 감지되었습니다!');
+                return false;
+            }
+
+            if (e.key === 'F12') {
+                e.preventDefault();
+                examModeViolations++;
+                showExamWarning('개발자도구 사용이 감지되었습니다!');
+                return false;
+            }
+        }
+
+        // ★ 추가: 마우스 우클릭 차단
+        function handleContextMenu(e) {
+            if (!examModeActive) return;
+
+            e.preventDefault();
+            // 경고 없이 조용히 차단 (너무 많은 경고 방지)
+            return false;
+        }
+
+        // ★ 추가: 복사/붙여넣기 차단
+        function handleCopyPaste(e) {
+            if (!examModeActive) return;
+
+            e.preventDefault();
+            // 경고 없이 조용히 차단
+            return false;
+        }
+
+        // ★ 추가: 포커스 강제 회복
+        function enforceFocus() {
+            if (!examModeActive) return;
+
+            if (!document.hasFocus()) {
+                window.focus();
+            }
+
+            // 전체화면 이탈 시 복구
+            if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+                enterFullscreen();
+            }
+        }
+
+        // 자동 제출 (위반 횟수 초과 시)
+        async function autoSubmitExam() {
+            // 이벤트 리스너 비활성화하여 추가 위반 방지
+            examModeListenersActive = false;
+
+            // 경고 오버레이 제거
+            document.getElementById('examWarningOverlay').classList.remove('show');
+
+            // 사용자에게 알림 (이미 리스너 비활성화됨)
+            alert(`⚠️ 경고\n\n화면 이탈이 ${examModeMaxViolations}회를 초과하여 자동으로 제출됩니다.`);
+
+            // 제출 실행
+            try {
+                await submitAssignment();
+            } catch (error) {
+                console.error('자동 제출 실패:', error);
+                // 오류 alert (이미 리스너 비활성화됨)
+                alert('자동 제출 중 오류가 발생했습니다. 수동으로 제출해주세요.');
+            }
+
+            // 시험 모드 비활성화 (자동제출 플래그 전달)
+            disableExamMode(true);
+        }
+
+        // 시험 로그 기록 (서버에 로깅)
+        async function logExamEvent(eventType, duration, details) {
+            if (!examModeAssignmentId) {
+                console.error('시험 과제 ID가 없습니다.');
+                return;
+            }
+
+            try {
+                await fetch(`${API_BASE}/Exam-log`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        studentId: currentStudentId,
+                        assignmentId: examModeAssignmentId,
+                        eventType: eventType,
+                        duration: duration || 0,
+                        details: details || ''
+                    })
+                });
+                console.log(`📊 시험 로그 기록: ${eventType} - ${details}`);
+            } catch (error) {
+                console.error('시험 로그 기록 실패:', error);
+            }
+        }
+    </script>
+</body>
+
+</html>

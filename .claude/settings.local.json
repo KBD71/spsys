@@ -17,7 +17,10 @@
       "Bash(tree:*)",
       "Read(//Users/kbd/Library/CloudStorage/OneDrive-문현고등학교/eduapp/spsys-main/**)",
       "Read(//Users/kbd/.claude/**)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(dir:*)",
+      "Bash(git pull:*)",
+      "Bash(git stash:*)"
     ],
     "deny": [],
     "ask": []

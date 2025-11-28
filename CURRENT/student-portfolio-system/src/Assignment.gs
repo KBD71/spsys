@@ -14,7 +14,7 @@
 function createAssignmentSheetFromSidebar(data) {
   try {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
-    var { name: assignmentName, startDate, endDate, questions, examMode, maxViolations, forceFullscreen } = data;
+    var { name: assignmentName, startDate, endDate, questions, separateSolution, examMode, maxViolations, forceFullscreen } = data;
     
     // 유효성 검사
     var templateSheet = ss.getSheetByName('template');
@@ -34,6 +34,12 @@ function createAssignmentSheetFromSidebar(data) {
     // '과제설정' 시트에 행 추가
     var headers = assignmentSettingsSheet.getRange(1, 1, 1, assignmentSettingsSheet.getLastColumn()).getValues()[0];
     
+    // ★★★ '풀이분리' 헤더가 없으면 추가 ★★★
+    if (headers.indexOf('풀이분리') === -1) {
+      assignmentSettingsSheet.getRange(1, headers.length + 1).setValue('풀이분리');
+      headers.push('풀이분리'); // 헤더 배열에도 추가
+    }
+
     // ★★★ 시험모드 정보를 포함한 행 데이터 생성 ★★★
     var newRowObject = {
       // '공개': false, // ★★★ 제거: '공개' 시트에서 관리 ★★★
@@ -43,7 +49,8 @@ function createAssignmentSheetFromSidebar(data) {
       '대상시트': finalSheetName,
       '시작일': startDate,
       '마감일': endDate,
-      // 시험모드 관련 정보 추가
+      // 시험모드 및 풀이분리 정보 추가
+      '풀이분리': separateSolution || false,
       '시험모드': examMode || false,
       '이탈허용횟수': maxViolations || 3,
       '강제전체화면': forceFullscreen || false
@@ -58,7 +65,7 @@ function createAssignmentSheetFromSidebar(data) {
     var newRow = headers.map(header => newRowObject[header] || '');
     assignmentSettingsSheet.appendRow(newRow);
     
-    Logger.log(`[과제생성] ${assignmentName}, 시험모드: ${examMode}, 이탈허용: ${maxViolations}회, 전체화면: ${forceFullscreen}`);
+    Logger.log(`[과제생성] ${assignmentName}, 풀이분리: ${separateSolution}, 시험모드: ${examMode}, 이탈허용: ${maxViolations}회, 전체화면: ${forceFullscreen}`);
 
     // '공개' 시트에 행 추가 (v2 구조)
     ss.getSheetByName('공개').appendRow([false, finalSheetName, '전체', false, '']);
@@ -78,8 +85,8 @@ function createAssignmentSheetFromSidebar(data) {
       }
     }
 
-    // ★★★ 시험모드일 경우: 질문 컬럼을 '풀이'와 '답'으로 분리 ★★★
-    if (examMode) {
+    // ★★★ 시험모드 또는 풀이분리일 경우: 질문 컬럼을 '풀이'와 '답'으로 분리 ★★★
+    if (examMode || separateSolution) {
       // 뒤에서부터 처리해야 인덱스가 밀리지 않음
       for (var i = questions.length; i >= 1; i--) {
         var questionColName = `질문${i}`;
@@ -98,7 +105,7 @@ function createAssignmentSheetFromSidebar(data) {
           // (선택사항) 스타일 복사 등을 할 수도 있지만, 기본 삽입으로 충분함
         }
       }
-      Logger.log(`[시험모드] ${questions.length}개 질문에 대해 풀이/답 컬럼 분리 완료`);
+      Logger.log(`[설정적용] ${questions.length}개 질문에 대해 풀이/답 컬럼 분리 완료 (시험모드: ${examMode}, 풀이분리: ${separateSolution})`);
     }
 
     newSheet.activate();
@@ -106,6 +113,9 @@ function createAssignmentSheetFromSidebar(data) {
     
     // ★★★ 시험모드 활성화 여부를 포함한 성공 메시지 ★★★
     var successMessage = `'${finalSheetName}' 시트가 생성되었습니다.`;
+    if (separateSolution) {
+        successMessage += `\n\n📝 서술형(풀이/답 분리) 적용됨`;
+    }
     if (examMode) {
       successMessage += `\n\n🎯 시험 모드 활성화됨:\n- 이탈 허용: ${maxViolations}회\n- 전체화면: ${forceFullscreen ? 'ON' : 'OFF'}`;
     }

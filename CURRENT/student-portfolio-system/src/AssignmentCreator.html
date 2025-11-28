@@ -1,22 +1,44 @@
 <!DOCTYPE html>
 <html>
+
 <head>
     <base target="_top">
     <link rel="stylesheet" href="https://ssl.gstatic.com/docs/script/css/add-ons1.css">
     <style>
-        .container { padding: 10px; }
-        .form-group { margin-bottom: 15px; }
-        label { font-weight: bold; display: block; margin-bottom: 5px; }
-        input[type="text"], input[type="date"], input[type="number"], select { width: 100%; padding: 6px; box-sizing: border-box; }
+        .container {
+            padding: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            font-weight: bold;
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        input[type="text"],
+        input[type="date"],
+        input[type="number"],
+        select {
+            width: 100%;
+            padding: 6px;
+            box-sizing: border-box;
+        }
+
         #questions-container .question-item {
             display: flex;
             align-items: center;
             margin-bottom: 5px;
         }
+
         #questions-container input {
             flex-grow: 1;
             margin-right: 5px;
         }
+
         .remove-btn {
             color: #fff;
             background-color: #dc3545;
@@ -25,8 +47,11 @@
             padding: 2px 6px;
             font-weight: bold;
         }
-        #status { margin-top: 10px; }
-        
+
+        #status {
+            margin-top: 10px;
+        }
+
         /* 시험 모드 섹션 스타일 */
         .exam-mode-section {
             background: #f8f9fa;
@@ -35,32 +60,39 @@
             padding: 15px;
             margin: 15px 0;
         }
+
         .exam-mode-section h4 {
             color: #667eea;
             margin-top: 0;
         }
+
         .checkbox-group {
             display: flex;
             align-items: center;
             margin-bottom: 10px;
         }
+
         .checkbox-group input[type="checkbox"] {
             width: auto;
             margin-right: 8px;
         }
+
         .checkbox-group label {
             margin-bottom: 0;
             font-weight: normal;
         }
+
         .number-input-group {
             display: flex;
             align-items: center;
             gap: 10px;
         }
+
         .number-input-group input[type="number"] {
             width: 80px;
             text-align: center;
         }
+
         .help-text {
             font-size: 11px;
             color: #666;
@@ -68,6 +100,7 @@
         }
     </style>
 </head>
+
 <body>
     <div class="container">
         <h4>새 과제 정보</h4>
@@ -86,10 +119,19 @@
 
         <hr>
 
+        <div class="checkbox-group"
+            style="margin-bottom: 20px; padding: 10px; background: #f0f9ff; border-radius: 8px; border: 1px solid #bae6fd;">
+            <input type="checkbox" id="separateSolution">
+            <label for="separateSolution" style="font-weight: bold; color: #0284c7;">풀이/답란 분리 (서술형)</label>
+            <div class="help-text" style="margin-left: 24px;">
+                ✓ 체크 시: 각 질문에 대해 '풀이'와 '답' 입력칸이 별도로 생성됩니다.
+            </div>
+        </div>
+
         <!-- ★★★ 시험 모드 섹션 추가 ★★★ -->
         <div class="exam-mode-section">
             <h4>🎯 시험 모드 설정</h4>
-            
+
             <div class="checkbox-group">
                 <input type="checkbox" id="examMode">
                 <label for="examMode">시험 모드 활성화 (화면 이탈 감지)</label>
@@ -97,7 +139,7 @@
             <div class="help-text">
                 ✓ 체크 시: 학생 화면 이탈 감지, 복사/붙여넣기 차단, 로그 기록
             </div>
-            
+
             <div class="form-group" style="margin-top: 15px;">
                 <label for="maxViolations">이탈 허용 횟수</label>
                 <div class="number-input-group">
@@ -108,7 +150,7 @@
                     화면 이탈을 몇 회까지 허용할지 설정 (권장: 3회)
                 </div>
             </div>
-            
+
             <div class="checkbox-group">
                 <input type="checkbox" id="forceFullscreen">
                 <label for="forceFullscreen">전체화면 강제</label>
@@ -131,34 +173,34 @@
     </div>
 
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function () {
             // 오늘 날짜 기본값 설정
             var today = new Date().toISOString().split('T')[0];
             document.getElementById('startDate').value = today;
-            
+
             addQuestionField(); // 기본 질문 필드 1개 추가
-            
+
             document.getElementById('addQuestionBtn').addEventListener('click', addQuestionField);
             document.getElementById('createBtn').addEventListener('click', createAssignment);
-            document.getElementById('questions-container').addEventListener('click', function(e) {
+            document.getElementById('questions-container').addEventListener('click', function (e) {
                 if (e.target && e.target.classList.contains('remove-btn')) {
                     e.target.parentElement.remove();
                 }
             });
-            
+
             // 시험 모드 체크박스 상태에 따라 관련 입력 활성화/비활성화
-            document.getElementById('examMode').addEventListener('change', function() {
+            document.getElementById('examMode').addEventListener('change', function () {
                 var isExamMode = this.checked;
                 document.getElementById('maxViolations').disabled = !isExamMode;
                 document.getElementById('forceFullscreen').disabled = !isExamMode;
-                
+
                 // 시험 모드 비활성화 시 기본값으로 리셋
                 if (!isExamMode) {
                     document.getElementById('maxViolations').value = 3;
                     document.getElementById('forceFullscreen').checked = false;
                 }
             });
-            
+
             // 초기 상태 설정
             document.getElementById('maxViolations').disabled = true;
             document.getElementById('forceFullscreen').disabled = true;
@@ -167,7 +209,7 @@
         function addQuestionField() {
             var container = document.getElementById('questions-container');
             var questionCount = container.children.length;
-            
+
             // template 시트 기준, 최대 5개로 제한
             if (questionCount >= 5) {
                 alert('질문은 최대 5개까지 추가할 수 있습니다.');
@@ -177,27 +219,28 @@
             var div = document.createElement('div');
             div.className = 'question-item';
             div.innerHTML = '<input type="text" placeholder="질문 ' + (questionCount + 1) + ' 내용 입력">' +
-                            '<button class="remove-btn">X</button>';
+                '<button class="remove-btn">X</button>';
             container.appendChild(div);
         }
 
         function createAssignment() {
             var createBtn = document.getElementById('createBtn');
             var statusEl = document.getElementById('status');
-            
+
             var assignmentData = {
                 name: document.getElementById('assignmentName').value.trim(),
                 startDate: document.getElementById('startDate').value,
                 endDate: document.getElementById('endDate').value,
                 questions: [],
                 // ★★★ 시험 모드 정보 추가 ★★★
+                separateSolution: document.getElementById('separateSolution').checked,
                 examMode: document.getElementById('examMode').checked,
                 maxViolations: parseInt(document.getElementById('maxViolations').value) || 3,
                 forceFullscreen: document.getElementById('forceFullscreen').checked
             };
-            
+
             var questionInputs = document.querySelectorAll('#questions-container input[type="text"]');
-            questionInputs.forEach(function(input) {
+            questionInputs.forEach(function (input) {
                 var qText = input.value.trim();
                 if (qText) {
                     assignmentData.questions.push(qText);
@@ -218,12 +261,12 @@
             statusEl.textContent = '시트를 생성 중입니다...';
 
             google.script.run
-                .withSuccessHandler(function(response) {
+                .withSuccessHandler(function (response) {
                     statusEl.textContent = response;
                     createBtn.disabled = false;
-                    setTimeout(function() { google.script.host.close(); }, 2000);
+                    setTimeout(function () { google.script.host.close(); }, 2000);
                 })
-                .withFailureHandler(function(error) {
+                .withFailureHandler(function (error) {
                     alert('생성 실패: ' + error.message);
                     statusEl.textContent = '오류가 발생했습니다.';
                     createBtn.disabled = false;
@@ -232,4 +275,5 @@
         }
     </script>
 </body>
+
 </html>

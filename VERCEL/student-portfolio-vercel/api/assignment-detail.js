@@ -48,11 +48,11 @@ module.exports = async (req, res) => {
     // ★★★ 핵심 변경점: '과제설정' 시트의 헤더 맵 생성 ★★★
     const assignmentHeaders = assignmentData[0];
     const assignmentHeaderMap = createHeaderMap(assignmentHeaders);
-    
+
     // '과제ID' 컬럼의 인덱스를 찾음
     const assignmentIdColIndex = assignmentHeaderMap['과제ID'];
     if (assignmentIdColIndex === undefined) {
-        return res.status(500).json({ success: false, message: "'과제설정' 시트에서 '과제ID' 컬럼을 찾을 수 없습니다." });
+      return res.status(500).json({ success: false, message: "'과제설정' 시트에서 '과제ID' 컬럼을 찾을 수 없습니다." });
     }
 
     // 해당 과제ID를 가진 행을 찾음
@@ -70,8 +70,8 @@ module.exports = async (req, res) => {
     // 시험 모드 플래그 추출 (있으면 사용, 없으면 false)
     const examModeColIndex = assignmentHeaderMap['시험모드'];
     const examMode = examModeColIndex !== undefined ?
-        (assignmentRow[examModeColIndex] === 'TRUE' || assignmentRow[examModeColIndex] === true || assignmentRow[examModeColIndex] === 'true') :
-        false;
+      (assignmentRow[examModeColIndex] === 'TRUE' || assignmentRow[examModeColIndex] === true || assignmentRow[examModeColIndex] === 'true') :
+      false;
 
     // 이탈허용횟수 추출
     const maxViolationsColIndex = assignmentHeaderMap["이탈허용횟수"];
@@ -80,28 +80,34 @@ module.exports = async (req, res) => {
     // 강제전체화면 추출
     const forceFullscreenColIndex = assignmentHeaderMap["강제전체화면"];
     const forceFullscreen = forceFullscreenColIndex !== undefined ?
-        (assignmentRow[forceFullscreenColIndex] === "TRUE" || assignmentRow[forceFullscreenColIndex] === true || assignmentRow[forceFullscreenColIndex] === "true") :
-        false;
+      (assignmentRow[forceFullscreenColIndex] === "TRUE" || assignmentRow[forceFullscreenColIndex] === true || assignmentRow[forceFullscreenColIndex] === "true") :
+      false;
+
+    // ★★★ 풀이분리 플래그 추출 ★★★
+    const separateSolutionColIndex = assignmentHeaderMap['풀이분리'];
+    const separateSolution = separateSolutionColIndex !== undefined ?
+      (assignmentRow[separateSolutionColIndex] === 'TRUE' || assignmentRow[separateSolutionColIndex] === true || assignmentRow[separateSolutionColIndex] === 'true') :
+      false;
 
     // '질문'으로 시작하는 모든 컬럼을 동적으로 추출
     const assignmentQuestions = [];
     assignmentHeaders.forEach((header, index) => {
-        if (header.trim().startsWith('질문') && assignmentRow[index] && assignmentRow[index].trim()) {
-            assignmentQuestions.push({
-                questionText: assignmentRow[index].trim(), // 실제 질문 내용
-                columnName: header.trim() // 헤더 이름 (예: '질문1')
-            });
-        }
+      if (header.trim().startsWith('질문') && assignmentRow[index] && assignmentRow[index].trim()) {
+        assignmentQuestions.push({
+          questionText: assignmentRow[index].trim(), // 실제 질문 내용
+          columnName: header.trim() // 헤더 이름 (예: '질문1')
+        });
+      }
     });
 
     // 2. 대상 시트(학생 답변 시트) 정보 처리
     const targetResponse = await sheets.spreadsheets.values.get({
-        spreadsheetId,
-        range: `${targetSheet}!A:Z`
+      spreadsheetId,
+      range: `${targetSheet}!A:Z`
     });
     const targetSheetData = targetResponse.data.values || [];
     if (targetSheetData.length < 1) {
-        return res.status(500).json({ success: false, message: '대상시트의 헤더를 읽을 수 없습니다.' });
+      return res.status(500).json({ success: false, message: '대상시트의 헤더를 읽을 수 없습니다.' });
     }
 
     // ★★★ 핵심 변경점: 대상 시트의 헤더 맵 생성 ★★★
@@ -110,7 +116,7 @@ module.exports = async (req, res) => {
 
     const studentIdColInTarget = targetHeaderMap['학번'];
     if (studentIdColInTarget === undefined) {
-        return res.status(500).json({ success: false, message: `'${targetSheet}' 시트에서 '학번' 컬럼을 찾을 수 없습니다.` });
+      return res.status(500).json({ success: false, message: `'${targetSheet}' 시트에서 '학번' 컬럼을 찾을 수 없습니다.` });
     }
 
     // 학생의 기존 답변 행 찾기
@@ -118,14 +124,35 @@ module.exports = async (req, res) => {
 
     // 3. 질문과 답변 최종 구성
     const questions = assignmentQuestions.map(q => {
+      // ★★★ 시험모드 또는 풀이분리일 경우 분리된 컬럼 사용 ★★★
+      if (examMode || separateSolution) {
+        const solutionColumnName = `${q.columnName}_풀이`;
+        const answerColumnName = `${q.columnName}_답`;
+
+        const solutionIndex = targetHeaderMap[solutionColumnName];
+        const answerIndex = targetHeaderMap[answerColumnName];
+
+        const solution = (studentRow && solutionIndex !== undefined) ? (studentRow[solutionIndex] || '') : '';
+        const answer = (studentRow && answerIndex !== undefined) ? (studentRow[answerIndex] || '') : '';
+
+        return {
+          column: q.columnName,   // 원본 질문 컬럼명 (참조용)
+          question: q.questionText,
+          solutionColumn: solutionColumnName,
+          answerColumn: answerColumnName,
+          solution: solution,
+          answer: answer
+        };
+      } else {
         const answerColumnIndex = targetHeaderMap[q.columnName];
         const answer = (studentRow && answerColumnIndex !== undefined) ? (studentRow[answerColumnIndex] || '') : '';
 
         return {
-            column: q.columnName,   // 대상시트 컬럼명 (저장용)
-            question: q.questionText, // 과제설정의 질문 (표시용)
-            answer: answer
+          column: q.columnName,   // 대상시트 컬럼명 (저장용)
+          question: q.questionText, // 과제설정의 질문 (표시용)
+          answer: answer
         };
+      }
     });
 
     const submitted = !!studentRow;
@@ -145,6 +172,7 @@ module.exports = async (req, res) => {
       submitted: submitted,
       submittedAt: submittedAt,
       examMode: examMode,
+      separateSolution: separateSolution, // 프론트엔드 전달용
       maxViolations: maxViolations,
       forceFullscreen: forceFullscreen
     };

@@ -6,6 +6,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>과제제출 시스템</title>
     <!-- <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script> -->
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']],
+                processEscapes: true
+            },
+            svg: {
+                fontCache: 'global'
+            }
+        };
+    </script>
     <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     <style>
         :root {
@@ -407,8 +419,26 @@
             display: none;
         }
 
+        .large-input {
+            min-height: 300px;
+        }
+
         .short-input {
-            height: 60px;
+            height: 50px;
+            min-height: 50px;
+        }
+
+        .math-preview-mode.large-preview {
+            min-height: 300px;
+            align-items: flex-start;
+            /* Align text to top */
+        }
+
+        .math-preview-mode.short-preview {
+            min-height: 50px;
+            display: flex;
+            align-items: center;
+            /* Center text vertically */
         }
 
         /* Save Button & Status */
@@ -779,8 +809,8 @@
                                 <div class="field-group">
                                     <label class="field-label">풀이 과정</label>
                                     <div class="input-wrapper">
-                                        <textarea name="${q.column}_solution" id="solution_${index}" class="edit-mode" placeholder="풀이 과정을 입력하세요...">${savedSolution}</textarea>
-                                        <div id="preview_solution_${index}" class="math-preview-mode empty">답변을 입력하려면 여기를 클릭하세요...</div>
+                                        <textarea name="${q.column}_solution" id="solution_${index}" class="edit-mode large-input" placeholder="풀이 과정을 입력하세요...">${savedSolution}</textarea>
+                                        <div id="preview_solution_${index}" class="math-preview-mode large-preview empty">답변을 입력하려면 여기를 클릭하세요...</div>
                                         <button type="button" class="btn-math-editor" onclick="openMathEditor('solution_${index}')">Math Editor</button>
                                     </div>
                                 </div>
@@ -788,7 +818,7 @@
                                     <label class="field-label">정답</label>
                                     <div class="input-wrapper">
                                         <textarea name="${q.column}" id="answer_${index}" class="edit-mode short-input" placeholder="정답을 입력하세요...">${savedAnswer}</textarea>
-                                        <div id="preview_answer_${index}" class="math-preview-mode empty" style="min-height: 60px;">답변을 입력하려면 여기를 클릭하세요...</div>
+                                        <div id="preview_answer_${index}" class="math-preview-mode short-preview empty">답변을 입력하려면 여기를 클릭하세요...</div>
                                         <button type="button" class="btn-math-editor" onclick="openMathEditor('answer_${index}')">Math Editor</button>
                                     </div>
                                 </div>
@@ -798,8 +828,8 @@
                         const savedValue = loadDraft(assignmentId, currentStudentId, q.column);
                         inputHtml = `
                             <div class="input-wrapper">
-                                <textarea name="${q.column}" id="answer_${index}" class="edit-mode" placeholder="답변을 입력하세요...">${savedValue}</textarea>
-                                <div id="preview_answer_${index}" class="math-preview-mode empty">답변을 입력하려면 여기를 클릭하세요...</div>
+                                <textarea name="${q.column}" id="answer_${index}" class="edit-mode large-input" placeholder="답변을 입력하세요...">${savedValue}</textarea>
+                                <div id="preview_answer_${index}" class="math-preview-mode large-preview empty">답변을 입력하려면 여기를 클릭하세요...</div>
                                 <button type="button" class="btn-math-editor" onclick="openMathEditor('answer_${index}')">Math Editor</button>
                             </div>`;
                     }

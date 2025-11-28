@@ -114,6 +114,14 @@ module.exports = async (req, res) => {
     const targetHeaders = targetSheetData[0];
     const targetHeaderMap = createHeaderMap(targetHeaders);
 
+    // ★★★ 핵심 변경점: 실제 시트에 분리된 컬럼이 존재하는지 확인 ★★★
+    let hasSplitColumns = false;
+    if (assignmentQuestions.length > 0) {
+      const firstQuestionCol = assignmentQuestions[0].columnName;
+      hasSplitColumns = targetHeaderMap.hasOwnProperty(firstQuestionCol + '_풀이') &&
+        targetHeaderMap.hasOwnProperty(firstQuestionCol + '_답');
+    }
+
     const studentIdColInTarget = targetHeaderMap['학번'];
     if (studentIdColInTarget === undefined) {
       return res.status(500).json({ success: false, message: `'${targetSheet}' 시트에서 '학번' 컬럼을 찾을 수 없습니다.` });
@@ -173,6 +181,7 @@ module.exports = async (req, res) => {
       submittedAt: submittedAt,
       examMode: examMode,
       separateSolution: separateSolution, // 프론트엔드 전달용
+      hasSplitColumns: hasSplitColumns, // ★★★ 실제 컬럼 존재 여부 전달 ★★★
       maxViolations: maxViolations,
       forceFullscreen: forceFullscreen
     };

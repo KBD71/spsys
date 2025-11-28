@@ -68,7 +68,13 @@ function createAssignmentSheetFromSidebar(data) {
     Logger.log(`[과제생성] ${assignmentName}, 풀이분리: ${separateSolution}, 시험모드: ${examMode}, 이탈허용: ${maxViolations}회, 전체화면: ${forceFullscreen}`);
 
     // '공개' 시트에 행 추가 (v2 구조)
-    ss.getSheetByName('공개').appendRow([false, finalSheetName, '전체', false, '']);
+    var publicSheet = ss.getSheetByName('공개');
+    publicSheet.appendRow([false, finalSheetName, '전체', false, '']);
+    
+    // 체크박스 삽입 (A열: 공개여부, D열: 재제출허용)
+    var lastRow = publicSheet.getLastRow();
+    publicSheet.getRange(lastRow, 1).insertCheckboxes();
+    publicSheet.getRange(lastRow, 4).insertCheckboxes();
 
     // 'template'을 복사하여 새 과제 시트 생성
     var newSheet = templateSheet.copyTo(ss).setName(finalSheetName);

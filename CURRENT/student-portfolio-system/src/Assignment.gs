@@ -103,7 +103,8 @@ function createAssignmentSheetFromSidebar(data) {
     }
 
     // ★★★ 시험모드 또는 풀이분리일 경우: 질문 컬럼을 '풀이'와 '답'으로 분리 ★★★
-    if (examMode || separateSolution) {
+    // 수정: 시험모드와 무관하게 '풀이분리'가 체크된 경우에만 분리
+    if (separateSolution) {
       // 뒤에서부터 처리해야 인덱스가 밀리지 않음
       for (var i = questions.length; i >= 1; i--) {
         var questionColName = `질문${i}`;

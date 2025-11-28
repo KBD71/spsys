@@ -43,7 +43,7 @@ module.exports = async (req, res) => {
 
     const studentRowData = studentData.find((row, idx) => idx > 0 && row[studentIdCol] === studentId);
     if (!studentRowData) return res.status(404).json({ success: false, message: '학생을 찾을 수 없습니다.' });
-    
+
     const studentClass = studentRowData[studentHeaderMap['반']];
     const studentName = studentRowData[studentHeaderMap['이름']];
 
@@ -56,7 +56,7 @@ module.exports = async (req, res) => {
 
     const assignmentRowData = assignmentData.find((row, idx) => idx > 0 && row[assignmentIdCol] === assignmentId);
     if (!assignmentRowData) return res.status(404).json({ success: false, message: '과제를 찾을 수 없습니다.' });
-    
+
     const targetSheet = assignmentRowData[assignmentHeaderMap['대상시트']];
 
     // 3. 대상 시트 정보 읽기 및 데이터 준비 (헤더 기반)
@@ -70,7 +70,13 @@ module.exports = async (req, res) => {
 
     // 4-1. 개별 질문 저장 모드
     if (isSingleQuestion) {
-      const questionColIndex = targetHeaders.indexOf(questionColumn);
+      let questionColIndex = targetHeaders.indexOf(questionColumn);
+
+      // ★★★ Fallback: 정확한 컬럼이 없으면 '_답' 컬럼을 찾아봄 (단일 UI -> 분리 시트 저장 지원) ★★★
+      if (questionColIndex === -1) {
+        questionColIndex = targetHeaders.indexOf(questionColumn + '_답');
+      }
+
       if (questionColIndex === -1) {
         return res.status(404).json({ success: false, message: '질문 컬럼을 찾을 수 없습니다.' });
       }
@@ -104,7 +110,7 @@ module.exports = async (req, res) => {
         // 새 행 생성
         const newRow = targetHeaders.map((header) => {
           const trimmedHeader = header.trim();
-          switch(trimmedHeader) {
+          switch (trimmedHeader) {
             case '학번': return studentId;
             case '반': return studentClass;
             case '이름': return studentName;
@@ -131,7 +137,7 @@ module.exports = async (req, res) => {
     else {
       const newRow = targetHeaders.map((header) => {
         const trimmedHeader = header.trim();
-        switch(trimmedHeader) {
+        switch (trimmedHeader) {
           case '학번': return studentId;
           case '반': return studentClass;
           case '이름': return studentName;
@@ -166,34 +172,34 @@ module.exports = async (req, res) => {
     // ★★★ 시작: 이전에 주석으로 생략되었던 부분입니다 ★★★
     // 5. '초안생성' 컬럼에 체크박스 UI 강제 적용 (안정성 확보)
     if (updatedRowIndex) {
-        const draftColumnIndex = targetHeaders.indexOf('초안생성');
-        if (draftColumnIndex !== -1) {
-            const sheetIdResponse = await sheets.spreadsheets.get({ spreadsheetId });
-            const sheet = sheetIdResponse.data.sheets.find(s => s.properties.title === targetSheet);
-            if (sheet) {
-                const sheetId = sheet.properties.sheetId;
-                await sheets.spreadsheets.batchUpdate({
-                    spreadsheetId,
-                    requestBody: {
-                        requests: [{
-                            setDataValidation: {
-                                range: {
-                                    sheetId: sheetId,
-                                    startRowIndex: updatedRowIndex - 1,
-                                    endRowIndex: updatedRowIndex,
-                                    startColumnIndex: draftColumnIndex,
-                                    endColumnIndex: draftColumnIndex + 1
-                                },
-                                rule: {
-                                    condition: { type: 'BOOLEAN' },
-                                    strict: true
-                                }
-                            }
-                        }]
-                    }
-                });
+      const draftColumnIndex = targetHeaders.indexOf('초안생성');
+      if (draftColumnIndex !== -1) {
+        const sheetIdResponse = await sheets.spreadsheets.get({ spreadsheetId });
+        const sheet = sheetIdResponse.data.sheets.find(s => s.properties.title === targetSheet);
+        if (sheet) {
+          const sheetId = sheet.properties.sheetId;
+          await sheets.spreadsheets.batchUpdate({
+            spreadsheetId,
+            requestBody: {
+              requests: [{
+                setDataValidation: {
+                  range: {
+                    sheetId: sheetId,
+                    startRowIndex: updatedRowIndex - 1,
+                    endRowIndex: updatedRowIndex,
+                    startColumnIndex: draftColumnIndex,
+                    endColumnIndex: draftColumnIndex + 1
+                  },
+                  rule: {
+                    condition: { type: 'BOOLEAN' },
+                    strict: true
+                  }
+                }
+              }]
             }
+          });
         }
+      }
     }
     // ★★★ 종료: 생략되었던 부분 끝 ★★★
 

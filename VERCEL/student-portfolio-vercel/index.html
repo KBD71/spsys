@@ -807,8 +807,8 @@
                 console.log('Exam Mode:', result.examMode);
                 console.log('Separate Solution:', result.separateSolution);
                 console.log('Has Split Columns:', result.hasSplitColumns);
-                // ★★★ 핵심 변경점: 설정이 켜져 있어도 실제 컬럼이 없으면 단일 모드로 동작 ★★★
-                const useSplitFields = (result.examMode || result.separateSolution) && result.hasSplitColumns;
+                // ★★★ 핵심 변경점: 시험모드와 무관하게 '풀이분리' 설정과 실제 컬럼 존재 여부만 확인 ★★★
+                const useSplitFields = result.separateSolution && result.hasSplitColumns;
 
                 result.questions.forEach((q, index) => {
                     const questionDiv = document.createElement('div');

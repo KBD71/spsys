@@ -410,9 +410,12 @@
         .math-preview-mode.empty {
             color: #9ca3af;
             font-style: italic;
-            display: flex;
             align-items: center;
             justify-content: center;
+        }
+
+        .math-preview-mode.active.empty {
+            display: flex;
         }
 
         .hidden-mode {
@@ -798,6 +801,8 @@
                 }
 
                 questionsContainer.innerHTML = '';
+                console.log('Exam Mode:', result.examMode);
+                console.log('Separate Solution:', result.separateSolution);
                 const useSplitFields = result.examMode || result.separateSolution;
 
                 result.questions.forEach((q, index) => {

@@ -64,6 +64,17 @@ function createAssignmentSheetFromSidebar(data) {
     // 헤더 순서에 맞춰 행 데이터 생성
     var newRow = headers.map(header => newRowObject[header] || '');
     assignmentSettingsSheet.appendRow(newRow);
+
+    // ★★★ 체크박스 추가 로직 ★★★
+    var lastRow = assignmentSettingsSheet.getLastRow();
+    var checkboxColumns = ['풀이분리', '시험모드', '강제전체화면'];
+    
+    checkboxColumns.forEach(colName => {
+      var colIndex = headers.indexOf(colName);
+      if (colIndex !== -1) {
+        assignmentSettingsSheet.getRange(lastRow, colIndex + 1).insertCheckboxes();
+      }
+    });
     
     Logger.log(`[과제생성] ${assignmentName}, 풀이분리: ${separateSolution}, 시험모드: ${examMode}, 이탈허용: ${maxViolations}회, 전체화면: ${forceFullscreen}`);
 

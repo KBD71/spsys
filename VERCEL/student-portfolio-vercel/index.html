@@ -586,6 +586,7 @@
                     <div id="questionsContainer">
                         <div class="loading-message">질문을 불러오는 중...</div>
                     </div>
+                    <div id="submitMessage" class="message"></div>
                 </form>
             </div>
             <div class="modal-footer"><button type="button" id="cancelSubmitBtn" onclick="hideSubmitModal()"
@@ -754,7 +755,12 @@
             const questionsContainer = document.getElementById('questionsContainer');
             const form = document.getElementById('assignmentSubmitForm');
 
-            titleEl.textContent = `${assignmentName} 제출`;
+            if (titleEl) titleEl.textContent = `${assignmentName} 제출`;
+            if (!questionsContainer) {
+                console.error('questionsContainer not found');
+                return;
+            }
+
             questionsContainer.innerHTML = '<div class="loading-message">과제 정보를 불러오는 중...</div>';
             form.dataset.assignmentId = assignmentId;
             modal.classList.remove('hidden');

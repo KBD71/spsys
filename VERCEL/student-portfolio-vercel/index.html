@@ -582,816 +582,428 @@
         </main>
     </section>
 
-    <div id="submitModal" class="modal hidden">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3 id="submitModalTitle">과제 제출</h3>
-            </div>
-            <div class="modal-body">
-                <form id="assignmentSubmitForm">
-                    <div id="questionsContainer">
-                        <div class="loading-message">질문을 불러오는 중...</div>
-                    </div>
-                    <div id="submitMessage" class="message"></div>
-                </form>
-            </div>
-            <div class="modal-footer"><button type="button" id="cancelSubmitBtn" onclick="hideSubmitModal()"
-                    class="btn btn-secondary">취소</button><button type="button" onclick="submitAssignment()"
-                    class="btn btn-primary submit-btn">제출하기</button></div>
-        </div>
+    <div class="data-label">${escapeHTML(record.label)}:</div>
+    <div class="data-value">${escapeHTML(record.value)}</div>
     </div>
+    </div>`;
+    }).join('');
 
-    <div id="recordsModal" class="modal hidden">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3 id="recordsModalTitle">기록 보기</h3>
-            </div>
-            <div class="modal-body" id="recordsModalBody"></div>
-            <div class="modal-footer"><button type="button" onclick="hideRecordsModal()"
-                    class="btn btn-secondary">닫기</button></div>
+    const needsSuggestion = group.records.some(r => r.hasSuggestion);
+
+    if (needsSuggestion) {
+    const existingSuggestion = group.records.find(r => r.suggestion)?.suggestion || '';
+    const suggestionId = `modal-suggestion-${group.sheetName}`;
+
+    bodyHtml += `<div class="suggestion-box">
+        <strong>${group.sheetName} 건의사항:</strong>
+        <div>
+            <textarea id="${suggestionId}" class="suggestion-input" rows="3"
+                placeholder="이 과제에 대한 건의사항을 입력하세요...">${existingSuggestion}</textarea>
+            <button class="btn btn-primary" style="width:auto; padding: 8px 16px; margin-top: 8px;"
+                data-sheet-name="${group.sheetName}" data-suggestion-id="${suggestionId}">저장</button>
         </div>
-    </div>
+    </div>`;
+    }
 
-    <div id="mathModal" class="modal hidden">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>수식 편집기</h3>
-            </div>
-            <div class="modal-body">
-                <div id="mathPaletteContainer" class="math-palette"></div>
-                <textarea id="mathInput" placeholder="이곳에 LaTeX 코드를 입력하세요..."></textarea>
-                <div id="mathPreview"><span style="color: #9ca3af;">수식 미리보기</span></div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" onclick="closeMathEditor()" class="btn btn-secondary">취소</button>
-                <button type="button" onclick="confirmMathInput()" class="btn btn-primary">수식 삽입</button>
-            </div>
-        </div>
-    </div>
+    bodyEl.innerHTML = bodyHtml;
 
-    <script>
-        const API_BASE = "/api";
-        let currentStudentId = '';
-        let currentStudentName = '';
-        let activeTextareaId = null;
-        let savedCursorPosition = { start: 0, end: 0 };
-        let previewTimeout = null;
+    bodyEl.querySelectorAll('button[data-suggestion-id]').forEach(btn => {
+    btn.addEventListener('click', () => {
+    saveSuggestion(btn.dataset.sheetName, btn.dataset.suggestionId);
+    });
+    });
 
-        // 시험 모드 관련 변수
-        let examModeActive = false;
-        let examModeViolations = 0;
-        let examModeMaxViolations = 3;
-        let examModeWarningShown = false;
-        let examModeListenersActive = false;
-        let examModeAssignmentId = null;
-        let examModeAssignmentName = null;
-        let examModeForceFullscreen = false;
+    modal.classList.remove('hidden');
+    }
 
-        document.addEventListener('DOMContentLoaded', () => {
-            document.getElementById('loginForm').addEventListener('submit', handleLogin);
-            document.getElementById('logoutBtn').addEventListener('click', logout);
-            document.getElementById('changePasswordBtn').addEventListener('click', showPasswordChangeScreen);
-            document.getElementById('passwordChangeForm').addEventListener('submit', handlePasswordChange);
-            document.getElementById('mathInput').addEventListener('input', updateMathPreview);
-            updateSchoolInfo();
-        });
+    function switchToPreviewMode(textareaId, previewId) {
+    const textarea = document.getElementById(textareaId);
+    const preview = document.getElementById(previewId);
+    const val = textarea.value;
 
-        function updateSchoolInfo() {
-            if (typeof SCHOOL_NAME !== 'undefined') {
-                document.title = `${SCHOOL_NAME} 과제제출 시스템`;
-                const titles = document.querySelectorAll('.school-title-text');
-                titles.forEach(el => {
-                    el.textContent = `🎓 ${SCHOOL_NAME} 과제제출 시스템`;
-                });
-            }
+    textarea.classList.remove('edit-mode');
+    textarea.classList.add('hidden-mode');
+    preview.classList.add('active');
+
+    if (val && val.trim().length > 0) {
+    preview.textContent = val;
+    preview.classList.remove('empty');
+    typesetMath(preview);
+    } else {
+    preview.textContent = '답변을 입력하려면 여기를 클릭하세요...';
+    preview.classList.add('empty');
+    }
+    }
+
+    function switchToEditMode(textareaId, previewId) {
+    const textarea = document.getElementById(textareaId);
+    const preview = document.getElementById(previewId);
+
+    preview.classList.remove('active');
+    textarea.classList.remove('hidden-mode');
+    textarea.classList.add('edit-mode');
+
+    textarea.focus();
+    }
+
+    function hideSubmitModal() {
+    if (examModeActive) {
+    examModeListenersActive = false;
+    const shouldClose = confirm('시험 모드가 활성화되어 있습니다. 정말로 종료하시겠습니까?\n\n주의: 제출하지 않고 종료하면 답안이 저장되지 않을 수 있습니다.');
+
+    if (!shouldClose) {
+    setTimeout(() => {
+    examModeListenersActive = true;
+    }, 500);
+    return;
+    }
+    disableExamMode();
+    }
+    document.getElementById('submitModal').classList.add('hidden');
+    }
+
+    async function saveQuestion(index, questionColumn) {
+    const form = document.getElementById('assignmentSubmitForm');
+    const assignmentId = form.dataset.assignmentId;
+    const saveButtonId = `save-${index}`;
+    const statusId = `status-${index}`;
+    const saveBtn = document.getElementById(saveButtonId);
+    const statusEl = document.getElementById(statusId);
+
+    if (!saveBtn) return;
+
+    const originalText = saveBtn.textContent;
+    saveBtn.disabled = true;
+    saveBtn.textContent = '저장 중...';
+    statusEl.classList.remove('show');
+
+    const wasListenersActive = examModeListenersActive;
+    if (examModeActive) examModeListenersActive = false;
+
+    try {
+    const solutionTa = document.getElementById(`solution_${index}`);
+    const answerTa = document.getElementById(`answer_${index}`);
+
+    // Split Mode
+    if (solutionTa && answerTa) {
+    const solution = solutionTa.value;
+    const answer = answerTa.value;
+
+    // Save Solution
+    const res1 = await fetch(`${API_BASE}/submit-assignment`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+    studentId: currentStudentId,
+    assignmentId: assignmentId,
+    questionColumn: questionColumn + '_풀이',
+    answer: solution,
+    mode: 'single'
+    })
+    });
+
+    // Save Answer
+    const res2 = await fetch(`${API_BASE}/submit-assignment`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+    studentId: currentStudentId,
+    assignmentId: assignmentId,
+    questionColumn: questionColumn + '_답',
+    answer: answer,
+    mode: 'single'
+    })
+    });
+
+    const result1 = await res1.json();
+    const result2 = await res2.json();
+
+    if (result1.success && result2.success) {
+    showSaveSuccess(saveBtn, statusEl, originalText, wasListenersActive);
+    } else {
+    throw new Error(result1.message || result2.message);
+    }
+    }
+    // Single Mode
+    else {
+    const textarea = document.getElementById(`answer_${index}`);
+    const answer = textarea.value;
+
+    const response = await fetch(`${API_BASE}/submit-assignment`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+    studentId: currentStudentId,
+    assignmentId: assignmentId,
+    questionColumn: questionColumn,
+    answer: answer,
+    mode: 'single'
+    })
+    });
+
+    const result = await response.json();
+    if (result.success) {
+    showSaveSuccess(saveBtn, statusEl, originalText, wasListenersActive);
+    } else {
+    throw new Error(result.message);
+    }
+    }
+    } catch (error) {
+    console.error('질문 저장 실패:', error);
+    alert(`저장 실패: ${error.message}`);
+    if (examModeActive && wasListenersActive) setTimeout(() => { examModeListenersActive = true; }, 300);
+    } finally {
+    saveBtn.disabled = false;
+    if (saveBtn.textContent === '저장 중...') saveBtn.textContent = originalText;
+    }
+    }
+
+    function showSaveSuccess(saveBtn, statusEl, originalText, wasListenersActive) {
+    saveBtn.classList.add('saved');
+    saveBtn.textContent = ' 저장완료';
+    statusEl.classList.add('show');
+
+    setTimeout(() => {
+    saveBtn.classList.remove('saved');
+    saveBtn.textContent = originalText;
+    if (examModeActive && wasListenersActive) {
+    setTimeout(() => { examModeListenersActive = true; }, 300);
+    }
+    }, 2000);
+    }
+
+    async function submitAssignment() {
+    const wasListenersActive = examModeListenersActive;
+    if (examModeActive) {
+    examModeListenersActive = false;
+    }
+
+    const form = document.getElementById('assignmentSubmitForm');
+    const assignmentId = form.dataset.assignmentId;
+    const answers = {};
+    const questions = [];
+    form.querySelectorAll('textarea').forEach(ta => { answers[ta.name] = ta.value; questions.push({ column: ta.name });
+    });
+    const submitBtn = document.querySelector('#submitModal .submit-btn');
+    submitBtn.disabled = true; submitBtn.textContent = '제출 중...';
+    try {
+    const response = await fetch(`${API_BASE}/submit-assignment`, { method: 'POST', headers: { 'Content-Type':
+    'application/json' }, body: JSON.stringify({ studentId: currentStudentId, assignmentId, answers }) });
+    const result = await response.json();
+    if (result.success) {
+    clearDraft(assignmentId, currentStudentId, questions);
+    if (examModeActive) {
+    disableExamMode();
+    examModeListenersActive = false;
+    alert('과제가 성공적으로 제출되었습니다.\n시험 모드가 해제되었습니다.');
+    } else {
+    alert('과제가 성공적으로 제출되었습니다.');
+    }
+    hideSubmitModal();
+    loadAssignments();
+    } else {
+    if (examModeActive) {
+    examModeListenersActive = false;
+    }
+    alert(`제출 실패: ${result.message}`);
+    if (examModeActive && wasListenersActive) {
+    setTimeout(() => {
+    examModeListenersActive = true;
+    }, 300);
+    }
+    }
+    } catch (error) {
+    if (examModeActive) {
+    examModeListenersActive = false;
+    }
+    alert('제출 중 오류가 발생했습니다.');
+    if (examModeActive && wasListenersActive) {
+    setTimeout(() => {
+    examModeListenersActive = true;
+    }, 300);
+    }
+    } finally { submitBtn.disabled = false; submitBtn.textContent = '제출하기'; }
+    }
+
+    function saveSuggestion(sheetName, textareaId) {
+    const textarea = document.getElementById(textareaId);
+    if (!textarea) {
+    console.error('textarea를 찾을 수 없습니다:', textareaId);
+    return;
+    }
+    const suggestion = textarea.value;
+    const saveBtn = textarea.nextElementSibling;
+    if (!saveBtn) {
+    console.error('저장 버튼을 찾을 수 없습니다.');
+    return;
+    }
+    const originalText = saveBtn.textContent;
+    saveBtn.disabled = true; saveBtn.textContent = '저장 중...';
+    fetch(`${API_BASE}/my-records`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body:
+    JSON.stringify({ studentId: currentStudentId, sheetName, suggestion }) })
+    .then(res => res.json()).then(result => {
+    if (result.success) {
+    saveBtn.style.backgroundColor = '#22c55e'; saveBtn.textContent = '저장됨';
+    setTimeout(() => { saveBtn.style.backgroundColor = ''; saveBtn.textContent = originalText; saveBtn.disabled = false;
+    }, 3000);
+    } else { alert('저장 실패: ' + result.message); saveBtn.disabled = false; saveBtn.textContent = originalText; }
+    }).catch(error => { console.error('건의사항 저장 실패:', error); alert('건의사항 저장 중 오류가 발생했습니다.'); saveBtn.disabled = false;
+    saveBtn.textContent = originalText; });
+    }
+
+    async function handlePasswordChange(event) {
+    event.preventDefault();
+    const currentPassword = document.getElementById('currentPassword').value;
+    const newPassword = document.getElementById('newPassword').value;
+    const confirmPassword = document.getElementById('confirmPassword').value;
+    if (newPassword !== confirmPassword) { showMessage('passwordChangeMessage', '새 비밀번호가 일치하지 않습니다.', 'error'); return;
+    }
+    if (newPassword.length < 4) { showMessage('passwordChangeMessage', '새 비밀번호는 4자 이상이어야 합니다.' , 'error' ); return; }
+        const changeBtn=event.target.querySelector('button[type="submit" ]'); changeBtn.disabled=true;
+        changeBtn.textContent='변경 중...' ; showMessage('passwordChangeMessage', '비밀번호를 변경하고 있습니다...' , 'info' ); try {
+        const response=await fetch(`${API_BASE}/change-password`, { method: 'POST' , headers: { 'Content-Type'
+        : 'application/json' }, body: JSON.stringify({ studentId: currentStudentId, currentPassword, newPassword }) });
+        const result=await response.json(); if (result.success) {
+        showMessage('passwordChangeMessage', '비밀번호가 성공적으로 변경되었습니다. 3초 후 메뉴로 돌아갑니다.' , 'success' ); setTimeout(()=> {
+        document.getElementById('passwordChangeForm').reset();
+        showMenu();
+        }, 3000);
+        } else { showMessage('passwordChangeMessage', result.message, 'error'); changeBtn.disabled = false;
+        changeBtn.textContent = '변경하기'; }
+        } catch (error) { showMessage('passwordChangeMessage', '서버에 연결할 수 없습니다.', 'error'); changeBtn.disabled = false;
+        changeBtn.textContent = '변경하기'; }
         }
 
-        async function handleLogin(event) {
-            event.preventDefault();
-            const studentId = document.getElementById('studentId').value.trim();
-            const password = document.getElementById('password').value.trim();
-            if (!/^[0-9]{5}$/.test(studentId)) {
-                showMessage('loginMessage', '학번은 5자리 숫자여야 합니다.', 'error'); return;
-            }
-            const loginBtn = event.target.querySelector('button[type="submit"]');
-            loginBtn.disabled = true; loginBtn.textContent = '로그인 중...';
-            try {
-                const response = await fetch(`${API_BASE}/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ studentId, password }) });
-                const result = await response.json();
-                if (result.success) {
-                    currentStudentId = result.studentId; currentStudentName = result.name;
-                    showMenu();
-                } else { showMessage('loginMessage', result.message, 'error'); }
-            } catch (error) {
-                showMessage('loginMessage', '서버에 연결할 수 없습니다.', 'error');
-            } finally { loginBtn.disabled = false; loginBtn.textContent = '로그인'; }
-        }
-
-        function logout() {
-            currentStudentId = ''; currentStudentName = ''; document.getElementById('loginForm').reset();
-            hideMessage('loginMessage');
-            document.getElementById('loginScreen').classList.remove('hidden');
-            document.getElementById('menuScreen').classList.add('hidden');
-            document.getElementById('passwordChangeScreen').classList.add('hidden');
-        }
-
-        function showMenu() {
-            document.getElementById('studentName').textContent = currentStudentName;
-            document.getElementById('studentIdDisplay').textContent = currentStudentId;
-            document.getElementById('loginScreen').classList.add('hidden');
-            document.getElementById('menuScreen').classList.remove('hidden');
-            document.getElementById('passwordChangeScreen').classList.add('hidden');
-            loadAllData();
-        }
-
-        function showPasswordChangeScreen() {
-            document.getElementById('menuScreen').classList.add('hidden');
-            document.getElementById('passwordChangeScreen').classList.remove('hidden');
-            document.getElementById('passwordChangeForm').reset();
-            hideMessage('passwordChangeMessage');
-        }
-
-        function loadAllData() { loadAssignments(); loadMyRecords(); }
-        async function loadAssignments() {
-            const listEl = document.getElementById('assignmentsList');
-            listEl.innerHTML = '<div class="loading-message">과제 목록을 불러오는 중...</div>';
-            try {
-                const response = await fetch(`${API_BASE}/assignments?studentId=${currentStudentId}`);
-                const result = await response.json();
-                if (result.success) {
-                    displayAssignments(result.assignments || []);
-                } else { listEl.innerHTML = `<div class="empty-message">${result.message}</div>`; }
-            } catch (error) { listEl.innerHTML = '<div class="empty-message">과제 목록을 불러오지 못했습니다.</div>'; }
-        }
-
-        function displayAssignments(assignments) {
-            const listEl = document.getElementById('assignmentsList');
-            if (assignments.length === 0) {
-                listEl.innerHTML = '<div class="empty-message">진행 중인 과제가 없습니다.</div>'; return;
-            }
-            listEl.innerHTML = assignments.map(assignment => {
-                const isSubmitted = assignment.submitted;
-                const allowResubmit = assignment.resubmissionAllowed;
-                const isLocked = isSubmitted && !allowResubmit;
-                const cardClass = isLocked ? 'assignment-card-disabled' : 'assignment-card';
-                const badge = isLocked ? '<span class="submission-badge">제출완료</span>' : '';
-                const dueDateText = assignment.dueDate || '기한 없음';
-
-                return `
-                <div class="${cardClass}" data-assignment-id="${escapeHTML(assignment.id)}" data-assignment-name="${escapeHTML(assignment.name)}" data-is-locked="${isLocked}">
-                    <h4>${escapeHTML(assignment.name)}${badge}</h4>
-                    <div class="assignment-meta"><span>마감: ${dueDateText}</span></div>
-                </div>
-            `;
-            }).join('');
-
-            listEl.querySelectorAll('.assignment-card').forEach(card => {
-                const isLocked = card.dataset.isLocked === 'true';
-                if (!isLocked) {
-                    card.addEventListener('click', () => {
-                        showSubmitModal(card.dataset.assignmentId, card.dataset.assignmentName);
-                    });
-                }
-            });
-        }
-
-        async function showSubmitModal(assignmentId, assignmentName) {
-            const modal = document.getElementById('submitModal');
-            const titleEl = document.getElementById('submitModalTitle');
-            const questionsContainer = document.getElementById('questionsContainer');
-            const form = document.getElementById('assignmentSubmitForm');
-
-            if (titleEl) titleEl.textContent = `${assignmentName} 제출`;
-            if (!questionsContainer) {
-                console.error('questionsContainer not found');
-                return;
-            }
-
-            questionsContainer.innerHTML = '<div class="loading-message">과제 정보를 불러오는 중...</div>';
-            form.dataset.assignmentId = assignmentId;
-            modal.classList.remove('hidden');
-
-            try {
-                const response = await fetch(`${API_BASE}/assignment-detail?assignmentId=${encodeURIComponent(assignmentId)}&studentId=${encodeURIComponent(currentStudentId)}`);
-
-                if (!response.ok) {
-                    const text = await response.text();
-                    throw new Error(`Server Error: ${response.status} ${text}`);
-                }
-
-                const result = await response.json();
-
-                if (!result.success) {
-                    questionsContainer.innerHTML = `<div class="empty-message">${result.message}</div>`;
-                    return;
-                }
-
-                // 시험 모드 설정
-                if (result.examMode) {
-                    examModeMaxViolations = result.maxViolations || 3;
-                    examModeForceFullscreen = result.forceFullscreen || false;
-                    examModeAssignmentId = assignmentId;
-                    examModeAssignmentName = assignmentName;
-
-                    const startExam = confirm(`이 과제는 '시험 모드'가 적용됩니다.\n\n - 화면 이탈 시 경고가 발생하며, ${examModeMaxViolations}회 위반 시 자동 제출됩니다.\n - 복사/붙여넣기가 금지됩니다.\n\n시작하시겠습니까?`);
-
-                    if (startExam) {
-                        enableExamMode();
-                    } else {
-                        hideSubmitModal();
-                        return;
-                    }
-                }
-
-                questionsContainer.innerHTML = '';
-                console.log('Exam Mode:', result.examMode);
-                console.log('Separate Solution:', result.separateSolution);
-                console.log('Has Split Columns:', result.hasSplitColumns);
-                // ★★★ 핵심 변경점: 시험모드와 무관하게 '풀이분리' 설정과 실제 컬럼 존재 여부만 확인 ★★★
-                const useSplitFields = result.separateSolution && result.hasSplitColumns;
-
-                result.questions.forEach((q, index) => {
-                    const questionDiv = document.createElement('div');
-                    questionDiv.className = 'question-card';
-
-                    let inputHtml = '';
-                    if (useSplitFields) {
-                        // 분리된 필드 (풀이/정답)
-                        const savedSolution = loadDraft(assignmentId, currentStudentId, q.column + '_풀이');
-                        const savedAnswer = loadDraft(assignmentId, currentStudentId, q.column + '_답');
-
-                        inputHtml = `
-                            <div class="split-fields-container">
-                                <div class="field-group">
-                                    <label class="field-label">풀이 과정</label>
-                                    <div class="input-wrapper">
-                                        <textarea name="${q.column}_풀이" id="solution_${index}" class="edit-mode large-input" placeholder="풀이 과정을 입력하세요...">${savedSolution}</textarea>
-                                        <div id="preview_solution_${index}" class="math-preview-mode large-preview empty">답변을 입력하려면 여기를 클릭하세요...</div>
-                                        <button type="button" class="btn-math-editor" onclick="openMathEditor('solution_${index}')">Math Editor</button>
-                                    </div>
-                                </div>
-                                <div class="field-group">
-                                    <label class="field-label">정답</label>
-                                    <div class="input-wrapper">
-                                        <textarea name="${q.column}_답" id="answer_${index}" class="edit-mode short-input" placeholder="정답을 입력하세요...">${savedAnswer}</textarea>
-                                        <div id="preview_answer_${index}" class="math-preview-mode short-preview empty">답변을 입력하려면 여기를 클릭하세요...</div>
-                                        <button type="button" class="btn-math-editor" onclick="openMathEditor('answer_${index}')">Math Editor</button>
-                                    </div>
-                                </div>
-                            </div>`;
-                    } else {
-                        // 단일 필드
-                        const savedValue = loadDraft(assignmentId, currentStudentId, q.column);
-                        inputHtml = `
-                            <div class="input-wrapper">
-                                <textarea name="${q.column}" id="answer_${index}" class="edit-mode large-input" placeholder="답변을 입력하세요...">${savedValue}</textarea>
-                                <div id="preview_answer_${index}" class="math-preview-mode large-preview empty">답변을 입력하려면 여기를 클릭하세요...</div>
-                                <button type="button" class="btn-math-editor" onclick="openMathEditor('answer_${index}')">Math Editor</button>
-                            </div>`;
-                    }
-
-                    questionDiv.innerHTML = `
-                        <div class="question-header">
-                            <h4>문제 ${index + 1}</h4>
-                            <div class="question-actions">
-                                <button type="button" id="save-${index}" class="btn-save-question" onclick="saveQuestion(${index}, '${q.column}')">
-                                     저장
-                                </button>
-                                <span id="status-${index}" class="save-status">✓ 저장됨</span>
-                            </div>
-                        </div>
-                        <div class="question-content">${q.question}</div>
-                        ${inputHtml}
-                    `;
-                    questionsContainer.appendChild(questionDiv);
-
-                    // 이벤트 리스너 추가
-                    if (useSplitFields) {
-                        const solTa = document.getElementById(`solution_${index}`);
-                        const solPrev = document.getElementById(`preview_solution_${index}`);
-                        solTa.addEventListener('blur', () => {
-                            saveDraft(assignmentId, currentStudentId, q.column + '_풀이', solTa.value);
-                            switchToPreviewMode(`solution_${index}`, `preview_solution_${index}`);
-                        });
-                        solPrev.addEventListener('click', () => switchToEditMode(`solution_${index}`, `preview_solution_${index}`));
-
-                        const ansTa = document.getElementById(`answer_${index}`);
-                        const ansPrev = document.getElementById(`preview_answer_${index}`);
-                        ansTa.addEventListener('blur', () => {
-                            saveDraft(assignmentId, currentStudentId, q.column + '_답', ansTa.value);
-                            switchToPreviewMode(`answer_${index}`, `preview_answer_${index}`);
-                        });
-                        ansPrev.addEventListener('click', () => switchToEditMode(`answer_${index}`, `preview_answer_${index}`));
-
-                        if (solTa.value.trim()) switchToPreviewMode(`solution_${index}`, `preview_solution_${index}`);
-                        if (ansTa.value.trim()) switchToPreviewMode(`answer_${index}`, `preview_answer_${index}`);
-                    } else {
-                        const textarea = document.getElementById(`answer_${index}`);
-                        const preview = document.getElementById(`preview_answer_${index}`);
-                        textarea.addEventListener('blur', () => {
-                            saveDraft(assignmentId, currentStudentId, q.column, textarea.value);
-                            switchToPreviewMode(`answer_${index}`, `preview_answer_${index}`);
-                        });
-                        preview.addEventListener('click', () => switchToEditMode(`answer_${index}`, `preview_answer_${index}`));
-                        if (textarea.value.trim()) switchToPreviewMode(`answer_${index}`, `preview_answer_${index}`);
-                    }
-
-                    if (result.examMode) {
-                        const textareas = questionDiv.querySelectorAll('textarea');
-                        textareas.forEach(ta => preventCopyPaste(ta));
-                    }
-                });
-
-                typesetMath(questionsContainer);
-
-            } catch (error) {
-                console.error('과제 상세 조회 실패:', error);
-                questionsContainer.innerHTML = `<div class="empty-message">과제 정보를 불러오는 중 오류가 발생했습니다.<br><small>${error.message}</small></div>`;
-            }
-        }
-
-        async function loadMyRecords() {
-            const recordsEl = document.getElementById('myRecordsList');
-            const notificationsEl = document.getElementById('myNotificationsList');
-            recordsEl.innerHTML = '<div class="loading-message">기록을 불러오는 중...</div>';
-            notificationsEl.innerHTML = '<div class="loading-message">알림을 불러오는 중...</div>';
-            try {
-                const response = await fetch(`${API_BASE}/my-records?studentId=${currentStudentId}`);
-                const result = await response.json();
-                if (!result.success) throw new Error(result.message);
-                const allRecords = result.records || [];
-                const comments = allRecords.filter(r => r.type === 'comment');
-                const notifications = allRecords.filter(r => r.type === 'notification');
-                displayRecordGroups(recordsEl, groupRecords(comments), 'comment');
-                displayRecordGroups(notificationsEl, groupRecords(notifications), 'notification');
-            } catch (error) {
-                recordsEl.innerHTML = `<div class="empty-message">기록 조회 실패: ${error.message}</div>`;
-                notificationsEl.innerHTML = `<div class="empty-message">알림 조회 실패: ${error.message}</div>`;
-            }
-        }
-
-        function groupRecords(records) {
-            return records.reduce((acc, record) => {
-                if (!acc[record.sheetName]) acc[record.sheetName] = [];
-                acc[record.sheetName].push(record); return acc;
-            }, {});
-        }
-
-        function displayRecordGroups(element, groupedRecords, type) {
-            const groups = Object.entries(groupedRecords);
-            if (groups.length === 0) {
-                const message = type === 'comment' ? "공개된 교사 코멘트가 없습니다." : "새로운 알림이 없습니다.";
-                element.innerHTML = `<div class="empty-message">${message}</div>`; return;
-            }
-            element.innerHTML = groups.map(([sheetName, records]) => {
-                return `<div class="assignment-card" data-sheet-name="${escapeHTML(sheetName)}" data-record-type="${type}">
-                    <h4>${escapeHTML(sheetName)}</h4>
-                    <div class="assignment-meta"><span>총 ${records.length}개의 항목 보기</span></div>
-                </div>`;
-            }).join('');
-
-            element.querySelectorAll('.assignment-card').forEach((card, index) => {
-                card.addEventListener('click', () => {
-                    showRecordsModal({
-                        sheetName: groups[index][0],
-                        records: groups[index][1],
-                        type: card.dataset.recordType
-                    });
-                });
-            });
-        }
-
-        function typesetMath(element) {
-            setTimeout(() => {
-                if (window.MathJax && window.MathJax.typesetPromise) {
-                    window.MathJax.typesetPromise([element]).catch(err => console.error('MathJax 렌더링 오류:', err));
-                }
-            }, 0);
-        }
-
-        function showRecordsModal(group) {
-            const modal = document.getElementById('recordsModal');
-            const titleEl = document.getElementById('recordsModalTitle');
-            const bodyEl = document.getElementById('recordsModalBody');
-            const title = group.type === 'comment' ? `${group.sheetName} (교사 코멘트)` : `${group.sheetName} (알림)`;
-            titleEl.textContent = title;
-
-            let bodyHtml = group.records.map((record, index) => {
-                return `<div class="record-card ${record.read ? 'read' : ''}">
-                    <div class="data-row">
-                        <div class="data-label">${escapeHTML(record.label)}:</div>
-                        <div class="data-value">${escapeHTML(record.value)}</div>
-                    </div>
-                </div>`;
-            }).join('');
-
-            const needsSuggestion = group.records.some(r => r.hasSuggestion);
-
-            if (needsSuggestion) {
-                const existingSuggestion = group.records.find(r => r.suggestion)?.suggestion || '';
-                const suggestionId = `modal-suggestion-${group.sheetName}`;
-
-                bodyHtml += `<div class="suggestion-box">
-                    <strong>${group.sheetName} 건의사항:</strong>
-                    <div>
-                        <textarea id="${suggestionId}" class="suggestion-input" rows="3" placeholder="이 과제에 대한 건의사항을 입력하세요...">${existingSuggestion}</textarea>
-                        <button class="btn btn-primary" style="width:auto; padding: 8px 16px; margin-top: 8px;" data-sheet-name="${group.sheetName}" data-suggestion-id="${suggestionId}">저장</button>
-                    </div>
-                </div>`;
-            }
-
-            bodyEl.innerHTML = bodyHtml;
-
-            bodyEl.querySelectorAll('button[data-suggestion-id]').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    saveSuggestion(btn.dataset.sheetName, btn.dataset.suggestionId);
-                });
-            });
-
-            modal.classList.remove('hidden');
-        }
-
-        function switchToPreviewMode(textareaId, previewId) {
-            const textarea = document.getElementById(textareaId);
-            const preview = document.getElementById(previewId);
-            const val = textarea.value;
-
-            textarea.classList.remove('edit-mode');
-            textarea.classList.add('hidden-mode');
-            preview.classList.add('active');
-
-            if (val && val.trim().length > 0) {
-                preview.textContent = val;
-                preview.classList.remove('empty');
-                typesetMath(preview);
-            } else {
-                preview.textContent = '답변을 입력하려면 여기를 클릭하세요...';
-                preview.classList.add('empty');
-            }
-        }
-
-        function switchToEditMode(textareaId, previewId) {
-            const textarea = document.getElementById(textareaId);
-            const preview = document.getElementById(previewId);
-
-            preview.classList.remove('active');
-            textarea.classList.remove('hidden-mode');
-            textarea.classList.add('edit-mode');
-
-            textarea.focus();
-        }
-
-        function hideSubmitModal() {
-            if (examModeActive) {
-                examModeListenersActive = false;
-                const shouldClose = confirm('시험 모드가 활성화되어 있습니다. 정말로 종료하시겠습니까?\n\n주의: 제출하지 않고 종료하면 답안이 저장되지 않을 수 있습니다.');
-
-                if (!shouldClose) {
-                    setTimeout(() => {
-                        examModeListenersActive = true;
-                    }, 500);
-                    return;
-                }
-                disableExamMode();
-            }
-            document.getElementById('submitModal').classList.add('hidden');
-        }
-
-        async function saveQuestion(index, questionColumn) {
-            const form = document.getElementById('assignmentSubmitForm');
-            const assignmentId = form.dataset.assignmentId;
-            const saveButtonId = `save-${index}`;
-            const statusId = `status-${index}`;
-            const saveBtn = document.getElementById(saveButtonId);
-            const statusEl = document.getElementById(statusId);
-
-            if (!saveBtn) return;
-
-            const originalText = saveBtn.textContent;
-            saveBtn.disabled = true;
-            saveBtn.textContent = '저장 중...';
-            statusEl.classList.remove('show');
-
-            const wasListenersActive = examModeListenersActive;
-            if (examModeActive) examModeListenersActive = false;
-
-            try {
-                const solutionTa = document.getElementById(`solution_${index}`);
-                const answerTa = document.getElementById(`answer_${index}`);
-
-                // Split Mode
-                if (solutionTa && answerTa) {
-                    const solution = solutionTa.value;
-                    const answer = answerTa.value;
-
-                    // Save Solution
-                    const res1 = await fetch(`${API_BASE}/submit-assignment`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            studentId: currentStudentId,
-                            assignmentId: assignmentId,
-                            questionColumn: questionColumn + '_풀이',
-                            answer: solution,
-                            mode: 'single'
-                        })
-                    });
-
-                    // Save Answer
-                    const res2 = await fetch(`${API_BASE}/submit-assignment`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            studentId: currentStudentId,
-                            assignmentId: assignmentId,
-                            questionColumn: questionColumn + '_답',
-                            answer: answer,
-                            mode: 'single'
-                        })
-                    });
-
-                    const result1 = await res1.json();
-                    const result2 = await res2.json();
-
-                    if (result1.success && result2.success) {
-                        showSaveSuccess(saveBtn, statusEl, originalText, wasListenersActive);
-                    } else {
-                        throw new Error(result1.message || result2.message);
-                    }
-                }
-                // Single Mode
-                else {
-                    const textarea = document.getElementById(`answer_${index}`);
-                    const answer = textarea.value;
-
-                    const response = await fetch(`${API_BASE}/submit-assignment`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            studentId: currentStudentId,
-                            assignmentId: assignmentId,
-                            questionColumn: questionColumn,
-                            answer: answer,
-                            mode: 'single'
-                        })
-                    });
-
-                    const result = await response.json();
-                    if (result.success) {
-                        showSaveSuccess(saveBtn, statusEl, originalText, wasListenersActive);
-                    } else {
-                        throw new Error(result.message);
-                    }
-                }
-            } catch (error) {
-                console.error('질문 저장 실패:', error);
-                alert(`저장 실패: ${error.message}`);
-                if (examModeActive && wasListenersActive) setTimeout(() => { examModeListenersActive = true; }, 300);
-            } finally {
-                saveBtn.disabled = false;
-                if (saveBtn.textContent === '저장 중...') saveBtn.textContent = originalText;
-            }
-        }
-
-        function showSaveSuccess(saveBtn, statusEl, originalText, wasListenersActive) {
-            saveBtn.classList.add('saved');
-            saveBtn.textContent = ' 저장완료';
-            statusEl.classList.add('show');
-
-            setTimeout(() => {
-                saveBtn.classList.remove('saved');
-                saveBtn.textContent = originalText;
-                if (examModeActive && wasListenersActive) {
-                    setTimeout(() => { examModeListenersActive = true; }, 300);
-                }
-            }, 2000);
-        }
-
-        async function submitAssignment() {
-            const wasListenersActive = examModeListenersActive;
-            if (examModeActive) {
-                examModeListenersActive = false;
-            }
-
-            const form = document.getElementById('assignmentSubmitForm');
-            const assignmentId = form.dataset.assignmentId;
-            const answers = {};
-            const questions = [];
-            form.querySelectorAll('textarea').forEach(ta => { answers[ta.name] = ta.value; questions.push({ column: ta.name }); });
-            const submitBtn = document.querySelector('#submitModal .submit-btn');
-            submitBtn.disabled = true; submitBtn.textContent = '제출 중...';
-            try {
-                const response = await fetch(`${API_BASE}/submit-assignment`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ studentId: currentStudentId, assignmentId, answers }) });
-                const result = await response.json();
-                if (result.success) {
-                    clearDraft(assignmentId, currentStudentId, questions);
-                    if (examModeActive) {
-                        disableExamMode();
-                        examModeListenersActive = false;
-                        alert('과제가 성공적으로 제출되었습니다.\n시험 모드가 해제되었습니다.');
-                    } else {
-                        alert('과제가 성공적으로 제출되었습니다.');
-                    }
-                    hideSubmitModal();
-                    loadAssignments();
-                } else {
-                    if (examModeActive) {
-                        examModeListenersActive = false;
-                    }
-                    alert(`제출 실패: ${result.message}`);
-                    if (examModeActive && wasListenersActive) {
-                        setTimeout(() => {
-                            examModeListenersActive = true;
-                        }, 300);
-                    }
-                }
-            } catch (error) {
-                if (examModeActive) {
-                    examModeListenersActive = false;
-                }
-                alert('제출 중 오류가 발생했습니다.');
-                if (examModeActive && wasListenersActive) {
-                    setTimeout(() => {
-                        examModeListenersActive = true;
-                    }, 300);
-                }
-            } finally { submitBtn.disabled = false; submitBtn.textContent = '제출하기'; }
-        }
-
-        function saveSuggestion(sheetName, textareaId) {
-            const textarea = document.getElementById(textareaId);
-            if (!textarea) {
-                console.error('textarea를 찾을 수 없습니다:', textareaId);
-                return;
-            }
-            const suggestion = textarea.value;
-            const saveBtn = textarea.nextElementSibling;
-            if (!saveBtn) {
-                console.error('저장 버튼을 찾을 수 없습니다.');
-                return;
-            }
-            const originalText = saveBtn.textContent;
-            saveBtn.disabled = true; saveBtn.textContent = '저장 중...';
-            fetch(`${API_BASE}/my-records`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ studentId: currentStudentId, sheetName, suggestion }) })
-                .then(res => res.json()).then(result => {
-                    if (result.success) {
-                        saveBtn.style.backgroundColor = '#22c55e'; saveBtn.textContent = '저장됨';
-                        setTimeout(() => { saveBtn.style.backgroundColor = ''; saveBtn.textContent = originalText; saveBtn.disabled = false; }, 3000);
-                    } else { alert('저장 실패: ' + result.message); saveBtn.disabled = false; saveBtn.textContent = originalText; }
-                }).catch(error => { console.error('건의사항 저장 실패:', error); alert('건의사항 저장 중 오류가 발생했습니다.'); saveBtn.disabled = false; saveBtn.textContent = originalText; });
-        }
-
-        async function handlePasswordChange(event) {
-            event.preventDefault();
-            const currentPassword = document.getElementById('currentPassword').value;
-            const newPassword = document.getElementById('newPassword').value;
-            const confirmPassword = document.getElementById('confirmPassword').value;
-            if (newPassword !== confirmPassword) { showMessage('passwordChangeMessage', '새 비밀번호가 일치하지 않습니다.', 'error'); return; }
-            if (newPassword.length < 4) { showMessage('passwordChangeMessage', '새 비밀번호는 4자 이상이어야 합니다.', 'error'); return; }
-            const changeBtn = event.target.querySelector('button[type="submit"]');
-            changeBtn.disabled = true; changeBtn.textContent = '변경 중...';
-            showMessage('passwordChangeMessage', '비밀번호를 변경하고 있습니다...', 'info');
-            try {
-                const response = await fetch(`${API_BASE}/change-password`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ studentId: currentStudentId, currentPassword, newPassword }) });
-                const result = await response.json();
-                if (result.success) {
-                    showMessage('passwordChangeMessage', '비밀번호가 성공적으로 변경되었습니다. 3초 후 메뉴로 돌아갑니다.', 'success');
-                    setTimeout(() => {
-                        document.getElementById('passwordChangeForm').reset();
-                        showMenu();
-                    }, 3000);
-                } else { showMessage('passwordChangeMessage', result.message, 'error'); changeBtn.disabled = false; changeBtn.textContent = '변경하기'; }
-            } catch (error) { showMessage('passwordChangeMessage', '서버에 연결할 수 없습니다.', 'error'); changeBtn.disabled = false; changeBtn.textContent = '변경하기'; }
-        }
-
-        function showMessage(elementId, message, type) { const el = document.getElementById(elementId); el.textContent = message; el.className = `message ${type} show`; }
+        function showMessage(elementId, message, type) { const el = document.getElementById(elementId); el.textContent =
+        message; el.className = `message ${type} show`; }
         function hideMessage(elementId) { const el = document.getElementById(elementId); el.className = 'message'; }
-        function escapeHTML(str) { if (str === null || str === undefined) return ''; return str.toString().replace(/[&<>"']/g, match => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[match])); }
+        function escapeHTML(str) { if (str === null || str === undefined) return ''; return str.toString().replace(/[&<>
+            "']/g, match => ({ '&': '&amp;', '<': '&lt;' , '>' : '&gt;' , '"' : '&quot;' , "'" : '&#39;' }[match])); }
+                function saveDraft(assignmentId, studentId, questionColumn, value) { try {
+                localStorage.setItem(`draft-${assignmentId}-${studentId}-${questionColumn}`, value); } catch (e) {
+                console.error("임시 저장 실패:", e); } } function loadDraft(assignmentId, studentId, questionColumn) { try {
+                return localStorage.getItem(`draft-${assignmentId}-${studentId}-${questionColumn}`) || '' ; } catch (e)
+                { console.error("임시 저장 불러오기 실패:", e); return '' ; } } function clearDraft(assignmentId, studentId,
+                questions) { try { questions.forEach(q=> {
+                localStorage.removeItem(`draft-${assignmentId}-${studentId}-${q.column}`); }); } catch (e) {
+                console.error("임시 저장 삭제 실패:", e); }
+                }
 
-        function saveDraft(assignmentId, studentId, questionColumn, value) {
-            try { localStorage.setItem(`draft-${assignmentId}-${studentId}-${questionColumn}`, value); } catch (e) { console.error("임시 저장 실패:", e); }
-        }
-
-        function loadDraft(assignmentId, studentId, questionColumn) {
-            try { return localStorage.getItem(`draft-${assignmentId}-${studentId}-${questionColumn}`) || ''; } catch (e) { console.error("임시 저장 불러오기 실패:", e); return ''; }
-        }
-        function clearDraft(assignmentId, studentId, questions) {
-            try { questions.forEach(q => { localStorage.removeItem(`draft-${assignmentId}-${studentId}-${q.column}`); }); } catch (e) { console.error("임시 저장 삭제 실패:", e); }
-        }
-
-        function openMathEditor(textareaId) {
-            const textarea = document.getElementById(textareaId);
-            if (!textarea) {
+                function openMathEditor(textareaId) {
+                const textarea = document.getElementById(textareaId);
+                if (!textarea) {
                 console.error('textarea를 찾을 수 없습니다:', textareaId);
                 return;
-            }
+                }
 
-            activeTextareaId = textareaId;
-            savedCursorPosition = {
+                activeTextareaId = textareaId;
+                savedCursorPosition = {
                 start: textarea.selectionStart,
                 end: textarea.selectionEnd
-            };
+                };
 
-            const modal = document.getElementById('mathModal');
-            modal.classList.remove('hidden');
+                const modal = document.getElementById('mathModal');
+                modal.classList.remove('hidden');
 
-            const paletteContainer = document.getElementById('mathPaletteContainer');
-            if (paletteContainer.children.length === 0) {
+                const paletteContainer = document.getElementById('mathPaletteContainer');
+                if (paletteContainer.children.length === 0) {
                 populateMathPalette();
-            }
+                }
 
-            document.getElementById('mathInput').value = '';
-            document.getElementById('mathPreview').innerHTML = '<span style="color: #9ca3af;">수식 미리보기</span>';
-        }
+                document.getElementById('mathInput').value = '';
+                document.getElementById('mathPreview').innerHTML = '<span style="color: #9ca3af;">수식 미리보기</span>';
+                }
 
-        function closeMathEditor() {
-            document.getElementById('mathModal').classList.add('hidden');
-            activeTextareaId = null;
-            savedCursorPosition = { start: 0, end: 0 };
-        }
+                function closeMathEditor() {
+                document.getElementById('mathModal').classList.add('hidden');
+                activeTextareaId = null;
+                savedCursorPosition = { start: 0, end: 0 };
+                }
 
 
-        function populateMathPalette() {
-            const mathSymbols = [
+                function populateMathPalette() {
+                const mathSymbols = [
                 { display: 'x', code: 'x^2 ', offset: 3 }, { display: 'xⁿ', code: 'x^{}', offset: 2 },
                 { display: 'x', code: 'x_{}', offset: 2 }, { display: 'a', code: '\\sqrt{} ', offset: 6 },
-                { display: 'ⁿa', code: '\\sqrt[]{} ', offset: 7 }, { display: '', code: '\\sum_{k=1}^{n} ', offset: 14 },
+                { display: 'ⁿa', code: '\\sqrt[]{} ', offset: 7 }, { display: '', code: '\\sum_{k=1}^{n} ', offset: 14
+                },
                 { display: '', code: '\\int_{a}^{b} ', offset: 11 }, { display: 'a/b', code: '\\frac{}{} ', offset: 6 },
                 { display: 'α', code: '\\alpha ' }, { display: 'β', code: '\\beta ' }, { display: 'π', code: '\\pi ' },
                 { display: 'θ', code: '\\theta ' }, { display: '', code: '\\infty ' }, { display: '', code: '\\neq ' },
                 { display: '', code: '\\leq ' }, { display: '', code: '\\geq ' }, { display: '', code: '\\pm ' },
-            ];
+                ];
 
-            const paletteContainer = document.getElementById('mathPaletteContainer');
-            paletteContainer.innerHTML = mathSymbols.map(s => {
+                const paletteContainer = document.getElementById('mathPaletteContainer');
+                paletteContainer.innerHTML = mathSymbols.map(s => {
                 const content = s.display ? s.display : `$$${s.code}$$`;
-                return `<button type="button" title="${s.display || s.code}" data-symbol='${JSON.stringify(s)}'>${content}</button>`;
-            }).join('');
+                return `<button type="button" title="${s.display || s.code}"
+                    data-symbol='${JSON.stringify(s)}'>${content}</button>`;
+                }).join('');
 
-            typesetMath(paletteContainer);
+                typesetMath(paletteContainer);
 
-            paletteContainer.querySelectorAll('button').forEach(btn => {
+                paletteContainer.querySelectorAll('button').forEach(btn => {
                 btn.addEventListener('click', () => {
-                    const symbol = JSON.parse(btn.dataset.symbol);
-                    insertMathSymbol(symbol);
+                const symbol = JSON.parse(btn.dataset.symbol);
+                insertMathSymbol(symbol);
                 });
-            });
-        }
+                });
+                }
 
-        function insertMathSymbol(symbol) {
-            const textarea = document.getElementById('mathInput');
-            const start = textarea.selectionStart;
-            const end = textarea.selectionEnd;
-            const text = textarea.value;
-            const textToInsert = symbol.code;
-            const cursorOffset = symbol.offset !== undefined ? symbol.offset : textToInsert.length;
+                function insertMathSymbol(symbol) {
+                const textarea = document.getElementById('mathInput');
+                const start = textarea.selectionStart;
+                const end = textarea.selectionEnd;
+                const text = textarea.value;
+                const textToInsert = symbol.code;
+                const cursorOffset = symbol.offset !== undefined ? symbol.offset : textToInsert.length;
 
-            textarea.value = text.substring(0, start) + textToInsert + text.substring(end);
-            textarea.selectionStart = textarea.selectionEnd = start + cursorOffset;
-            textarea.focus();
-            textarea.dispatchEvent(new Event('input', { bubbles: true }));
-        }
+                textarea.value = text.substring(0, start) + textToInsert + text.substring(end);
+                textarea.selectionStart = textarea.selectionEnd = start + cursorOffset;
+                textarea.focus();
+                textarea.dispatchEvent(new Event('input', { bubbles: true }));
+                }
 
-        function updateMathPreview() {
-            clearTimeout(previewTimeout);
-            previewTimeout = setTimeout(() => {
+                function updateMathPreview() {
+                clearTimeout(previewTimeout);
+                previewTimeout = setTimeout(() => {
                 const preview = document.getElementById('mathPreview');
                 const latex = document.getElementById('mathInput').value;
 
                 if (latex.trim() === '') {
-                    preview.innerHTML = '<span style="color: #9ca3af;">수식 미리보기</span>';
-                    return;
+                preview.innerHTML = '<span style="color: #9ca3af;">수식 미리보기</span>';
+                return;
                 }
 
                 preview.innerHTML = `$$${latex}$$`;
 
                 if (window.MathJax && window.MathJax.typesetPromise) {
-                    MathJax.typesetPromise([preview]).catch(err => {
-                        console.error('MathJax 렌더링 오류:', err);
-                        preview.innerHTML = '<span style="color: #ef4444;">수식 렌더링 실패</span>';
-                    });
+                MathJax.typesetPromise([preview]).catch(err => {
+                console.error('MathJax 렌더링 오류:', err);
+                preview.innerHTML = '<span style="color: #ef4444;">수식 렌더링 실패</span>';
+                });
                 } else {
-                    preview.innerHTML = '<span style="color: #f59e0b;">MathJax 로딩 중...</span>';
+                preview.innerHTML = '<span style="color: #f59e0b;">MathJax 로딩 중...</span>';
                 }
-            }, 300);
-        }
+                }, 300);
+                }
 
-        function confirmMathInput() {
-            if (!activeTextareaId) {
+                function confirmMathInput() {
+                if (!activeTextareaId) {
                 console.error('활성화된 textarea가 없습니다.');
                 return;
-            }
+                }
 
-            const mainTextarea = document.getElementById(activeTextareaId);
-            if (!mainTextarea) {
+                const mainTextarea = document.getElementById(activeTextareaId);
+                if (!mainTextarea) {
                 console.error('textarea를 찾을 수 없습니다:', activeTextareaId);
                 closeMathEditor();
                 return;
-            }
+                }
 
-            const latex = document.getElementById('mathInput').value;
+                const latex = document.getElementById('mathInput').value;
 
-            if (latex.trim()) {
+                if (latex.trim()) {
                 const start = savedCursorPosition.start;
                 const end = savedCursorPosition.end;
                 const text = mainTextarea.value;
@@ -1401,298 +1013,301 @@
                 mainTextarea.selectionStart = mainTextarea.selectionEnd = start + textToInsert.length;
                 mainTextarea.focus();
                 mainTextarea.dispatchEvent(new Event('input', { bubbles: true }));
-            }
+                }
 
-            closeMathEditor();
-        }
+                closeMathEditor();
+                }
 
-        // 복사/붙여넣기 방지 함수
-        function preventCopyPaste(element) {
-            // 붙여넣기 방지
-            element.addEventListener('paste', function (e) {
+                // 복사/붙여넣기 방지 함수
+                function preventCopyPaste(element) {
+                // 붙여넣기 방지
+                element.addEventListener('paste', function (e) {
                 e.preventDefault();
                 showMessage('submitMessage', '붙여넣기가 비활성화되어 있습니다. 직접 입력해주세요.', 'error');
                 setTimeout(() => hideMessage('submitMessage'), 3000);
                 return false;
-            });
+                });
 
-            // 복사 방지
-            element.addEventListener('copy', function (e) {
+                // 복사 방지
+                element.addEventListener('copy', function (e) {
                 e.preventDefault();
                 return false;
-            });
+                });
 
-            // 잘라내기 방지
-            element.addEventListener('cut', function (e) {
+                // 잘라내기 방지
+                element.addEventListener('cut', function (e) {
                 e.preventDefault();
                 return false;
-            });
+                });
 
-            // 우클릭 메뉴 방지
-            element.addEventListener('contextmenu', function (e) {
+                // 우클릭 메뉴 방지
+                element.addEventListener('contextmenu', function (e) {
                 e.preventDefault();
                 return false;
-            });
+                });
 
-            // 드래그 앤 드롭 방지
-            element.addEventListener('drop', function (e) {
+                // 드래그 앤 드롭 방지
+                element.addEventListener('drop', function (e) {
                 e.preventDefault();
                 return false;
-            });
-        }
+                });
+                }
 
-        // 시험 모드 활성화
-        function enableExamMode() {
-            examModeActive = true;
-            examModeViolations = 0;
-            examModeWarningShown = false;
-            examModeListenersActive = true;
+                // 시험 모드 활성화
+                function enableExamMode() {
+                examModeActive = true;
+                examModeViolations = 0;
+                examModeWarningShown = false;
+                examModeListenersActive = true;
 
-            // 시험 모드 표시
-            updateExamModeIndicator();
+                // 시험 모드 표시
+                updateExamModeIndicator();
 
-            // 취소 버튼 비활성화
-            const cancelBtn = document.getElementById('cancelSubmitBtn');
-            if (cancelBtn) {
+                // 취소 버튼 비활성화
+                const cancelBtn = document.getElementById('cancelSubmitBtn');
+                if (cancelBtn) {
                 cancelBtn.disabled = true;
                 cancelBtn.style.opacity = '0.5';
                 cancelBtn.style.cursor = 'not-allowed';
-            }
+                }
 
-            // 강제 전체화면이 설정된 경우에만 전체화면 요청
-            if (examModeForceFullscreen) {
+                // 강제 전체화면이 설정된 경우에만 전체화면 요청
+                if (examModeForceFullscreen) {
                 enterFullscreen();
-            }
+                }
 
-            // 이벤트 리스너 등록
-            document.addEventListener('visibilitychange', handleVisibilityChange);
-            window.addEventListener('blur', handleWindowBlur);
-            window.addEventListener('beforeunload', handleBeforeUnload);
-            document.addEventListener('fullscreenchange', handleFullscreenChange);
+                // 이벤트 리스너 등록
+                document.addEventListener('visibilitychange', handleVisibilityChange);
+                window.addEventListener('blur', handleWindowBlur);
+                window.addEventListener('beforeunload', handleBeforeUnload);
+                document.addEventListener('fullscreenchange', handleFullscreenChange);
 
-            // 뒤로가기 방지
-            history.pushState(null, null, location.href);
-            window.addEventListener('popstate', preventBackNavigation);
+                // 뒤로가기 방지
+                history.pushState(null, null, location.href);
+                window.addEventListener('popstate', preventBackNavigation);
 
-            // 키보드 막기 (F12, Alt+Tab 등)
-            document.addEventListener('keydown', handleKeyDown);
+                // 키보드 막기 (F12, Alt+Tab 등)
+                document.addEventListener('keydown', handleKeyDown);
 
-            // 우클릭 막기
-            document.addEventListener('contextmenu', handleContextMenu);
+                // 우클릭 막기
+                document.addEventListener('contextmenu', handleContextMenu);
 
-            // 복사/붙여넣기 막기
-            document.addEventListener('copy', handleCopyPaste);
-            document.addEventListener('paste', handleCopyPaste);
-            document.addEventListener('cut', handleCopyPaste);
+                // 복사/붙여넣기 막기
+                document.addEventListener('copy', handleCopyPaste);
+                document.addEventListener('paste', handleCopyPaste);
+                document.addEventListener('cut', handleCopyPaste);
 
-            // 포커스 강제
-            document.addEventListener('click', enforceFocus);
+                // 포커스 강제
+                document.addEventListener('click', enforceFocus);
 
-            showMessage('submitMessage', '시험 모드가 시작되었습니다. 화면을 이탈하면 경고가 발생합니다.', 'info');
-        }
+                showMessage('submitMessage', '시험 모드가 시작되었습니다. 화면을 이탈하면 경고가 발생합니다.', 'info');
+                }
 
-        function updateExamModeIndicator() {
-            let indicator = document.getElementById('examModeIndicator');
-            if (!indicator) {
+                function updateExamModeIndicator() {
+                let indicator = document.getElementById('examModeIndicator');
+                if (!indicator) {
                 indicator = document.createElement('div');
                 indicator.id = 'examModeIndicator';
-                indicator.style.cssText = 'position: fixed; top: 10px; right: 10px; background: #ef4444; color: white; padding: 8px 16px; border-radius: 20px; z-index: 9999; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.2); animation: pulse 2s infinite;';
+                indicator.style.cssText = 'position: fixed; top: 10px; right: 10px; background: #ef4444; color: white;
+                padding: 8px 16px; border-radius: 20px; z-index: 9999; font-weight: bold; box-shadow: 0 2px 4px
+                rgba(0,0,0,0.2); animation: pulse 2s infinite;';
                 document.body.appendChild(indicator);
 
                 // Pulse animation
                 const style = document.createElement('style');
                 style.textContent = `
-                    @keyframes pulse {
-                        0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
-                        70% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
-                        100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
-                    }
+                @keyframes pulse {
+                0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+                70% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+                100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+                }
                 `;
                 document.head.appendChild(style);
-            }
-            indicator.textContent = `시험 모드 작동 중 (위반: ${examModeViolations}/${examModeMaxViolations})`;
-        }
+                }
+                indicator.textContent = `시험 모드 작동 중 (위반: ${examModeViolations}/${examModeMaxViolations})`;
+                }
 
-        function disableExamMode() {
-            examModeActive = false;
-            examModeListenersActive = false;
+                function disableExamMode() {
+                examModeActive = false;
+                examModeListenersActive = false;
 
-            const indicator = document.getElementById('examModeIndicator');
-            if (indicator) indicator.remove();
+                const indicator = document.getElementById('examModeIndicator');
+                if (indicator) indicator.remove();
 
-            const cancelBtn = document.getElementById('cancelSubmitBtn');
-            if (cancelBtn) {
+                const cancelBtn = document.getElementById('cancelSubmitBtn');
+                if (cancelBtn) {
                 cancelBtn.disabled = false;
                 cancelBtn.style.opacity = '1';
                 cancelBtn.style.cursor = 'pointer';
-            }
-
-            if (document.fullscreenElement) {
-                exitFullscreen();
-            }
-
-            document.removeEventListener('visibilitychange', handleVisibilityChange);
-            window.removeEventListener('blur', handleWindowBlur);
-            window.removeEventListener('beforeunload', handleBeforeUnload);
-            document.removeEventListener('fullscreenchange', handleFullscreenChange);
-            window.removeEventListener('popstate', preventBackNavigation);
-            document.removeEventListener('keydown', handleKeyDown);
-            document.removeEventListener('contextmenu', handleContextMenu);
-            document.removeEventListener('copy', handleCopyPaste);
-            document.removeEventListener('paste', handleCopyPaste);
-            document.removeEventListener('cut', handleCopyPaste);
-            document.removeEventListener('click', enforceFocus);
-        }
-
-        function enterFullscreen() {
-            const elem = document.documentElement;
-            if (elem.requestFullscreen) {
-                elem.requestFullscreen().catch(err => console.log('전체화면 전환 실패:', err));
-            } else if (elem.mozRequestFullScreen) { /* Firefox */
-                elem.mozRequestFullScreen().catch(err => console.log('전체화면 전환 실패:', err));
-            } else if (elem.webkitRequestFullscreen) { /* Chrome, Safari & Opera */
-                elem.webkitRequestFullscreen().catch(err => console.log('전체화면 전환 실패:', err));
-            } else if (elem.msRequestFullscreen) { /* IE/Edge */
-                elem.msRequestFullscreen().catch(err => console.log('전체화면 전환 실패:', err));
-            }
-        }
-
-        function exitFullscreen() {
-            if (document.exitFullscreen) {
-                document.exitFullscreen();
-            } else if (document.mozCancelFullScreen) {
-                document.mozCancelFullScreen();
-            } else if (document.webkitExitFullscreen) {
-                document.webkitExitFullscreen();
-            } else if (document.msExitFullscreen) {
-                document.msExitFullscreen();
-            }
-        }
-
-        function handleVisibilityChange() {
-            if (!examModeActive || !examModeListenersActive) return;
-
-            if (document.hidden) {
-                showExamWarning('화면을 이탈했습니다!');
-            }
-        }
-
-        function handleWindowBlur() {
-            if (!examModeActive || !examModeListenersActive) return;
-
-            // blur 이벤트는 너무 민감할 수 있으므로 약간의 지연을 둠
-            setTimeout(() => {
-                if (document.activeElement === document.body || document.activeElement === null) {
-                    // showExamWarning('화면을 이탈했습니다!'); // blur는 오탐이 많아서 일단 주석 처리하거나 신중하게 사용
                 }
-            }, 100);
-        }
 
-        function handleBeforeUnload(e) {
-            if (!examModeActive) return;
-            e.preventDefault();
-            e.returnValue = '';
-        }
+                if (document.fullscreenElement) {
+                exitFullscreen();
+                }
 
-        function handleFullscreenChange() {
-            if (!examModeActive || !examModeListenersActive || !examModeForceFullscreen) return;
+                document.removeEventListener('visibilitychange', handleVisibilityChange);
+                window.removeEventListener('blur', handleWindowBlur);
+                window.removeEventListener('beforeunload', handleBeforeUnload);
+                document.removeEventListener('fullscreenchange', handleFullscreenChange);
+                window.removeEventListener('popstate', preventBackNavigation);
+                document.removeEventListener('keydown', handleKeyDown);
+                document.removeEventListener('contextmenu', handleContextMenu);
+                document.removeEventListener('copy', handleCopyPaste);
+                document.removeEventListener('paste', handleCopyPaste);
+                document.removeEventListener('cut', handleCopyPaste);
+                document.removeEventListener('click', enforceFocus);
+                }
 
-            if (!document.fullscreenElement) {
+                function enterFullscreen() {
+                const elem = document.documentElement;
+                if (elem.requestFullscreen) {
+                elem.requestFullscreen().catch(err => console.log('전체화면 전환 실패:', err));
+                } else if (elem.mozRequestFullScreen) { /* Firefox */
+                elem.mozRequestFullScreen().catch(err => console.log('전체화면 전환 실패:', err));
+                } else if (elem.webkitRequestFullscreen) { /* Chrome, Safari & Opera */
+                elem.webkitRequestFullscreen().catch(err => console.log('전체화면 전환 실패:', err));
+                } else if (elem.msRequestFullscreen) { /* IE/Edge */
+                elem.msRequestFullscreen().catch(err => console.log('전체화면 전환 실패:', err));
+                }
+                }
+
+                function exitFullscreen() {
+                if (document.exitFullscreen) {
+                document.exitFullscreen();
+                } else if (document.mozCancelFullScreen) {
+                document.mozCancelFullScreen();
+                } else if (document.webkitExitFullscreen) {
+                document.webkitExitFullscreen();
+                } else if (document.msExitFullscreen) {
+                document.msExitFullscreen();
+                }
+                }
+
+                function handleVisibilityChange() {
+                if (!examModeActive || !examModeListenersActive) return;
+
+                if (document.hidden) {
+                showExamWarning('화면을 이탈했습니다!');
+                }
+                }
+
+                function handleWindowBlur() {
+                if (!examModeActive || !examModeListenersActive) return;
+
+                // blur 이벤트는 너무 민감할 수 있으므로 약간의 지연을 둠
+                setTimeout(() => {
+                if (document.activeElement === document.body || document.activeElement === null) {
+                // showExamWarning('화면을 이탈했습니다!'); // blur는 오탐이 많아서 일단 주석 처리하거나 신중하게 사용
+                }
+                }, 100);
+                }
+
+                function handleBeforeUnload(e) {
+                if (!examModeActive) return;
+                e.preventDefault();
+                e.returnValue = '';
+                }
+
+                function handleFullscreenChange() {
+                if (!examModeActive || !examModeListenersActive || !examModeForceFullscreen) return;
+
+                if (!document.fullscreenElement) {
                 showExamWarning('전체화면을 유지해야 합니다!');
                 // 다시 전체화면 시도 (사용자 상호작용 필요할 수 있음)
                 setTimeout(() => {
-                    if (confirm('시험 모드에서는 전체화면이 필수입니다. 전체화면으로 복귀하시겠습니까?')) {
-                        enterFullscreen();
-                    }
+                if (confirm('시험 모드에서는 전체화면이 필수입니다. 전체화면으로 복귀하시겠습니까?')) {
+                enterFullscreen();
+                }
                 }, 100);
-            }
-        }
+                }
+                }
 
-        function preventBackNavigation(event) {
-            if (!examModeActive) return;
-            history.pushState(null, null, location.href);
-            showExamWarning('시험 중에는 뒤로 갈 수 없습니다.');
-        }
+                function preventBackNavigation(event) {
+                if (!examModeActive) return;
+                history.pushState(null, null, location.href);
+                showExamWarning('시험 중에는 뒤로 갈 수 없습니다.');
+                }
 
-        function showExamWarning(reason) {
-            if (!examModeActive) return;
+                function showExamWarning(reason) {
+                if (!examModeActive) return;
 
-            examModeViolations++;
-            updateExamModeIndicator();
+                examModeViolations++;
+                updateExamModeIndicator();
 
-            const msg = `[경고 ${examModeViolations}/${examModeMaxViolations}]\n\n${examModeMaxViolations}회 위반 시 시험이 자동 종료되고 제출됩니다.`;
-            alert(msg);
+                const msg = `[경고 ${examModeViolations}/${examModeMaxViolations}]\n\n${examModeMaxViolations}회 위반 시 시험이
+                자동 종료되고 제출됩니다.`;
+                alert(msg);
 
-            logExamEvent(reason);
+                logExamEvent(reason);
 
-            if (examModeViolations >= examModeMaxViolations) {
+                if (examModeViolations >= examModeMaxViolations) {
                 autoSubmitExam();
-            }
-        }
+                }
+                }
 
-        function returnToExam() {
-            // 포커스 복귀 등
-            window.focus();
-        }
+                function returnToExam() {
+                // 포커스 복귀 등
+                window.focus();
+                }
 
-        function handleKeyDown(e) {
-            if (!examModeActive || !examModeListenersActive) return;
+                function handleKeyDown(e) {
+                if (!examModeActive || !examModeListenersActive) return;
 
-            // F12, Alt+Tab(감지 어려움), PrintScreen, Ctrl+C/V 등
-            if (
+                // F12, Alt+Tab(감지 어려움), PrintScreen, Ctrl+C/V 등
+                if (
                 e.key === 'F12' ||
                 (e.ctrlKey && (e.key === 'c' || e.key === 'v' || e.key === 'x' || e.key === 'p')) ||
                 e.key === 'PrintScreen' ||
                 e.altKey
-            ) {
+                ) {
                 e.preventDefault();
                 // showExamWarning('키보드 단축키 사용이 감지되었습니다.'); // 너무 잦은 경고 방지
-            }
-        }
+                }
+                }
 
-        function handleContextMenu(e) {
-            if (!examModeActive || !examModeListenersActive) return;
-            e.preventDefault();
-        }
+                function handleContextMenu(e) {
+                if (!examModeActive || !examModeListenersActive) return;
+                e.preventDefault();
+                }
 
-        function handleCopyPaste(e) {
-            if (!examModeActive || !examModeListenersActive) return;
-            e.preventDefault();
-            showMessage('submitMessage', '시험 중에는 복사/붙여넣기가 금지됩니다.', 'error');
-        }
+                function handleCopyPaste(e) {
+                if (!examModeActive || !examModeListenersActive) return;
+                e.preventDefault();
+                showMessage('submitMessage', '시험 중에는 복사/붙여넣기가 금지됩니다.', 'error');
+                }
 
-        function enforceFocus(e) {
-            // 클릭 시 포커스 유지
-        }
+                function enforceFocus(e) {
+                // 클릭 시 포커스 유지
+                }
 
-        async function autoSubmitExam() {
-            if (!examModeActive) return;
+                async function autoSubmitExam() {
+                if (!examModeActive) return;
 
-            alert(`위반 횟수 초과(${examModeMaxViolations}회)로 인해 시험이 자동으로 제출됩니다.`);
+                alert(`위반 횟수 초과(${examModeMaxViolations}회)로 인해 시험이 자동으로 제출됩니다.`);
 
-            // 리스너 비활성화하여 추가 경고 방지
-            examModeListenersActive = false;
+                // 리스너 비활성화하여 추가 경고 방지
+                examModeListenersActive = false;
 
-            await submitAssignment();
-        }
+                await submitAssignment();
+                }
 
-        async function logExamEvent(type) {
-            try {
+                async function logExamEvent(type) {
+                try {
                 await fetch(`${API_BASE}/log-exam-event`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        studentId: currentStudentId,
-                        assignmentId: examModeAssignmentId,
-                        type: type,
-                        timestamp: new Date().toISOString()
-                    })
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                studentId: currentStudentId,
+                assignmentId: examModeAssignmentId,
+                type: type,
+                timestamp: new Date().toISOString()
+                })
                 });
-            } catch (e) {
+                } catch (e) {
                 console.error('로그 전송 실패', e);
-            }
-        }
-    </script>
+                }
+                }
+                </script>
 </body>
 
 </html>

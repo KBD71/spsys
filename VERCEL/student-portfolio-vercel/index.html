@@ -325,7 +325,7 @@
         /* Math Editor Styles */
         .math-palette {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(40px, 1fr));
+            grid-template-columns: repeat(2, 1fr);
             gap: 0.5rem;
             margin-bottom: 1rem;
             padding: 1rem;
@@ -979,8 +979,8 @@
             let bodyHtml = group.records.map((record, index) => {
                 return `<div class="record-card ${record.read ? 'read' : ''}">
                     <div class="data-row">
-                        <div class="data-label">${record.date}:</div>
-                        <div class="data-value">${record.content}</div>
+                        <div class="data-label">${escapeHTML(record.label)}:</div>
+                        <div class="data-value">${escapeHTML(record.value)}</div>
                     </div>
                 </div>`;
             }).join('');
@@ -1323,9 +1323,12 @@
             ];
 
             const paletteContainer = document.getElementById('mathPaletteContainer');
-            paletteContainer.innerHTML = mathSymbols.map(s =>
-                `<button type="button" title="${s.display}" data-symbol='${JSON.stringify(s)}'>${s.display || s.code}</button>`
-            ).join('');
+            paletteContainer.innerHTML = mathSymbols.map(s => {
+                const content = s.display ? s.display : `$$${s.code}$$`;
+                return `<button type="button" title="${s.display || s.code}" data-symbol='${JSON.stringify(s)}'>${content}</button>`;
+            }).join('');
+
+            typesetMath(paletteContainer);
 
             paletteContainer.querySelectorAll('button').forEach(btn => {
                 btn.addEventListener('click', () => {

@@ -33,7 +33,7 @@ function isClassAllowed(studentId, targetClass) {
   if (!target || target.toLowerCase() === '전체') {
     return true;
   }
-  
+
   // 규칙 2: 학생 학번이 없거나 너무 짧으면 거부
   if (!studentId || studentId.length < 3) {
     return false;
@@ -66,19 +66,17 @@ async function handleGetRecords(req, res) {
   const sheets = await getSheetsClient();
   const spreadsheetId = process.env.SPREADSHEET_ID;
 
-  // ★★★ v2 구조 호환: 5개 컬럼 조회 ★★★
+  // ★★★ v2 구조 호환: 전체 컬럼 조회 (A:Z) ★★★
   let publicSheetData = [];
   try {
-    const publicSheetResponse = await sheets.spreadsheets.values.get({ spreadsheetId, range: '공개!A:E' });
+    const publicSheetResponse = await sheets.spreadsheets.values.get({ spreadsheetId, range: '공개!A:Z' });
     publicSheetData = publicSheetResponse.data.values || [];
   } catch (e) {
-    // '공개' 시트가 없거나 접근할 수 없는 경우 빈 결과 반환
     console.log(`[my-records] '공개' 시트 조회 실패: ${e.message} - 빈 결과 반환`);
     return res.status(200).json({ success: true, records: [] });
   }
 
   if (publicSheetData.length < 2) {
-    // 데이터가 없으면 빈 결과 반환 (에러가 아님)
     console.log('[my-records] 공개 시트에 데이터가 없음 - 빈 결과 반환');
     return res.status(200).json({ success: true, records: [] });
   }
@@ -87,11 +85,15 @@ async function handleGetRecords(req, res) {
   // v1 구조 폴백: [공개, 시트이름, 대상반]
   const publicHeaders = publicSheetData[0] || [];
   const publicHeaderMap = {};
+
+  // 헤더 정규화 및 매핑
   publicHeaders.forEach((h, i) => {
     if (h && typeof h === 'string') {
       publicHeaderMap[h.trim()] = i;
     }
   });
+
+  console.log('[my-records] 공개 시트 헤더:', publicHeaders);
 
   // 컬럼 인덱스 찾기 (v2 우선, v1 폴백)
   const isPublicIdx = publicHeaderMap['과제공개'] !== undefined ? publicHeaderMap['과제공개'] : publicHeaderMap['공개'];
@@ -100,8 +102,13 @@ async function handleGetRecords(req, res) {
   const opinionPublicIdx = publicHeaderMap['의견공개']; // v2 only
   const notificationMessageIdx = publicHeaderMap['알림메시지']; // v2 only
 
+  console.log('[my-records] 컬럼 인덱스:', {
+    과제공개: isPublicIdx,
+    대상시트: sheetNameIdx,
+    의견공개: opinionPublicIdx
+  });
+
   if (isPublicIdx === undefined || sheetNameIdx === undefined) {
-    // 구조를 인식할 수 없어도 에러가 아니라 빈 결과 반환
     console.log('[my-records] 공개 시트 구조 인식 실패 (헤더:', publicHeaders, ') - 빈 결과 반환');
     return res.status(200).json({ success: true, records: [] });
   }
@@ -122,8 +129,8 @@ async function handleGetRecords(req, res) {
       continue;
     }
 
-    // ★★★ v2 알림 로직: 알림메시지가 있으면 항상 표시 (의견공개 상태 무관) ★★★
-    if (notificationMessage) {
+    // ★★★ v2 알림 로직: 의견공개가 TRUE이고 알림메시지가 있으면 표시 ★★★
+    if (opinionPublic && notificationMessage) {
       records.push({
         sheetName: targetSheetName,
         label: '알림',
@@ -134,8 +141,9 @@ async function handleGetRecords(req, res) {
       });
     }
 
-    // ★★★ 교사 코멘트 로직: 의견공개가 TRUE인 경우에만 과제 시트의 교사 의견 표시 ★★★
-    if (opinionPublic) {
+    // ★★★ 교사 코멘트 로직: 과제공개가 TRUE이면 표시 (의견공개 여부와 무관) ★★★
+    // 기존: if (opinionPublic) { ... } -> 제거함
+    {
       if (!sheetDataCache[targetSheetName]) {
         try {
           const response = await sheets.spreadsheets.values.get({ spreadsheetId, range: `${targetSheetName}!A:Z` });
@@ -168,34 +176,34 @@ async function handleGetRecords(req, res) {
         }
       }
 
-      for(let colIdx = 0; colIdx < headers.length; colIdx++) {
-          const header = headers[colIdx];
-          const value = studentRowInTarget[colIdx] || '';
+      for (let colIdx = 0; colIdx < headers.length; colIdx++) {
+        const header = headers[colIdx];
+        const value = studentRowInTarget[colIdx] || '';
 
-          // 제외할 컬럼 리스트 (시스템 컬럼, 질문 컬럼)
-          const excludedColumns = ['학번', '반', '이름', '제출일시', '초안생성', '건의사항', '공개컬럼'];
+        // 제외할 컬럼 리스트 (시스템 컬럼, 질문 컬럼)
+        const excludedColumns = ['학번', '반', '이름', '제출일시', '초안생성', '건의사항', '공개컬럼'];
 
-          // 값이 없거나, 제외 대상 컬럼이거나, '질문'으로 시작하는 컬럼은 건너뛰기
-          if (!value ||
-              excludedColumns.indexOf(header) > -1 ||
-              (header && header.toString().trim().startsWith('질문'))) {
-              continue;
-          }
+        // 값이 없거나, 제외 대상 컬럼이거나, '질문'으로 시작하는 컬럼은 건너뛰기
+        if (!value ||
+          excludedColumns.indexOf(header) > -1 ||
+          (header && header.toString().trim().startsWith('질문'))) {
+          continue;
+        }
 
-          // ★★★ 핵심 로직: '공개컬럼'이 지정되어 있으면 해당 컬럼만 표시 ★★★
-          if (allowedColumns.length > 0 && !allowedColumns.includes(header)) {
-              continue;
-          }
+        // ★★★ 핵심 로직: '공개컬럼'이 지정되어 있으면 해당 컬럼만 표시 ★★★
+        if (allowedColumns.length > 0 && !allowedColumns.includes(header)) {
+          continue;
+        }
 
-          // '종합의견' 등 교사가 작성한 평가 컬럼만 표시
-          records.push({
-              sheetName: targetSheetName,
-              label: header,
-              value: value,
-              type: 'comment',
-              hasSuggestion: suggestionIndex !== -1,
-              suggestion: (suggestionIndex !== -1 && studentRowInTarget[suggestionIndex]) ? studentRowInTarget[suggestionIndex] : ''
-          });
+        // '종합의견' 등 교사가 작성한 평가 컬럼만 표시
+        records.push({
+          sheetName: targetSheetName,
+          label: header,
+          value: value,
+          type: 'comment',
+          hasSuggestion: suggestionIndex !== -1,
+          suggestion: (suggestionIndex !== -1 && studentRowInTarget[suggestionIndex]) ? studentRowInTarget[suggestionIndex] : ''
+        });
       }
     }
   }

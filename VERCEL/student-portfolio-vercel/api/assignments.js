@@ -80,8 +80,8 @@ module.exports = async (req, res) => {
         }
     }
 
-    // ★★★ v2 구조 호환: 5개 컬럼 조회 ★★★
-    const publicSheetResponse = await sheets.spreadsheets.values.get({ spreadsheetId, range: '공개!A:E' });
+    // ★★★ v2 구조 호환: 전체 컬럼 조회 (A:Z) ★★★
+    const publicSheetResponse = await sheets.spreadsheets.values.get({ spreadsheetId, range: '공개!A:Z' });
     const publicSheetData = publicSheetResponse.data.values || [];
     const publicSettingsMap = {};
 
@@ -89,24 +89,39 @@ module.exports = async (req, res) => {
     // v1 구조 폴백: [공개, 시트이름, 대상반]
     const publicHeaders = publicSheetData[0] || [];
     const publicHeaderMap = {};
-    publicHeaders.forEach((h, i) => { publicHeaderMap[h.trim()] = i; });
+    
+    // 헤더 정규화 및 매핑
+    publicHeaders.forEach((h, i) => { 
+        if (h && typeof h === 'string') {
+            publicHeaderMap[h.trim()] = i; 
+        }
+    });
+
+    console.log('[assignments] 공개 시트 헤더:', publicHeaders);
 
     // 컬럼 인덱스 찾기 (v2 우선, v1 폴백)
     const isPublicIdx = publicHeaderMap['과제공개'] !== undefined ? publicHeaderMap['과제공개'] : publicHeaderMap['공개'];
     const sheetNameIdx = publicHeaderMap['대상시트'] !== undefined ? publicHeaderMap['대상시트'] : publicHeaderMap['시트이름'];
     const targetClassIdx = publicHeaderMap['대상반'];
 
-    if (isPublicIdx === undefined || sheetNameIdx === undefined) {
-        console.error('[assignments] 공개 시트 구조 인식 실패. 헤더:', publicHeaders);
-    }
+    console.log('[assignments] 컬럼 인덱스:', { 
+        과제공개: isPublicIdx, 
+        대상시트: sheetNameIdx, 
+        대상반: targetClassIdx 
+    });
 
-    for (let i = 1; i < publicSheetData.length; i++) {
-        const publicRow = publicSheetData[i];
-        const isPublic = publicRow[isPublicIdx] === true || publicRow[isPublicIdx] === 'TRUE';
-        const sheetName = publicRow[sheetNameIdx];
-        const targetClass = publicRow[targetClassIdx] || '전체';
-        if (isPublic && sheetName) {
-            publicSettingsMap[sheetName] = targetClass;
+    if (isPublicIdx === undefined || sheetNameIdx === undefined) {
+        console.error('[assignments] 공개 시트 구조 인식 실패. 필수 컬럼 누락');
+    } else {
+        for (let i = 1; i < publicSheetData.length; i++) {
+            const publicRow = publicSheetData[i];
+            const isPublic = publicRow[isPublicIdx] === true || publicRow[isPublicIdx] === 'TRUE';
+            const sheetName = publicRow[sheetNameIdx];
+            const targetClass = publicRow[targetClassIdx] || '전체';
+            
+            if (isPublic && sheetName) {
+                publicSettingsMap[sheetName] = targetClass;
+            }
         }
     }
 

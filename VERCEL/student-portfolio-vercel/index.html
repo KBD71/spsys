@@ -1613,6 +1613,10 @@
             }
         }
 
+        function hideRecordsModal() {
+            document.getElementById('recordsModal').classList.add('hidden');
+        }
+
         function handleVisibilityChange() {
             if (!examModeActive || !examModeListenersActive) return;
 

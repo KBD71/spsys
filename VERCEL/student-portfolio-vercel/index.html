@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>문현고 1학년 과제제출 시스템</title>
+    <title>과제제출 시스템</title>
     <!-- <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script> -->
     <script>
         window.MathJax = {
@@ -19,6 +19,12 @@
         };
     </script>
     <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script>
+        // ==========================================
+        // [설정] 학교 이름 (이곳에서 수정하세요)
+        const SCHOOL_NAME = '문현고 1학년';
+        // ==========================================
+    </script>
     <style>
         :root {
             --primary-color: #2563eb;
@@ -645,6 +651,7 @@
     </div>
 
     <script>
+
         const API_BASE = "/api";
         let currentStudentId = '';
         let currentStudentName = '';

@@ -146,9 +146,36 @@ function getFullStudentList_v18() {
     const name = String(row[3]).trim(); 
     
     if (id && className && name) {
+      // ★★★ 학년 및 통합 반 정보 추출 (v19) ★★★
+      // ID가 5자리(예: 10101)인 경우 첫 자리를 학년으로 사용
+      let grade = "1"; // 기본값
+      if (id.length === 5) {
+        grade = id.substring(0, 1);
+      }
+      
+      // 통합 반 표시 (예: 1학년 1반 -> "101")
+      // className이 숫자만 있는 경우(예: "1") -> "101" (학년 + 0 + 반)
+      // 이미 "101" 형식이면 그대로 사용
+      let fullClass = className;
+      
+      // className이 단순히 "1", "2" 등 숫자만 있고 10 미만인 경우
+      if (/^\d{1,2}$/.test(className)) {
+        const classNum = parseInt(className, 10);
+        fullClass = `${grade}${classNum < 10 ? '0' : ''}${classNum}`;
+      } else if (className.endsWith('반')) {
+          // "1반" -> "101" 변환 시도
+          const numPart = className.replace('반', '').trim();
+          if (/^\d{1,2}$/.test(numPart)) {
+             const classNum = parseInt(numPart, 10);
+             fullClass = `${grade}${classNum < 10 ? '0' : ''}${classNum}`;
+          }
+      }
+
       studentMap[id] = {
         name: name,
-        class: className,
+        class: className, // 원본 반 이름 (예: "1반" or "1")
+        grade: grade,     // 학년 (예: "1")
+        fullClass: fullClass, // 통합 반 이름 (예: "101")
         number: number
       };
     }
@@ -203,16 +230,9 @@ function calculateAssignmentStatsByClass_v18(studentData, studentCountByClass) {
     try {
       sheetNames.forEach(sheetName => {
         const targetSheet = ss.getSheetByName(sheetName);
-        
-        // (v17 버그 수정 유지) 시트가 존재하고, 헤더 외에 데이터 행이 1개라도 있는지 확인
         if (targetSheet && targetSheet.getLastRow() > 1) { 
           const numRows = targetSheet.getLastRow() - 1; // 데이터 행의 수
-          const submittedIds = targetSheet
-            .getRange(2, 1, numRows, 1) // A열 (학번)
-            .getValues()
-            .flat()
-            .map(String) // 학번을 문자열로 통일
-            .filter(Boolean); 
+          submittedIds = targetSheet.getRange(2, 1, numRows, 1).getValues().flat().map(String).filter(Boolean); 
           submittedIdsMap[sheetName] = submittedIds;
         } else {
           submittedIdsMap[sheetName] = []; 
@@ -229,7 +249,7 @@ function calculateAssignmentStatsByClass_v18(studentData, studentCountByClass) {
   assignmentData.forEach(row => {
     const isPublic = row[0] === true || String(row[0]).toUpperCase() === 'TRUE'; 
     const sheetName = row[1]; 
-    const targetClassStr = row[2] || '전체'; 
+    const targetClassStr = String(row[2] || '전체'); 
 
     if (!isPublic || !sheetName) return;
 
@@ -237,26 +257,66 @@ function calculateAssignmentStatsByClass_v18(studentData, studentCountByClass) {
 
     const submittedIds = submittedIdsMap[sheetName] || []; 
 
-    const allClassNames = Object.keys(studentCountByClass);
-    const targetClasses = (targetClassStr.toLowerCase() === '전체') 
-      ? allClassNames.sort() 
-      : targetClassStr.split(',').map(c => c.trim()).filter(c => allClassNames.includes(c));
+    // v19 다학년 지원: targetClassStr 파싱 ("101, 102", "1학년 전체", "전체")
+    const targets = targetClassStr.split(',').map(s => s.trim());
+    
+    // 타겟이 "전체"인 경우 모든 학생 / "X학년 전체"인 경우 해당 학년 필터링
+    let targetStudents = [];
+    let isGradeSummary = false;
+    let targetGrade = "";
 
-    if (targetClasses.length === 0) return; 
+    if (targets.includes('전체')) {
+        targetStudents = allStudentIds;
+    } else {
+        // 개별 타겟 처리
+        targets.forEach(t => {
+            // v20: "전체1", "전체2", "전체3" 패턴 지원 (또는 "1학년 전체")
+            const gradeAllMatch = t.match(/^전체(\d)$/);      // 예: "전체1"
+            const gradeAllMatchText = t.match(/^(\d)학년\s*전체$/); // 예: "1학년 전체"
 
+            if (gradeAllMatch || gradeAllMatchText) {
+                const grade = gradeAllMatch ? gradeAllMatch[1] : gradeAllMatchText[1];
+                if (grade) {
+                    targetStudents.push(...allStudentIds.filter(id => studentData[id].grade === grade));
+                    isGradeSummary = true;
+                    targetGrade = grade;
+                }
+            } else {
+                // "101", "102" 등 특정 반 패턴 (fullClass와 매칭)
+                // 또는 기존 "1", "2" 패턴 (class와 매칭) 호환
+                targetStudents.push(...allStudentIds.filter(id => {
+                  return studentData[id].fullClass === t || studentData[id].class === t;
+                }));
+            }
+        });
+    }
+    // 중복 제거
+    targetStudents = [...new Set(targetStudents)];
+
+    if (targetStudents.length === 0) return; 
+
+    // 3. 반별 그룹화 (fullClass 기준)
+    const groupedByClass = {};
+    targetStudents.forEach(id => {
+        const cls = studentData[id].fullClass; // "101" 등 사용
+        if (!groupedByClass[cls]) groupedByClass[cls] = [];
+        groupedByClass[cls].push(id);
+    });
+    
+    // 반 이름 정렬
+    const classNames = Object.keys(groupedByClass).sort();
+    
     let assignmentTotalSubmitted = 0;
     let assignmentTotalStudents = 0;
     let assignmentAllNotSubmittedStudents = [];
-    
     const classRows = []; 
 
-    // 3. 이 과제의 대상 반(targetClasses)을 하나씩 순회
-    targetClasses.forEach(className => {
-      const classTotal = studentCountByClass[className];
-      if (!classTotal || classTotal === 0) return; 
+    // 4. 각 반별 통계 계산
+    classNames.forEach(className => {
+      const classStudentIds = groupedByClass[className];
+      const classTotal = classStudentIds.length;
+      if (classTotal === 0) return;
 
-      const classStudentIds = allStudentIds.filter(id => studentData[id].class === className);
-      
       const classSubmittedIds = classStudentIds.filter(id => submittedIds.includes(id));
       const classSubmittedCount = classSubmittedIds.length;
       
@@ -270,19 +330,20 @@ function calculateAssignmentStatsByClass_v18(studentData, studentCountByClass) {
         id: id,
         name: studentData[id].name,
         class: studentData[id].class,
+        fullClass: studentData[id].fullClass,
         number: parseInt(studentData[id].number, 10) || 0
       })).sort((a, b) => a.number - b.number); 
 
       assignmentAllNotSubmittedStudents.push(...notSubmittedStudents); 
 
-      // 4. 미제출 학생 명단 표시 텍스트 생성
+      // 미제출 학생 명단 표시 텍스트
       let displayText, noteText;
       if (classNotSubmittedCount === 0) {
         displayText = "✅ 전원 제출 완료";
         noteText = "";
       } else {
         const fullListString = notSubmittedStudents
-          .map(s => `${s.class}-${s.number} ${s.name}`)
+          .map(s => `${s.fullClass}-${s.number} ${s.name}`)
           .join("\n");
         
         if (classNotSubmittedCount > 5) { 
@@ -298,11 +359,10 @@ function calculateAssignmentStatsByClass_v18(studentData, studentCountByClass) {
       const targetSheet = ss.getSheetByName(sheetName); 
       const url = targetSheet ? `https://docs.google.com/spreadsheets/d/${ss.getId()}/edit#gid=${targetSheet.getSheetId()}` : "#";
 
-      // 5. 이 반(className)에 대한 행 데이터 생성
       classRows.push({
           values: [
             `=HYPERLINK("${url}", "${sheetName}${targetSheet ? "" : " (시트없음)"}")`, 
-            className, 
+            className, // "101" 등으로 표시
             classSubmittedCount, 
             classTotal, 
             submissionRate, 
@@ -312,44 +372,45 @@ function calculateAssignmentStatsByClass_v18(studentData, studentCountByClass) {
           ],
           notes: ["", "", "", "", "", "", "", noteText] 
       });
-    }); // (반 순회 종료)
+    });
 
-    // 6. 생성된 반별 행들을 결과에 추가
     result.rows.push(...classRows);
 
-    // 7. 만약 여러 반(2개 이상)이 대상이었다면, 과제별 "합계" 행 추가
+    // 5. 합계 행 ("전체"이거나 대상 반이 2개 이상일 때)
     if (classRows.length > 1) {
       const totalSubmissionRate = assignmentTotalStudents > 0 ? (assignmentTotalSubmitted / assignmentTotalStudents) : 0;
       
       const sortedAllNotSubmitted = assignmentAllNotSubmittedStudents.sort((a, b) => {
-        if (a.class < b.class) return -1;
-        if (a.class > b.class) return 1;
+        if (a.fullClass < b.fullClass) return -1;
+        if (a.fullClass > b.fullClass) return 1;
         return a.number - b.number;
       });
 
       let totalDisplayText, totalNoteText;
       if (sortedAllNotSubmitted.length === 0) {
-        totalDisplayText = "✅ 전원 제출 완료";
-        totalNoteText = "";
+          totalDisplayText = "✅ 전원 제출 완료";
+          totalNoteText = "";
       } else {
-        const fullListString = sortedAllNotSubmitted
-          .map(s => `${s.class}-${s.number} ${s.name}`)
+          const fullListString = sortedAllNotSubmitted
+          .map(s => `${s.fullClass}-${s.number} ${s.name}`)
           .join("\n");
-        
-        if (sortedAllNotSubmitted.length > 5) {
+          
+          if (sortedAllNotSubmitted.length > 5) {
           totalDisplayText = `${sortedAllNotSubmitted.length}명 (명단 확인)`;
           totalNoteText = fullListString;
-        } else {
+          } else {
           totalDisplayText = sortedAllNotSubmitted.map(s => s.name).join(", ");
           totalNoteText = fullListString;
-        }
+          }
       }
 
-      // 합계 행 추가
+      // 합계 라벨 (예: "1학년 합계" 또는 "전체 합계")
+      const summaryLabel = (isGradeSummary && targetGrade) ? `${targetGrade}학년 전체` : "합계";
+
       result.rows.push({
         values: [
           sheetName, 
-          "합계", 
+          summaryLabel, 
           assignmentTotalSubmitted, 
           assignmentTotalStudents, 
           totalSubmissionRate,
@@ -362,12 +423,12 @@ function calculateAssignmentStatsByClass_v18(studentData, studentCountByClass) {
       result.totalRowIndices.push(result.rows.length - 1);
     }
     
-    // 8. 시스템 전체 평균 제출률 계산을 위한 누적
+    // 전체 평균용 누적
     if (assignmentTotalStudents > 0) {
         result.totalRate += (assignmentTotalSubmitted / assignmentTotalStudents);
         result.validCount++;
     }
-  }); // (과제 순회 종료)
+  }); 
 
   return result;
 }

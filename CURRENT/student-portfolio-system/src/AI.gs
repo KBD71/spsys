@@ -291,24 +291,40 @@ function runAiGeneration(sheet, row) {
 /**
  * AI 초안 생성에 필요한 데이터를 수집하고 프롬프트를 구성합니다.
  */
+/**
+ * AI 초안 생성에 필요한 데이터를 수집하고 프롬프트를 구성합니다.
+ * (v3.3: 종합 데이터 시트 지원 추가)
+ */
 function getAiDataForSummary(sheet, row, headers) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheetName = sheet.getName();
   const assignmentSettingsSheet = ss.getSheetByName("과제설정");
-  if (!assignmentSettingsSheet)
-    throw new Error("'과제설정' 시트를 찾을 수 없습니다.");
-  const assignmentData = assignmentSettingsSheet.getDataRange().getValues();
-  const assignmentHeaders = assignmentData[0];
-  const targetSheetCol = assignmentHeaders.indexOf("대상시트");
-  const assignmentRow = assignmentData.find(
-    (r) => r[targetSheetCol] === sheetName
-  );
+  
+  // 1. 과제 설정 확인
+  let isAssignmentSheet = false;
+  let assignmentRow = null;
+  let assignmentHeaders = [];
+  
+  if (assignmentSettingsSheet) {
+    const assignmentData = assignmentSettingsSheet.getDataRange().getValues();
+    assignmentHeaders = assignmentData[0];
+    const targetSheetCol = assignmentHeaders.indexOf("대상시트");
+    if (targetSheetCol > -1) {
+      assignmentRow = assignmentData.find((r) => r[targetSheetCol] === sheetName);
+      if (assignmentRow) isAssignmentSheet = true;
+    }
+  }
+
+  // 2. 프롬프트 데이터 가져오기
   const promptSheet = ss.getSheetByName("프롬프트");
   if (!promptSheet) throw new Error("'프롬프트' 시트를 찾을 수 없습니다.");
   const promptData = promptSheet.getDataRange().getValues();
+  
+  // 과제 이름으로 찾거나, 없으면 '종합의견' 기본 프롬프트 사용
   const promptRow =
     promptData.find((r) => r[0] === sheetName) ||
-    promptData.find((r) => r[0] === "종합의견");
+    promptData.find((r) => r[0] === "종합의견"); // 종합 데이터 시트도 '종합의견' 프롬프트 사용
+
   if (!promptRow)
     throw new Error(
       `'프롬프트' 시트에서 '${sheetName}' 또는 '종합의견' 항목을 찾을 수 없습니다.`
@@ -318,55 +334,79 @@ function getAiDataForSummary(sheet, row, headers) {
     throw new Error(
       `'프롬프트' 시트의 '${promptRow[0]}' 항목 내용(페르소나/태스크/지시사항)이 비어있습니다.`
     );
+
   const studentRowData = sheet
     .getRange(row, 1, 1, headers.length)
     .getValues()[0];
   let context = "";
-  let lastQuestionIndex = -1;
-  headers.forEach((header, index) => {
-    const headerStr = String(header || "").trim();
-    const cellValue = studentRowData[index];
-    if (
-      headerStr.startsWith("질문") &&
-      cellValue &&
-      String(cellValue).trim() !== ""
-    ) {
-      lastQuestionIndex = index;
-      let questionText = headerStr;
-      if (assignmentRow) {
-        const questionIndexInAssignment = assignmentHeaders.findIndex(
-         
-           (h) => h === headerStr
-        );
-        if (questionIndexInAssignment > -1) {
-          questionText = assignmentRow[questionIndexInAssignment] || headerStr;
+    
+  // 3. 데이터 수집 로직 (과제 시트 vs 종합 시트)
+  if (isAssignmentSheet) {
+      // [기존 로직] 과제 시트: '질문'으로 시작하는 컬럼만 수집
+      let lastQuestionIndex = -1;
+      headers.forEach((header, index) => {
+        const headerStr = String(header || "").trim();
+        const cellValue = studentRowData[index];
+        if (
+          headerStr.startsWith("질문") &&
+          cellValue &&
+          String(cellValue).trim() !== ""
+        ) {
+          lastQuestionIndex = index;
+          let questionText = headerStr;
+          // 과제 설정에서 실제 질문 텍스트 찾기
+          if (assignmentRow) {
+            const questionIndexInAssignment = assignmentHeaders.findIndex(
+               (h) => h === headerStr
+            );
+            if (questionIndexInAssignment > -1) {
+              questionText = assignmentRow[questionIndexInAssignment] || headerStr;
+            }
+          }
+          context += `[질문: ${questionText}]\n- 학생 답변: ${cellValue}\n\n`;
         }
+      });
+      
+      // 교사 추가 평가 (질문 뒤 ~ 초안생성 앞 사이의 컬럼)
+      const draftColIndex = headers.indexOf("초안생성");
+      if (lastQuestionIndex !== -1 && draftColIndex > lastQuestionIndex + 1) {
+        let teacherFeedback = "";
+        for (let j = lastQuestionIndex + 1; j < draftColIndex; j++) {
+          if (studentRowData[j] && String(studentRowData[j]).trim() !== "") {
+            teacherFeedback += `- ${headers[j]}: ${studentRowData[j]}\n`;
+          }
+        }
+        if (teacherFeedback) context += `[교사 추가 평가]\n${teacherFeedback}\n\n`;
       }
-      context += `[질문: ${questionText}]\n- 학생 답변: ${cellValue}\n\n`;
-    }
-  });
-  const draftColIndex = headers.indexOf("초안생성");
-  if (lastQuestionIndex !== -1 && draftColIndex > lastQuestionIndex + 1) {
-    let teacherFeedback = "";
-    for (let j = lastQuestionIndex + 1; j < draftColIndex; j++) {
-      if (studentRowData[j] && String(studentRowData[j]).trim() !== "") {
-        teacherFeedback += `- ${headers[j]}: ${studentRowData[j]}\n`;
-      }
-    }
-    if (teacherFeedback) context += `[교사 추가 평가]\n${teacherFeedback}\n\n`;
+
+  } else {
+      // [신규 로직] 종합 데이터 시트: 시스템 컬럼 제외 나머지 모든 데이터 수집
+      const systemColumns = ["학번", "이름", "반", "번호", "종합의견", "초안생성", "AI 검사 결과"];
+      
+      headers.forEach((header, index) => {
+          const headerStr = String(header || "").trim();
+          if (systemColumns.includes(headerStr)) return; // 시스템 컬럼 제외
+          
+          const cellValue = studentRowData[index];
+          if (cellValue && String(cellValue).trim() !== "") {
+              context += `[${headerStr}]\n${cellValue}\n\n`;
+          }
+      });
   }
+
   if (!context.trim())
     throw new Error(
-      "요약할 학생의 답변 또는 평가 내용이 없습니다. '질문' 컬럼의 내용을 확인해주세요."
+      "요약할 데이터가 없습니다. 학생의 답변이나 수집된 데이터가 비어있는지 확인해주세요."
     );
+
   const studentIdIndex = headers.indexOf("학번");
   const studentId =
     studentIdIndex > -1 ? studentRowData[studentIdIndex] : "알 수 없음";
   const finalPrompt =
     `${persona}\n\n` +
     `**주요 작업:** ${task}\n\n` +
-    `## 학생 정보:\n- 학번: ${studentId}\n- 과제명: ${sheetName}\n\n` +
-    `## 학생 제출 내용 및 교사 평가:\n${context.trim()}\n\n` +
+    `## 학생 정보:\n- 학번: ${studentId}\n- 시트명: ${sheetName}\n\n` +
+    `## 수집된 학생 데이터:\n${context.trim()}\n\n` +
     `## AI 초안 작성 지시사항:\n${instructions}`;
   Logger.log(createSafeLog(`[AI 초안] 프롬프트 생성 완료 (길이: ${finalPrompt.length})`, { studentId }));
   return { prompt: finalPrompt, studentId: studentId };

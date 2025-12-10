@@ -38,6 +38,16 @@ function showAssignmentCreatorSidebar() {
 }
 
 /**
+ * '종합 데이터 생성' 사이드바를 표시합니다.
+ */
+function showSummaryCreatorSidebar() {
+  var html = HtmlService.createHtmlOutputFromFile('SummaryCreator')
+      .setTitle('종합 데이터 생성')
+      .setWidth(400);
+  SpreadsheetApp.getUi().showSidebar(html);
+}
+
+/**
  * 사용자에게 삭제할 시트 이름을 입력받는 프롬프트 창을 띄웁니다.
  */
 function promptToDeleteSheet() {

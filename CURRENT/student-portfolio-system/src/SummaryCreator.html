@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <base target="_top">
+    <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <style>
+        body {
+            font-family: 'Google Sans', sans-serif;
+            padding: 15px;
+            background-color: #f8f9fa;
+            color: #202124;
+        }
+
+        h2 {
+            font-size: 18px;
+            margin-bottom: 15px;
+            color: #1a73e8;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+            font-size: 14px;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #dadce0;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+
+        .sheet-list {
+            border: 1px solid #dadce0;
+            border-radius: 4px;
+            max-height: 300px;
+            overflow-y: auto;
+            background: white;
+        }
+
+        .sheet-item {
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sheet-item:last-child {
+            border-bottom: none;
+        }
+
+        .sheet-header-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+
+        .sheet-header-row input[type="checkbox"] {
+            margin-right: 10px;
+        }
+
+        .sheet-name-label {
+            font-weight: 500;
+        }
+
+        .column-select-row {
+            margin-left: 25px;
+            /* check box width indent */
+            display: none;
+            /* hidden by default */
+        }
+
+        select {
+            width: 100%;
+            padding: 5px;
+            border: 1px solid #dadce0;
+            border-radius: 4px;
+            background: white;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 10px;
+            background-color: #1a73e8;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-weight: 500;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .btn:disabled {
+            background-color: #dadce0;
+            cursor: not-allowed;
+        }
+
+        .loader {
+            display: none;
+            text-align: center;
+            margin-top: 10px;
+            font-size: 13px;
+            color: #5f6368;
+        }
+    </style>
+</head>
+
+<body>
+    <h2>📋 종합 데이터 생성</h2>
+
+    <div class="form-group">
+        <label for="summaryTitle">새 시트 제목</label>
+        <input type="text" id="summaryTitle" value="과제 종합 데이터" placeholder="예: 1학기 과제 종합">
+    </div>
+
+    <div class="form-group">
+        <label>과제 및 열 선택</label>
+        <div id="sheetListContainer" class="sheet-list">
+            <div style="padding:15px; text-align:center; color:#888;">로딩 중...</div>
+        </div>
+    </div>
+
+    <button id="generateBtn" class="btn" onclick="generate()">생성하기</button>
+    <div id="loader" class="loader">데이터를 처리하고 있습니다...</div>
+
+    <script>
+        $(function () {
+            // 초기 로드: 과제 목록 불러오기
+            google.script.run.withSuccessHandler(renderSheetList).getAssignmentSheetList();
+        });
+
+        // 캐시 역할: 시트별 헤더 저장 (sheetName -> headers[])
+        const headersCache = {};
+
+        function renderSheetList(sheetNames) {
+            const container = $('#sheetListContainer');
+            container.empty();
+
+            if (sheetNames.length === 0) {
+                container.html('<div style="padding:15px; text-align:center; color:#888;">과제 시트가 없습니다.</div>');
+                return;
+            }
+
+            sheetNames.forEach(name => {
+                const item = $(`
+            <div class="sheet-item" data-name="${name}">
+              <div class="sheet-header-row">
+                <input type="checkbox" id="chk_${name}" onchange="toggleSheetSelection('${name}')">
+                <label for="chk_${name}" class="sheet-name-label">${name}</label>
+              </div>
+              <div class="column-select-row" id="col_row_${name}">
+                <select id="sel_${name}">
+                  <option value="">열 불러오는 중...</option>
+                </select>
+              </div>
+            </div>
+          `);
+                container.append(item);
+            });
+        }
+
+        function toggleSheetSelection(sheetName) {
+            const isChecked = $(`#chk_${sheetName}`).is(':checked');
+            const colRow = $(`#col_row_${sheetName}`);
+
+            if (isChecked) {
+                colRow.show();
+                loadHeadersIfNeeded(sheetName);
+            } else {
+                colRow.hide();
+            }
+        }
+
+        function loadHeadersIfNeeded(sheetName) {
+            if (headersCache[sheetName]) {
+                populateSelect(sheetName, headersCache[sheetName]);
+                return;
+            }
+
+            google.script.run.withSuccessHandler(headers => {
+                headersCache[sheetName] = headers;
+                populateSelect(sheetName, headers);
+            }).getSheetHeaders(sheetName);
+        }
+
+        function populateSelect(sheetName, headers) {
+            const select = $(`#sel_${sheetName}`);
+            select.empty();
+
+            if (headers.length === 0) {
+                select.append('<option value="">헤더 없음</option>');
+                return;
+            }
+
+            // 기본 선택 제안: "종합의견"이 있으면 자동 선택
+            let preSelect = "";
+
+            headers.forEach(h => {
+                select.append(`<option value="${h}">${h}</option>`);
+                if (h.indexOf("종합의견") !== -1) preSelect = h;
+            });
+
+            if (preSelect) select.val(preSelect);
+        }
+
+        function generate() {
+            const title = $('#summaryTitle').val().trim();
+            if (!title) {
+                alert("시트 제목을 입력해주세요.");
+                return;
+            }
+
+            const selections = [];
+            $('.sheet-item').each(function () {
+                const sheetName = $(this).data('name');
+                if ($(`#chk_${sheetName}`).is(':checked')) {
+                    const selectedHeader = $(`#sel_${sheetName}`).val();
+                    if (selectedHeader) {
+                        selections.push({
+                            sheetName: sheetName,
+                            header: selectedHeader
+                        });
+                    }
+                }
+            });
+
+            if (selections.length === 0) {
+                alert("최소 1개 이상의 과제와 열을 선택해주세요.");
+                return;
+            }
+
+            $('#generateBtn').prop('disabled', true);
+            $('#loader').show();
+
+            google.script.run
+                .withSuccessHandler(msg => {
+                    alert(msg);
+                    $('#generateBtn').prop('disabled', false);
+                    $('#loader').hide();
+                    google.script.host.close();
+                })
+                .withFailureHandler(err => {
+                    alert("오류 발생: " + err.message);
+                    $('#generateBtn').prop('disabled', false);
+                    $('#loader').hide();
+                })
+                .generateSummarySheet(title, selections);
+        }
+    </script>
+</body>
+
+</html>

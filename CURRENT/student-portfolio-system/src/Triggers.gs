@@ -30,6 +30,8 @@ function onOpen() {
       
       .addItem('🗑️ 시트 삭제', 'promptToDeleteSheet')
       .addSeparator()
+      .addItem('📋 종합 데이터 생성', 'showSummaryCreatorSidebar')
+      .addSeparator()
       .addSubMenu(ui.createMenu('🤖 AI 기능')
         .addItem('✍️ 선택된 행에 AI 초안 생성', 'generateAiSummaryManual')
         .addItem('🚀 미작성 학생 일괄 AI 초안 생성', 'generateAiBatchForUnwritten')

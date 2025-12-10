@@ -273,10 +273,25 @@
         .data-label {
             font-weight: 600;
             color: #4b5563;
+            min-width: 80px;
+            /* 라벨 너비 고정 */
         }
 
         .data-value {
-            text-align: right;
+            text-align: left;
+            /* 왼쪽 정렬로 변경 */
+            flex: 1;
+            padding-left: 1rem;
+        }
+
+        /* 종합의견 라벨 강조 스타일 */
+        .record-card .data-row:has(.data-label:contains('종합의견')) .data-label,
+        .data-label.highlight-label {
+            background-color: #e0e7ff;
+            /* 연한 파란색 배경 */
+            color: #3730a3;
+            padding: 2px 6px;
+            border-radius: 4px;
         }
 
         .btn-back {
@@ -977,9 +992,12 @@
             titleEl.textContent = title;
 
             let bodyHtml = group.records.map((record, index) => {
+                const isComprehensive = record.label.includes('종합의견');
+                const labelClass = isComprehensive ? 'data-label highlight-label' : 'data-label';
+
                 return `<div class="record-card ${record.read ? 'read' : ''}">
                     <div class="data-row">
-                        <div class="data-label">${escapeHTML(record.label)}:</div>
+                        <div class="${labelClass}">${escapeHTML(record.label)}:</div>
                         <div class="data-value">${escapeHTML(record.value)}</div>
                     </div>
                 </div>`;

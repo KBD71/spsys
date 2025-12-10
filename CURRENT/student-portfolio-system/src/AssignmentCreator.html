@@ -210,9 +210,9 @@
             var container = document.getElementById('questions-container');
             var questionCount = container.children.length;
 
-            // template 시트 기준, 최대 5개로 제한
-            if (questionCount >= 5) {
-                alert('질문은 최대 5개까지 추가할 수 있습니다.');
+            // template 시트 기준, 최대 20개로 확장 (v2.1)
+            if (questionCount >= 20) {
+                alert('질문은 최대 20개까지 추가할 수 있습니다.');
                 return;
             }
 

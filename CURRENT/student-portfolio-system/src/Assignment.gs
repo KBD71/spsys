@@ -1,6 +1,6 @@
 /**
  * ==============================================
- * Assignment.gs - 과제 관리 (v2.0 - 시험모드 추가)
+ * Assignment.gs - 과제 관리 (v2.1 - 질문 20개 확장)
  * ==============================================
  * 새 과제 시트를 생성하고 관련 정보를 '과제설정', '공개' 시트에 기록합니다.
  * 시험모드 관련 설정도 함께 저장합니다.
@@ -31,25 +31,44 @@ function createAssignmentSheetFromSidebar(data) {
       finalSheetName = `${assignmentName}_${counter++}`;
     }
 
-    // '과제설정' 시트에 행 추가
+    // '과제설정' 시트 헤더 확인 및 확장
     var headers = assignmentSettingsSheet.getRange(1, 1, 1, assignmentSettingsSheet.getLastColumn()).getValues()[0];
     
     // ★★★ '풀이분리' 헤더가 없으면 추가 ★★★
     if (headers.indexOf('풀이분리') === -1) {
       assignmentSettingsSheet.getRange(1, headers.length + 1).setValue('풀이분리');
-      headers.push('풀이분리'); // 헤더 배열에도 추가
+      headers.push('풀이분리'); 
+    }
+
+    // ★★★ 질문 헤더 확장 (v2.1: 질문 개수에 맞춰 헤더 늘림) ★★★
+    // 현재 헤더에 있는 최대 질문 번호 찾기
+    var maxHeaderQuestionNum = 0;
+    headers.forEach(h => {
+      if (h.startsWith('질문')) {
+        var num = parseInt(h.replace('질문', ''));
+        if (!isNaN(num) && num > maxHeaderQuestionNum) maxHeaderQuestionNum = num;
+      }
+    });
+
+    // 부족한 질문 헤더 추가 (예: 질문6, 질문7 ...)
+    if (questions.length > maxHeaderQuestionNum) {
+      var startCol = headers.length + 1;
+      var addedCount = 0;
+      for (var i = maxHeaderQuestionNum + 1; i <= questions.length; i++) {
+        assignmentSettingsSheet.getRange(1, startCol + addedCount).setValue(`질문${i}`);
+        headers.push(`질문${i}`);
+        addedCount++;
+      }
     }
 
     // ★★★ 시험모드 정보를 포함한 행 데이터 생성 ★★★
     var newRowObject = {
-      // '공개': false, // ★★★ 제거: '공개' 시트에서 관리 ★★★
       '재제출허용': false,
       '과제ID': assignmentId,
       '과제명': assignmentName,
       '대상시트': finalSheetName,
       '시작일': startDate,
       '마감일': endDate,
-      // 시험모드 및 풀이분리 정보 추가
       '풀이분리': separateSolution || false,
       '시험모드': examMode || false,
       '이탈허용횟수': maxViolations || 3,
@@ -76,34 +95,54 @@ function createAssignmentSheetFromSidebar(data) {
       }
     });
     
-    Logger.log(`[과제생성] ${assignmentName}, 풀이분리: ${separateSolution}, 시험모드: ${examMode}, 이탈허용: ${maxViolations}회, 전체화면: ${forceFullscreen}`);
+    Logger.log(`[과제생성] ${assignmentName}, 질문수: ${questions.length}, 풀이분리: ${separateSolution}, 시험모드: ${examMode}, 이탈허용: ${maxViolations}회`);
 
-    // '공개' 시트에 행 추가 (v2 구조)
+    // '공개' 시트에 행 추가
     var publicSheet = ss.getSheetByName('공개');
     publicSheet.appendRow([false, finalSheetName, '전체', false, '']);
     
     // 체크박스 삽입 (A열: 공개여부, D열: 재제출허용)
-    var lastRow = publicSheet.getLastRow();
-    publicSheet.getRange(lastRow, 1).insertCheckboxes();
-    publicSheet.getRange(lastRow, 4).insertCheckboxes();
+    var pubLastRow = publicSheet.getLastRow();
+    publicSheet.getRange(pubLastRow, 1).insertCheckboxes();
+    publicSheet.getRange(pubLastRow, 4).insertCheckboxes();
 
     // 'template'을 복사하여 새 과제 시트 생성
     var newSheet = templateSheet.copyTo(ss).setName(finalSheetName);
     var newSheetHeaders = newSheet.getRange(1, 1, 1, newSheet.getLastColumn()).getValues()[0];
-    var maxQuestionsInTemplate = newSheetHeaders.filter(h => h.startsWith('질문')).length;
     
-
-    // 템플릿의 질문 개수보다 적으면 불필요한 질문 열 삭제
-    if (questions.length < maxQuestionsInTemplate) {
+    // 템플릿의 '질문' 컬럼 수 확인
+    var templateQuestionCols = newSheetHeaders.filter(h => h.startsWith('질문')).length;
+    
+    // ★★★ v2.1: 질문 컬럼 동적 처리 (축소 및 확장) ★★★
+    if (questions.length < templateQuestionCols) {
+      // 1. 질문이 템플릿보다 적으면: 불필요한 뒷부분 컬럼 삭제
       var startDeleteColName = `질문${questions.length + 1}`;
       var startDeleteColIndex = newSheetHeaders.indexOf(startDeleteColName) + 1;
       if (startDeleteColIndex > 0) {
-        newSheet.deleteColumns(startDeleteColIndex, maxQuestionsInTemplate - questions.length);
+        newSheet.deleteColumns(startDeleteColIndex, templateQuestionCols - questions.length);
+      }
+    } else if (questions.length > templateQuestionCols) {
+      // 2. 질문이 템플릿보다 많으면: 부족한 컬럼 추가
+      // '질문{templateQuestionCols}' 컬럼(마지막 질문 컬럼)을 찾아서 그 뒤에 추가
+      var lastQColName = `질문${templateQuestionCols}`;
+      var lastQColIndex = newSheetHeaders.indexOf(lastQColName) + 1;
+      
+      // 만약 템플릿에 질문 컬럼이 하나도 없으면? (예외처리: 맨 뒤에 추가하거나 등등.. 일단 있다고 가정)
+      if (lastQColIndex > 0) {
+        var columnsToAdd = questions.length - templateQuestionCols;
+        newSheet.insertColumnsAfter(lastQColIndex, columnsToAdd);
+        
+        // 추가된 컬럼 헤더 설정
+        for (var i = 1; i <= columnsToAdd; i++) {
+          newSheet.getRange(1, lastQColIndex + i).setValue(`질문${templateQuestionCols + i}`);
+        }
       }
     }
 
+    // 갱신된 헤더 다시 읽기 (분리 작업 위해)
+    newSheetHeaders = newSheet.getRange(1, 1, 1, newSheet.getLastColumn()).getValues()[0];
+
     // ★★★ 시험모드 또는 풀이분리일 경우: 질문 컬럼을 '풀이'와 '답'으로 분리 ★★★
-    // 수정: 시험모드와 무관하게 '풀이분리'가 체크된 경우에만 분리
     if (separateSolution) {
       // 뒤에서부터 처리해야 인덱스가 밀리지 않음
       for (var i = questions.length; i >= 1; i--) {
@@ -119,18 +158,15 @@ function createAssignmentSheetFromSidebar(data) {
           
           // 3. 새 컬럼 헤더를 '질문i_답'으로 설정
           newSheet.getRange(1, questionColIndex + 1).setValue(`${questionColName}_답`);
-          
-          // (선택사항) 스타일 복사 등을 할 수도 있지만, 기본 삽입으로 충분함
         }
       }
-      Logger.log(`[설정적용] ${questions.length}개 질문에 대해 풀이/답 컬럼 분리 완료 (시험모드: ${examMode}, 풀이분리: ${separateSolution})`);
+      Logger.log(`[설정적용] ${questions.length}개 질문에 대해 풀이/답 컬럼 분리 완료`);
     }
 
     newSheet.activate();
     updateDashboard(); // Dashboard.gs
     
-    // ★★★ 시험모드 활성화 여부를 포함한 성공 메시지 ★★★
-    var successMessage = `'${finalSheetName}' 시트가 생성되었습니다.`;
+    var successMessage = `'${finalSheetName}' 시트가 생성되었습니다. (질문 ${questions.length}개)`;
     if (separateSolution) {
         successMessage += `\n\n📝 서술형(풀이/답 분리) 적용됨`;
     }

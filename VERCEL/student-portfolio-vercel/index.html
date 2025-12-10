@@ -22,7 +22,7 @@
     <script>
         // ==========================================
         // [설정] 학교 이름 (이곳에서 수정하세요)
-        const SCHOOL_NAME = '문현고 1학년';
+        window.SCHOOL_NAME = '문현고 1학년';
         // ==========================================
     </script>
     <style>
@@ -679,11 +679,11 @@
         });
 
         function updateSchoolInfo() {
-            if (typeof SCHOOL_NAME !== 'undefined') {
-                document.title = `${SCHOOL_NAME} 과제제출 시스템`;
+            if (typeof window.SCHOOL_NAME !== 'undefined') {
+                document.title = `${window.SCHOOL_NAME} 과제제출 시스템`;
                 const titles = document.querySelectorAll('.school-title-text');
                 titles.forEach(el => {
-                    el.textContent = `🎓 ${SCHOOL_NAME} 과제제출 시스템`;
+                    el.textContent = `🎓 ${window.SCHOOL_NAME} 과제제출 시스템`;
                 });
             }
         }
@@ -1036,6 +1036,7 @@
             });
 
             modal.classList.remove('hidden');
+            typesetMath(bodyEl);
         }
 
         function switchToPreviewMode(textareaId, previewId) {

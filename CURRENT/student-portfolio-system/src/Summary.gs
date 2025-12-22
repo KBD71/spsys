@@ -182,14 +182,14 @@ function generateSummarySheet(title, selections) {
     const opinionColIndex = newHeaders.indexOf("종합의견") + 1;
     if (opinionColIndex > 0) {
         newSheet.setColumnWidth(opinionColIndex, 300);
-        newSheet.setWrap(true);
+        newSheet.getRange(2, opinionColIndex, newSheet.getMaxRows() - 1, 1).setWrap(true);
     }
     
     // 건의사항 열 너비 조정
     const suggestionColIndex = newHeaders.indexOf("건의사항") + 1;
     if (suggestionColIndex > 0) {
         newSheet.setColumnWidth(suggestionColIndex, 200);
-        newSheet.setWrap(true);
+        newSheet.getRange(2, suggestionColIndex, newSheet.getMaxRows() - 1, 1).setWrap(true);
     }
 
     // 5. '공개' 시트에 등록

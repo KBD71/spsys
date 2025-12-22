@@ -165,10 +165,14 @@ function generateAiBatchForUnwritten() {
     }
 
     // 3. 사용자 확인
+    // ★★★ 수정: 예상 시간 계산 현실화 (10초 -> 45초) ★★★
+    const estimatedSecondsPerStudent = 45;
     const response = ui.alert(
       '🤖 AI 일괄 초안 생성',
       `${unwrittenRows.length}명의 미작성 학생에 대해 AI 초안을 생성합니다.\n\n` +
-      `예상 소요 시간: 약 ${Math.ceil(unwrittenRows.length * 10 / 60)}분\n\n계속하시겠습니까?`,
+      `예상 소요 시간: 약 ${Math.ceil(unwrittenRows.length * estimatedSecondsPerStudent / 60)}분\n\n` +
+      `※ 주의: 구글 실행 시간 제한(6분)으로 인해 중간에 멈출 수 있습니다.\n` +
+      `멈추면 다시 실행하여 이어서 작업하세요.\n\n계속하시겠습니까?`,
       ui.ButtonSet.YES_NO
     );
     if (response !== ui.Button.YES) {
@@ -183,37 +187,61 @@ function generateAiBatchForUnwritten() {
     );
     let successCount = 0;
     let failCount = 0;
+    
+    // ★★★ 추가: 실행 시간 모니터링 ★★★
+    const startTime = new Date().getTime();
+    const TIME_LIMIT_MS = 5 * 60 * 1000; // 5분 (안전 여유분 1분)
+    let isTimeOut = false;
 
-    unwrittenRows.forEach((rowNum, index) => {
-      try {
-        SpreadsheetApp.getActiveSpreadsheet().toast(
-          `진행 중: ${index + 1}/${unwrittenRows.length}명`,
-          '🤖 AI 생성 중',
-          3
-        );
-
-        runAiGeneration(sheet, rowNum);
-        successCount++;
-
-        // Rate Limit 방지를 위해 각 호출 사이 2초 대기
-        if (index < unwrittenRows.length - 1) {
-          Utilities.sleep(2000);
+    for (let i = 0; i < unwrittenRows.length; i++) {
+        const rowNum = unwrittenRows[i];
+        
+        // 시간 체크
+        if (new Date().getTime() - startTime > TIME_LIMIT_MS) {
+            isTimeOut = true;
+            break;
         }
-      } catch (e) {
-        Logger.log(`[AI 일괄생성] 실패 - 행 ${rowNum}: ${e.message}`);
-        failCount++;
-      }
-    });
+
+        try {
+            SpreadsheetApp.getActiveSpreadsheet().toast(
+            `진행 중: ${i + 1}/${unwrittenRows.length}명`,
+            '🤖 AI 생성 중',
+            3
+            );
+
+            runAiGeneration(sheet, rowNum);
+            successCount++;
+
+            // Rate Limit 방지를 위해 각 호출 사이 2초 대기
+            if (i < unwrittenRows.length - 1) {
+                Utilities.sleep(2000);
+            }
+        } catch (e) {
+            Logger.log(`[AI 일괄생성] 실패 - 행 ${rowNum}: ${e.message}`);
+            failCount++;
+        }
+    }
+
     // 5. 결과 보고
     SpreadsheetApp.getActiveSpreadsheet().toast(
-      `성공: ${successCount}명, 실패: ${failCount}명`,
-      '✅ 일괄 생성 완료',
+      `성공: ${successCount}명, 실패: ${failCount}명` + (isTimeOut ? " (시간 제한으로 중단됨)" : ""),
+      isTimeOut ? '⚠️ 부분 완료' : '✅ 일괄 생성 완료',
       10
     );
+    
+    let resultMessage = `성공: ${successCount}명\n실패: ${failCount}명\n\n`;
+    
+    if (isTimeOut) {
+        resultMessage += `⚠️ 실행 시간 제한(5분)에 도달하여 안전하게 중단되었습니다.\n\n` +
+                         `남은 학생: ${unwrittenRows.length - (successCount + failCount)}명\n` +
+                         `메뉴에서 '일괄 생성'을 다시 실행하면 이어서 작업할 수 있습니다.`;
+    } else {
+        resultMessage += (failCount > 0 ? '실패한 행은 로그(보기 > 로그)를 확인하세요.' : '모든 초안이 성공적으로 생성되었습니다.');
+    }
+
     ui.alert(
-      '✅ AI 일괄 초안 생성 완료',
-      `성공: ${successCount}명\n실패: ${failCount}명\n\n` +
-      (failCount > 0 ? '실패한 행은 로그(보기 > 로그)를 확인하세요.' : '모든 초안이 성공적으로 생성되었습니다.'),
+      isTimeOut ? '⚠️ AI 일괄 생성 중단 (시간 제한)' : '✅ AI 일괄 초안 생성 완료',
+      resultMessage,
       ui.ButtonSet.OK
     );
   } catch (e) {
@@ -616,7 +644,7 @@ function callGeminiApi(prompt, modelName) {
   const modelToUse = modelName || 'gemini-3-flash-preview';
   
   // v1beta에서 v1으로 변경 (gemini-2.5-pro/flash는 v1 권장)
-  const url = `https://generativelanguage.googleapis.com/v1/models/${modelToUse}:generateContent?key=${apiKey}`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelToUse}:generateContent?key=${apiKey}`;
   
   const payload = {
     contents: [{ parts: [{ text: prompt }] }],

@@ -168,8 +168,8 @@
         }
 
         function toggleSheetSelection(sheetName) {
-            const isChecked = $(`#chk_${sheetName}`).is(':checked');
-            const colRow = $(`#col_row_${sheetName}`);
+            const isChecked = $(document.getElementById(`chk_${sheetName}`)).is(':checked');
+            const colRow = $(document.getElementById(`col_row_${sheetName}`));
 
             if (isChecked) {
                 colRow.show();
@@ -192,7 +192,7 @@
         }
 
         function populateSelect(sheetName, headers) {
-            const select = $(`#sel_${sheetName}`);
+            const select = $(document.getElementById(`sel_${sheetName}`));
             select.empty();
 
             if (headers.length === 0) {
@@ -221,8 +221,8 @@
             const selections = [];
             $('.sheet-item').each(function () {
                 const sheetName = $(this).data('name');
-                if ($(`#chk_${sheetName}`).is(':checked')) {
-                    const selectedHeader = $(`#sel_${sheetName}`).val();
+                if ($(document.getElementById(`chk_${sheetName}`)).is(':checked')) {
+                    const selectedHeader = $(document.getElementById(`sel_${sheetName}`)).val();
                     if (selectedHeader) {
                         selections.push({
                             sheetName: sheetName,

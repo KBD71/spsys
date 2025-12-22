@@ -8,7 +8,7 @@
  */
 
 // API 키는 PropertiesService에서 관리됩니다.
-// 지원하는 AI 제공자: 'gemini-2.5-pro', 'gemini-2.5-flash', 'claude-sonnet-4-5-20250929'
+// 지원하는 AI 제공자: 'gemini-3-pro-preview', 'gemini-3-flash-preview', 'claude-sonnet-4-5-20250929'
 
 /**
  * 사용자 속성에 Gemini API 키를 설정합니다.
@@ -55,13 +55,13 @@ function setClaudeApiKey() {
 function selectAiProvider() {
   const ui = SpreadsheetApp.getUi();
   const properties = PropertiesService.getUserProperties();
-  const currentProvider = properties.getProperty("AI_PROVIDER") || "gemini-2.5-flash"; // 새 기본값
+  const currentProvider = properties.getProperty("AI_PROVIDER") || "gemini-3-flash-preview"; // 새 기본값
 
   // ★★★ 수정: 요청하신 3가지 모델명으로 프롬프트 변경 ★★★
   const message = `현재 모델: ${currentProvider}\n\n` +
     `사용할 AI 모델의 번호를 입력하세요:\n\n` +
-    `  1: gemini-pro (gemini-2.5-pro)\n` +
-    `  2: gemini-flash (gemini-2.5-flash)\n` +
+    `  1: gemini-pro (gemini-3-pro-preview)\n` +
+    `  2: gemini-flash (gemini-3-flash-preview)\n` +
     `  3: claude4.5 (claude-sonnet-4-5-20250929)\n`;
 
   const response = ui.prompt("AI 모델 선택", message, ui.ButtonSet.OK_CANCEL);
@@ -72,10 +72,10 @@ function selectAiProvider() {
     let providerName = "";
 
     if (choice === "1") {
-      newProvider = "gemini-2.5-pro";
+      newProvider = "gemini-3-pro-preview";
       providerName = "gemini-pro";
     } else if (choice === "2") {
-      newProvider = "gemini-2.5-flash";
+      newProvider = "gemini-3-flash-preview";
       providerName = "gemini-flash";
     } else if (choice === "3") {
       newProvider = "claude-sonnet-4-5-20250929";
@@ -96,7 +96,7 @@ function selectAiProvider() {
  */
 function getAiProvider() {
   // ★★★ 수정: 기본값을 새 Flash 모델로 변경 ★★★
-  return PropertiesService.getUserProperties().getProperty("AI_PROVIDER") || "gemini-2.5-flash";
+  return PropertiesService.getUserProperties().getProperty("AI_PROVIDER") || "gemini-3-flash-preview";
 }
 
 // ================================================================
@@ -265,7 +265,7 @@ function runAiGeneration(sheet, row) {
     SpreadsheetApp.flush();
     const aiData = getAiDataForSummary(sheet, row, headers);
 
-    const provider = getAiProvider(); // 예: "gemini-2.5-flash"
+    const provider = getAiProvider(); // 예: "gemini-3-flash-preview"
     opinionCell.setValue(`🤖 [${provider}] 초안 작성 중...`);
     SpreadsheetApp.flush();
 
@@ -462,7 +462,7 @@ function runAiDetection(sheet, row) {
     SpreadsheetApp.flush();
     const detectionData = getAiDataForDetection(sheet, row, headers);
 
-    const provider = getAiProvider(); // 예: "gemini-2.5-flash"
+    const provider = getAiProvider(); // 예: "gemini-3-flash-preview"
     resultCell.setValue(`🤖 [${provider}] 검사 중입니다...`);
     SpreadsheetApp.flush();
 
@@ -596,7 +596,7 @@ function retryCallAiApi(provider, prompt, maxRetries) {
  */
 function retryCallGeminiApi(prompt, maxRetries) {
   // 이전 기본값 대신 새 기본값으로 호출
-  return retryCallAiApi("gemini-2.5-flash", prompt, maxRetries);
+  return retryCallAiApi("gemini-3-flash-preview", prompt, maxRetries);
 }
 
 /**
@@ -613,7 +613,7 @@ function callGeminiApi(prompt, modelName) {
   }
 
   // ★★★ 수정: modelName을 인자로 받고, 기본값을 gemini-2.5-flash로 변경 ★★★
-  const modelToUse = modelName || 'gemini-2.5-flash';
+  const modelToUse = modelName || 'gemini-3-flash-preview';
   
   // v1beta에서 v1으로 변경 (gemini-2.5-pro/flash는 v1 권장)
   const url = `https://generativelanguage.googleapis.com/v1/models/${modelToUse}:generateContent?key=${apiKey}`;

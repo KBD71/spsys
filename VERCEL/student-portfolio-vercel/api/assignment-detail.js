@@ -69,6 +69,12 @@ module.exports = async (req, res) => {
     // ★★★ 설명 컬럼 읽기 ★★★
     const description = assignmentHeaderMap['설명'] !== undefined ? assignmentRow[assignmentHeaderMap['설명']] : '';
 
+    console.log(`[API DEBUG] AssignmentID: ${assignmentId}, Description Found: ${!!description}`);
+    if (!description) {
+        console.log('[API DEBUG] Header Map:', JSON.stringify(assignmentHeaderMap));
+        console.log('[API DEBUG] Row Data:', JSON.stringify(assignmentRow));
+    }
+
     // 시험 모드 플래그 추출 (있으면 사용, 없으면 false)
     const examModeColIndex = assignmentHeaderMap['시험모드'];
     const examMode = examModeColIndex !== undefined ?

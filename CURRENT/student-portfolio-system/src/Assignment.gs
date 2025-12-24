@@ -14,7 +14,7 @@
 function createAssignmentSheetFromSidebar(data) {
   try {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
-    var { name: assignmentName, startDate, endDate, questions, separateSolution, examMode, maxViolations, forceFullscreen } = data;
+    var { name: assignmentName, startDate, endDate, questions, separateSolution, allowModification, examMode, maxViolations, forceFullscreen } = data;
     
     // 유효성 검사
     var templateSheet = ss.getSheetByName('template');
@@ -38,6 +38,12 @@ function createAssignmentSheetFromSidebar(data) {
     if (headers.indexOf('풀이분리') === -1) {
       assignmentSettingsSheet.getRange(1, headers.length + 1).setValue('풀이분리');
       headers.push('풀이분리'); 
+    }
+    
+    // ★★★ '재제출허용' 헤더가 없으면 추가 ★★★ 
+    if (headers.indexOf('재제출허용') === -1) {
+      assignmentSettingsSheet.getRange(1, headers.length + 1).setValue('재제출허용');
+      headers.push('재제출허용'); 
     }
 
     // ★★★ 질문 헤더 확장 (v2.1: 질문 개수에 맞춰 헤더 늘림) ★★★
@@ -63,7 +69,7 @@ function createAssignmentSheetFromSidebar(data) {
 
     // ★★★ 시험모드 정보를 포함한 행 데이터 생성 ★★★
     var newRowObject = {
-      '재제출허용': false,
+      '재제출허용': allowModification || false,
       '과제ID': assignmentId,
       '과제명': assignmentName,
       '대상시트': finalSheetName,
@@ -86,7 +92,7 @@ function createAssignmentSheetFromSidebar(data) {
 
     // ★★★ 체크박스 추가 로직 ★★★
     var lastRow = assignmentSettingsSheet.getLastRow();
-    var checkboxColumns = ['풀이분리', '시험모드', '강제전체화면'];
+    var checkboxColumns = ['풀이분리', '시험모드', '강제전체화면', '재제출허용'];
     
     checkboxColumns.forEach(colName => {
       var colIndex = headers.indexOf(colName);
@@ -95,7 +101,7 @@ function createAssignmentSheetFromSidebar(data) {
       }
     });
     
-    Logger.log(`[과제생성] ${assignmentName}, 질문수: ${questions.length}, 풀이분리: ${separateSolution}, 시험모드: ${examMode}, 이탈허용: ${maxViolations}회`);
+    Logger.log(`[과제생성] ${assignmentName}, 질문수: ${questions.length}, 풀이분리: ${separateSolution}, 재제출허용: ${allowModification}, 시험모드: ${examMode}, 이탈허용: ${maxViolations}회`);
 
     // '공개' 시트에 행 추가
     var publicSheet = ss.getSheetByName('공개');
@@ -169,6 +175,9 @@ function createAssignmentSheetFromSidebar(data) {
     var successMessage = `'${finalSheetName}' 시트가 생성되었습니다. (질문 ${questions.length}개)`;
     if (separateSolution) {
         successMessage += `\n\n📝 서술형(풀이/답 분리) 적용됨`;
+    }
+    if (allowModification) {
+        successMessage += `\n\n🔄 제출 후 수정 허용`;
     }
     if (examMode) {
       successMessage += `\n\n🎯 시험 모드 활성화됨:\n- 이탈 허용: ${maxViolations}회\n- 전체화면: ${forceFullscreen ? 'ON' : 'OFF'}`;

@@ -128,6 +128,15 @@
             </div>
         </div>
 
+        <div class="checkbox-group"
+            style="margin-bottom: 20px; padding: 10px; background: #f0f9ff; border-radius: 8px; border: 1px solid #bae6fd;">
+            <input type="checkbox" id="allowModification">
+            <label for="allowModification" style="font-weight: bold; color: #0284c7;">제출 후 수정 허용</label>
+            <div class="help-text" style="margin-left: 24px;">
+                ✓ 체크 시: 제출 후에도 마감일 전이라면 답변을 수정할 수 있습니다.
+            </div>
+        </div>
+
         <!-- ★★★ 시험 모드 섹션 추가 ★★★ -->
         <div class="exam-mode-section">
             <h4>🎯 시험 모드 설정</h4>
@@ -234,6 +243,7 @@
                 questions: [],
                 // ★★★ 시험 모드 정보 추가 ★★★
                 separateSolution: document.getElementById('separateSolution').checked,
+                allowModification: document.getElementById('allowModification').checked,
                 examMode: document.getElementById('examMode').checked,
                 maxViolations: parseInt(document.getElementById('maxViolations').value) || 3,
                 forceFullscreen: document.getElementById('forceFullscreen').checked

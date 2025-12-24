@@ -834,6 +834,10 @@
                 }
 
                 questionsContainer.innerHTML = '';
+                console.log('[DEBUG] API Result:', result);
+                console.log('[DEBUG] Assignment Info:', result.assignment);
+                console.log('[DEBUG] Description:', result.assignment?.description);
+
                 console.log('Exam Mode:', result.examMode);
                 console.log('Separate Solution:', result.separateSolution);
                 console.log('Has Split Columns:', result.hasSplitColumns);

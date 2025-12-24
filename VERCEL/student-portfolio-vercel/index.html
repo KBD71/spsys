@@ -832,6 +832,21 @@
                 // ★★★ 핵심 변경점: 시험모드와 무관하게 '풀이분리' 설정과 실제 컬럼 존재 여부만 확인 ★★★
                 const useSplitFields = result.separateSolution && result.hasSplitColumns;
 
+                // 기존 내용 초기화
+                questionsContainer.innerHTML = '';
+
+                // ★★★ 과제 설명 표시 ★★★
+                if (result.assignment.description) {
+                    const descDiv = document.createElement('div');
+                    descDiv.className = 'info-card';
+                    descDiv.style.marginBottom = '20px';
+                    descDiv.style.borderLeft = '4px solid #3b82f6';
+                    // 줄바꿈 처리
+                    const descHtml = escapeHTML(result.assignment.description).replace(/\n/g, '<br>');
+                    descDiv.innerHTML = `<h4 style="margin-top:0; color:#1e40af;">📌 과제 설명</h4><p style="margin-bottom:0; line-height:1.6;">${descHtml}</p>`;
+                    questionsContainer.appendChild(descDiv);
+                }
+
                 result.questions.forEach((q, index) => {
                     const questionDiv = document.createElement('div');
                     questionDiv.className = 'question-card';

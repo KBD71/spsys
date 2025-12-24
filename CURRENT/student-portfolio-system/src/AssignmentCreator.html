@@ -117,6 +117,11 @@
             <input type="date" id="endDate">
         </div>
 
+        <div class="form-group">
+            <label for="description">과제 설명 (선택)</label>
+            <textarea id="description" rows="3" placeholder="나누고 싶은 설명이나 공지사항을 입력하세요."></textarea>
+        </div>
+
         <hr>
 
         <div class="checkbox-group"
@@ -240,6 +245,7 @@
                 name: document.getElementById('assignmentName').value.trim(),
                 startDate: document.getElementById('startDate').value,
                 endDate: document.getElementById('endDate').value,
+                description: document.getElementById('description').value,
                 questions: [],
                 // ★★★ 시험 모드 정보 추가 ★★★
                 separateSolution: document.getElementById('separateSolution').checked,

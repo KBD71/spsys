@@ -14,7 +14,7 @@
 function createAssignmentSheetFromSidebar(data) {
   try {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
-    var { name: assignmentName, startDate, endDate, questions, separateSolution, allowModification, examMode, maxViolations, forceFullscreen } = data;
+    var { name: assignmentName, startDate, endDate, description, questions, separateSolution, allowModification, examMode, maxViolations, forceFullscreen } = data;
     
     // 유효성 검사
     var templateSheet = ss.getSheetByName('template');
@@ -46,6 +46,12 @@ function createAssignmentSheetFromSidebar(data) {
       headers.push('재제출허용'); 
     }
 
+    // ★★★ '설명' 헤더가 없으면 추가 ★★★ 
+    if (headers.indexOf('설명') === -1) {
+      assignmentSettingsSheet.getRange(1, headers.length + 1).setValue('설명');
+      headers.push('설명'); 
+    }
+
     // ★★★ 질문 헤더 확장 (v2.1: 질문 개수에 맞춰 헤더 늘림) ★★★
     // 현재 헤더에 있는 최대 질문 번호 찾기
     var maxHeaderQuestionNum = 0;
@@ -69,6 +75,7 @@ function createAssignmentSheetFromSidebar(data) {
 
     // ★★★ 시험모드 정보를 포함한 행 데이터 생성 ★★★
     var newRowObject = {
+      '설명': description || '',
       '재제출허용': allowModification || false,
       '과제ID': assignmentId,
       '과제명': assignmentName,

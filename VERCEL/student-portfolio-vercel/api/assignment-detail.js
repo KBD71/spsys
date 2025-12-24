@@ -66,6 +66,8 @@ module.exports = async (req, res) => {
     const targetSheet = assignmentRow[assignmentHeaderMap['대상시트']];
     const startDate = assignmentRow[assignmentHeaderMap['시작일']];
     const dueDate = assignmentRow[assignmentHeaderMap['마감일']];
+    // ★★★ 설명 컬럼 읽기 ★★★
+    const description = assignmentHeaderMap['설명'] !== undefined ? assignmentRow[assignmentHeaderMap['설명']] : '';
 
     // 시험 모드 플래그 추출 (있으면 사용, 없으면 false)
     const examModeColIndex = assignmentHeaderMap['시험모드'];
@@ -174,7 +176,8 @@ module.exports = async (req, res) => {
         name: assignmentName,
         targetSheet: targetSheet,
         startDate: startDate,
-        dueDate: dueDate
+        dueDate: dueDate,
+        description: description // ★★★ 설명 추가 ★★★
       },
       questions: questions,
       submitted: submitted,

@@ -135,7 +135,10 @@ module.exports = async (req, res) => {
     }
     // 4-2. 전체 제출 모드
     else {
-      const newRow = targetHeaders.map((header) => {
+      // 기존 데이터가 있다면 가져오기 (컬럼 보존을 위해)
+      const existingRowData = existingRowIndex !== -1 ? targetSheetData[existingRowIndex] : [];
+
+      const newRow = targetHeaders.map((header, index) => {
         const trimmedHeader = header.trim();
         switch (trimmedHeader) {
           case '학번': return studentId;
@@ -144,7 +147,11 @@ module.exports = async (req, res) => {
           case '제출일시': return new Date().toISOString();
           case '초안생성': return false;
           default:
-            return answers[trimmedHeader] || '';
+            // 제공된 답변이 있으면 사용, 없으면 기존 데이터 유지 (교사 메모 등 보존)
+            if (answers[trimmedHeader] !== undefined) {
+              return answers[trimmedHeader];
+            }
+            return existingRowData[index] || '';
         }
       });
 

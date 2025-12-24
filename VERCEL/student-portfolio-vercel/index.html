@@ -756,7 +756,15 @@
                 const allowResubmit = assignment.resubmissionAllowed;
                 const isLocked = isSubmitted && !allowResubmit;
                 const cardClass = isLocked ? 'assignment-card-disabled' : 'assignment-card';
-                const badge = isLocked ? '<span class="submission-badge">제출완료</span>' : '';
+
+                let badge = '';
+                if (isSubmitted) {
+                    if (isLocked) {
+                        badge = '<span class="submission-badge">제출완료</span>';
+                    } else {
+                        badge = '<span class="submission-badge" style="background-color: #10b981;">제출완료 (수정가능)</span>';
+                    }
+                }
                 const dueDateText = assignment.dueDate || '기한 없음';
 
                 return `

@@ -839,8 +839,8 @@
                     let inputHtml = '';
                     if (useSplitFields) {
                         // 분리된 필드 (풀이/정답)
-                        const savedSolution = loadDraft(assignmentId, currentStudentId, q.column + '_풀이');
-                        const savedAnswer = loadDraft(assignmentId, currentStudentId, q.column + '_답');
+                        const savedSolution = loadDraft(assignmentId, currentStudentId, q.column + '_풀이') || q.solution || '';
+                        const savedAnswer = loadDraft(assignmentId, currentStudentId, q.column + '_답') || q.answer || '';
 
                         inputHtml = `
                             <div class="split-fields-container">
@@ -863,7 +863,7 @@
                             </div>`;
                     } else {
                         // 단일 필드
-                        const savedValue = loadDraft(assignmentId, currentStudentId, q.column);
+                        const savedValue = loadDraft(assignmentId, currentStudentId, q.column) || q.answer || '';
                         inputHtml = `
                             <div class="input-wrapper">
                                 <textarea name="${q.column}" id="answer_${index}" class="edit-mode large-input" placeholder="답변을 입력하세요...">${savedValue}</textarea>

@@ -9,6 +9,9 @@
 let kv;
 let useRedis = false;
 
+// [임시] Upstash Redis 연결 타임아웃 문제로 인해 비활성화
+// 문제 해결 후 아래 주석을 해제하세요
+/*
 // Vercel KV 초기화 (환경변수 체크)
 try {
   if (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) {
@@ -22,6 +25,8 @@ try {
 } catch (error) {
   console.log('[캐시] Vercel KV 로드 실패 - In-memory 폴백 사용:', error.message);
 }
+*/
+console.log('[캐시] Redis 비활성화됨 - In-memory 폴백 사용 (임시)');
 
 // In-memory 폴백 (로컬 개발용)
 const memoryCache = new Map();

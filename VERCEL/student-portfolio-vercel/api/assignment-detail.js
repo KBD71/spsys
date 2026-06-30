@@ -1,8 +1,5 @@
 /**
- * 과제 상세 정보 및 질문 조회 API (v2 - 헤더 기반 동적 처리 리팩토링 + 캐싱)
- * - '과제설정' 시트와 개별 과제 시트의 열 순서 변경에 대응할 수 있도록 개선되었습니다.
- * - 헤더 이름을 기반으로 필요한 모든 데이터의 위치를 동적으로 찾습니다.
- * - 제출 여부에 따라 동적 TTL 적용 (제출 완료: 60초, 미제출: 30초)
+ * 과제 상세 정보 및 질문 조회 API (v3 - 복잡한 기능 제거 및 교사 피드백 추가)
  */
 
 const { getCacheKey, getCache, setCache } = require('./cache');
@@ -45,65 +42,41 @@ module.exports = async (req, res) => {
       return res.status(404).json({ success: false, message: '과제를 찾을 수 없습니다.' });
     }
 
-    // ★★★ 핵심 변경점: '과제설정' 시트의 헤더 맵 생성 ★★★
     const assignmentHeaders = assignmentData[0];
     const assignmentHeaderMap = createHeaderMap(assignmentHeaders);
 
-    // '과제ID' 컬럼의 인덱스를 찾음
     const assignmentIdColIndex = assignmentHeaderMap['과제ID'];
     if (assignmentIdColIndex === undefined) {
       return res.status(500).json({ success: false, message: "'과제설정' 시트에서 '과제ID' 컬럼을 찾을 수 없습니다." });
     }
 
-    // 해당 과제ID를 가진 행을 찾음
     const assignmentRow = assignmentData.find((row, idx) => idx > 0 && row[assignmentIdColIndex] === assignmentId);
     if (!assignmentRow) {
       return res.status(404).json({ success: false, message: '해당 과제를 찾을 수 없습니다.' });
     }
 
-    // ★★★ 핵심 변경점: 헤더맵을 이용해 데이터 추출 ★★★
     const assignmentName = assignmentRow[assignmentHeaderMap['과제명']];
-    const targetSheet = assignmentRow[assignmentHeaderMap['대상시트']];
-    const startDate = assignmentRow[assignmentHeaderMap['시작일']];
-    const dueDate = assignmentRow[assignmentHeaderMap['마감일']];
-    // ★★★ 설명 컬럼 읽기 ★★★
+    const targetSheet = assignmentName; // 대상시트 열이 삭제되었으므로 과제명을 그대로 시트명으로 사용
     const description = assignmentHeaderMap['설명'] !== undefined ? assignmentRow[assignmentHeaderMap['설명']] : '';
 
-    console.log(`[API DEBUG] AssignmentID: ${assignmentId}, Description Found: ${!!description}`);
-    if (!description) {
-        console.log('[API DEBUG] Header Map:', JSON.stringify(assignmentHeaderMap));
-        console.log('[API DEBUG] Row Data:', JSON.stringify(assignmentRow));
-    }
-
-    // 시험 모드 플래그 추출 (있으면 사용, 없으면 false)
-    const examModeColIndex = assignmentHeaderMap['시험모드'];
-    const examMode = examModeColIndex !== undefined ?
-      (assignmentRow[examModeColIndex] === 'TRUE' || assignmentRow[examModeColIndex] === true || assignmentRow[examModeColIndex] === 'true') :
-      false;
-
-    // 이탈허용횟수 추출
-    const maxViolationsColIndex = assignmentHeaderMap["이탈허용횟수"];
-    const maxViolations = maxViolationsColIndex !== undefined ? parseInt(assignmentRow[maxViolationsColIndex]) || 3 : 3;
-
-    // 강제전체화면 추출
-    const forceFullscreenColIndex = assignmentHeaderMap["강제전체화면"];
-    const forceFullscreen = forceFullscreenColIndex !== undefined ?
-      (assignmentRow[forceFullscreenColIndex] === "TRUE" || assignmentRow[forceFullscreenColIndex] === true || assignmentRow[forceFullscreenColIndex] === "true") :
-      false;
-
-    // ★★★ 풀이분리 플래그 추출 ★★★
-    const separateSolutionColIndex = assignmentHeaderMap['풀이분리'];
-    const separateSolution = separateSolutionColIndex !== undefined ?
-      (assignmentRow[separateSolutionColIndex] === 'TRUE' || assignmentRow[separateSolutionColIndex] === true || assignmentRow[separateSolutionColIndex] === 'true') :
-      false;
-
-    // '질문'으로 시작하는 모든 컬럼을 동적으로 추출
+    // '질문'으로 시작하는 컬럼들을 추출
     const assignmentQuestions = [];
     assignmentHeaders.forEach((header, index) => {
       if (header.trim().startsWith('질문') && assignmentRow[index] && assignmentRow[index].trim()) {
+        let questionText = assignmentRow[index].trim();
+        let supplement = null;
+        
+        // 보조설명(교사기록) 파싱: "질문내용 [보조설명:문제변형]"
+        const match = questionText.match(/\[보조설명:(.*?)\]$/);
+        if (match) {
+            supplement = match[1].trim();
+            questionText = questionText.replace(match[0], '').trim();
+        }
+
         assignmentQuestions.push({
-          questionText: assignmentRow[index].trim(), // 실제 질문 내용
-          columnName: header.trim() // 헤더 이름 (예: '질문1')
+          questionText: questionText,
+          columnName: header.trim(),
+          supplement: supplement
         });
       }
     });
@@ -118,57 +91,39 @@ module.exports = async (req, res) => {
       return res.status(500).json({ success: false, message: '대상시트의 헤더를 읽을 수 없습니다.' });
     }
 
-    // ★★★ 핵심 변경점: 대상 시트의 헤더 맵 생성 ★★★
     const targetHeaders = targetSheetData[0];
     const targetHeaderMap = createHeaderMap(targetHeaders);
-
-    // ★★★ 핵심 변경점: 실제 시트에 분리된 컬럼이 존재하는지 확인 ★★★
-    let hasSplitColumns = false;
-    if (assignmentQuestions.length > 0) {
-      const firstQuestionCol = assignmentQuestions[0].columnName;
-      hasSplitColumns = targetHeaderMap.hasOwnProperty(firstQuestionCol + '_풀이') &&
-        targetHeaderMap.hasOwnProperty(firstQuestionCol + '_답');
-    }
 
     const studentIdColInTarget = targetHeaderMap['학번'];
     if (studentIdColInTarget === undefined) {
       return res.status(500).json({ success: false, message: `'${targetSheet}' 시트에서 '학번' 컬럼을 찾을 수 없습니다.` });
     }
 
-    // 학생의 기존 답변 행 찾기
     const studentRow = targetSheetData.find((row, idx) => idx > 0 && row[studentIdColInTarget] === studentId);
 
-    // 3. 질문과 답변 최종 구성
+    // 3. 질문과 학생 답변 및 교사 기록 매핑
     const questions = assignmentQuestions.map(q => {
-      // ★★★ 시험모드 또는 풀이분리일 경우 분리된 컬럼 사용 ★★★
-      if (examMode || separateSolution) {
-        const solutionColumnName = `${q.columnName}_풀이`;
-        const answerColumnName = `${q.columnName}_답`;
+      const answerColumnIndex = targetHeaderMap[q.columnName];
+      const answer = (studentRow && answerColumnIndex !== undefined) ? (studentRow[answerColumnIndex] || '') : '';
 
-        const solutionIndex = targetHeaderMap[solutionColumnName];
-        const answerIndex = targetHeaderMap[answerColumnName];
-
-        const solution = (studentRow && solutionIndex !== undefined) ? (studentRow[solutionIndex] || '') : '';
-        const answer = (studentRow && answerIndex !== undefined) ? (studentRow[answerIndex] || '') : '';
-
-        return {
-          column: q.columnName,   // 원본 질문 컬럼명 (참조용)
-          question: q.questionText,
-          solutionColumn: solutionColumnName,
-          answerColumn: answerColumnName,
-          solution: solution,
-          answer: answer
-        };
-      } else {
-        const answerColumnIndex = targetHeaderMap[q.columnName];
-        const answer = (studentRow && answerColumnIndex !== undefined) ? (studentRow[answerColumnIndex] || '') : '';
-
-        return {
-          column: q.columnName,   // 대상시트 컬럼명 (저장용)
-          question: q.questionText, // 과제설정의 질문 (표시용)
-          answer: answer
-        };
+      let teacherRecord = '';
+      let teacherRecordName = '';
+      if (q.supplement) {
+          const supplementHeaderName = `${q.columnName}_교사기록_${q.supplement}`;
+          const supplementIndex = targetHeaderMap[supplementHeaderName];
+          if (supplementIndex !== undefined) {
+              teacherRecord = studentRow && studentRow[supplementIndex] ? studentRow[supplementIndex] : '';
+              teacherRecordName = q.supplement;
+          }
       }
+
+      return {
+        column: q.columnName,
+        question: q.questionText,
+        answer: answer,
+        teacherRecord: teacherRecord,
+        teacherRecordName: teacherRecordName
+      };
     });
 
     const submitted = !!studentRow;
@@ -181,18 +136,11 @@ module.exports = async (req, res) => {
         id: assignmentId,
         name: assignmentName,
         targetSheet: targetSheet,
-        startDate: startDate,
-        dueDate: dueDate,
-        description: description // ★★★ 설명 추가 ★★★
+        description: description
       },
       questions: questions,
       submitted: submitted,
-      submittedAt: submittedAt,
-      examMode: examMode,
-      separateSolution: separateSolution, // 프론트엔드 전달용
-      hasSplitColumns: hasSplitColumns, // ★★★ 실제 컬럼 존재 여부 전달 ★★★
-      maxViolations: maxViolations,
-      forceFullscreen: forceFullscreen
+      submittedAt: submittedAt
     };
 
     const cacheTTL = submitted ? 90 : 60;

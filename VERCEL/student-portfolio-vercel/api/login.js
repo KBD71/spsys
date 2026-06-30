@@ -35,11 +35,11 @@ module.exports = async (req, res) => {
       });
     }
 
-    // 학번 형식 검증 (5자리 숫자)
-    if (!/^[0-9]{5}$/.test(studentId)) {
+    // 학번 형식 검증 (문자+숫자 포함 가능하도록 완화)
+    if (studentId.length < 3) {
       return res.status(400).json({
         success: false,
-        message: '학번은 5자리 숫자여야 합니다.'
+        message: '학번을 올바르게 입력해주세요.'
       });
     }
 

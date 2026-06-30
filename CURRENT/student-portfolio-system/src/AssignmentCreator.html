@@ -30,13 +30,40 @@
 
         #questions-container .question-item {
             display: flex;
+            flex-direction: column;
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .question-main-row {
+            display: flex;
             align-items: center;
             margin-bottom: 5px;
         }
 
-        #questions-container input {
+        .question-main-row input[type="text"] {
             flex-grow: 1;
             margin-right: 5px;
+        }
+        
+        .supplement-row {
+            display: flex;
+            align-items: center;
+            margin-left: 20px;
+            font-size: 12px;
+        }
+        
+        .supplement-row input[type="checkbox"] {
+            margin-right: 5px;
+        }
+        
+        .supplement-row input[type="text"] {
+            width: 200px;
+            margin-left: 5px;
+            padding: 4px;
+            font-size: 12px;
+            display: none;
         }
 
         .remove-btn {
@@ -50,20 +77,6 @@
 
         #status {
             margin-top: 10px;
-        }
-
-        /* 시험 모드 섹션 스타일 */
-        .exam-mode-section {
-            background: #f8f9fa;
-            border: 2px solid #667eea;
-            border-radius: 8px;
-            padding: 15px;
-            margin: 15px 0;
-        }
-
-        .exam-mode-section h4 {
-            color: #667eea;
-            margin-top: 0;
         }
 
         .checkbox-group {
@@ -82,17 +95,6 @@
             font-weight: normal;
         }
 
-        .number-input-group {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .number-input-group input[type="number"] {
-            width: 80px;
-            text-align: center;
-        }
-
         .help-text {
             font-size: 11px;
             color: #666;
@@ -103,75 +105,20 @@
 
 <body>
     <div class="container">
-        <h4>새 과제 정보</h4>
+        <h4>새 평가/과제 정보</h4>
         <div class="form-group">
-            <label for="assignmentName">과제명</label>
-            <input type="text" id="assignmentName" placeholder="예: 2학기 진로 탐색 보고서">
-        </div>
-        <div class="form-group">
-            <label for="startDate">시작일</label>
-            <input type="date" id="startDate">
+            <label for="assignmentName">평가(과제)명</label>
+            <input type="text" id="assignmentName" placeholder="예: 1학기 수행평가 피드백">
         </div>
         <div class="form-group">
-            <label for="endDate">마감일</label>
-            <input type="date" id="endDate">
+            <label for="description">설명 (선택)</label>
+            <textarea id="description" rows="3" placeholder="안내사항을 입력하세요."></textarea>
         </div>
-
+        
         <div class="form-group">
-            <label for="description">과제 설명 (선택)</label>
-            <textarea id="description" rows="3" placeholder="나누고 싶은 설명이나 공지사항을 입력하세요."></textarea>
-        </div>
-
-        <hr>
-
-        <div class="checkbox-group"
-            style="margin-bottom: 20px; padding: 10px; background: #f0f9ff; border-radius: 8px; border: 1px solid #bae6fd;">
-            <input type="checkbox" id="separateSolution">
-            <label for="separateSolution" style="font-weight: bold; color: #0284c7;">풀이/답란 분리 (서술형)</label>
-            <div class="help-text" style="margin-left: 24px;">
-                ✓ 체크 시: 각 질문에 대해 '풀이'와 '답' 입력칸이 별도로 생성됩니다.
-            </div>
-        </div>
-
-        <div class="checkbox-group"
-            style="margin-bottom: 20px; padding: 10px; background: #f0f9ff; border-radius: 8px; border: 1px solid #bae6fd;">
-            <input type="checkbox" id="allowModification">
-            <label for="allowModification" style="font-weight: bold; color: #0284c7;">제출 후 수정 허용</label>
-            <div class="help-text" style="margin-left: 24px;">
-                ✓ 체크 시: 제출 후에도 마감일 전이라면 답변을 수정할 수 있습니다.
-            </div>
-        </div>
-
-        <!-- ★★★ 시험 모드 섹션 추가 ★★★ -->
-        <div class="exam-mode-section">
-            <h4>🎯 시험 모드 설정</h4>
-
-            <div class="checkbox-group">
-                <input type="checkbox" id="examMode">
-                <label for="examMode">시험 모드 활성화 (화면 이탈 감지)</label>
-            </div>
-            <div class="help-text">
-                ✓ 체크 시: 학생 화면 이탈 감지, 복사/붙여넣기 차단, 로그 기록
-            </div>
-
-            <div class="form-group" style="margin-top: 15px;">
-                <label for="maxViolations">이탈 허용 횟수</label>
-                <div class="number-input-group">
-                    <input type="number" id="maxViolations" min="0" max="10" value="3">
-                    <span>회</span>
-                </div>
-                <div class="help-text">
-                    화면 이탈을 몇 회까지 허용할지 설정 (권장: 3회)
-                </div>
-            </div>
-
-            <div class="checkbox-group">
-                <input type="checkbox" id="forceFullscreen">
-                <label for="forceFullscreen">전체화면 강제</label>
-            </div>
-            <div class="help-text">
-                ✓ 체크 시: 과제 시작 시 자동으로 전체화면 전환
-            </div>
+            <label for="targetClass">대상반 지정 (옵션)</label>
+            <input type="text" id="targetClass" placeholder="예: 기하203">
+            <div class="help-text">비워두거나 '전체'로 쓰면 모든 반에 공개됩니다. 특정 반만 공개하려면 쉼표로 구분해 적어주세요.</div>
         </div>
 
         <hr>
@@ -182,49 +129,40 @@
 
         <hr style="margin-top: 20px;">
 
-        <button id="createBtn" class="action">과제 시트 생성하기</button>
+        <button id="createBtn" class="action">평가 시트 생성하기</button>
         <p id="status"></p>
     </div>
 
     <script>
         document.addEventListener('DOMContentLoaded', function () {
-            // 오늘 날짜 기본값 설정
-            var today = new Date().toISOString().split('T')[0];
-            document.getElementById('startDate').value = today;
-
-            addQuestionField(); // 기본 질문 필드 1개 추가
+            addQuestionField(); 
 
             document.getElementById('addQuestionBtn').addEventListener('click', addQuestionField);
             document.getElementById('createBtn').addEventListener('click', createAssignment);
+            
             document.getElementById('questions-container').addEventListener('click', function (e) {
                 if (e.target && e.target.classList.contains('remove-btn')) {
-                    e.target.parentElement.remove();
+                    e.target.closest('.question-item').remove();
                 }
             });
-
-            // 시험 모드 체크박스 상태에 따라 관련 입력 활성화/비활성화
-            document.getElementById('examMode').addEventListener('change', function () {
-                var isExamMode = this.checked;
-                document.getElementById('maxViolations').disabled = !isExamMode;
-                document.getElementById('forceFullscreen').disabled = !isExamMode;
-
-                // 시험 모드 비활성화 시 기본값으로 리셋
-                if (!isExamMode) {
-                    document.getElementById('maxViolations').value = 3;
-                    document.getElementById('forceFullscreen').checked = false;
+            
+            document.getElementById('questions-container').addEventListener('change', function (e) {
+                if (e.target && e.target.classList.contains('supplement-check')) {
+                    var input = e.target.closest('.supplement-row').querySelector('.supplement-input');
+                    if (e.target.checked) {
+                        input.style.display = 'inline-block';
+                    } else {
+                        input.style.display = 'none';
+                        input.value = '';
+                    }
                 }
             });
-
-            // 초기 상태 설정
-            document.getElementById('maxViolations').disabled = true;
-            document.getElementById('forceFullscreen').disabled = true;
         });
 
         function addQuestionField() {
             var container = document.getElementById('questions-container');
             var questionCount = container.children.length;
 
-            // template 시트 기준, 최대 20개로 확장 (v2.1)
             if (questionCount >= 20) {
                 alert('질문은 최대 20개까지 추가할 수 있습니다.');
                 return;
@@ -232,8 +170,17 @@
 
             var div = document.createElement('div');
             div.className = 'question-item';
-            div.innerHTML = '<input type="text" placeholder="질문 ' + (questionCount + 1) + ' 내용 입력">' +
-                '<button class="remove-btn">X</button>';
+            div.innerHTML = `
+                <div class="question-main-row">
+                    <input type="text" class="question-text" placeholder="질문 ` + (questionCount + 1) + ` 내용 입력">
+                    <button class="remove-btn">X</button>
+                </div>
+                <div class="supplement-row">
+                    <input type="checkbox" class="supplement-check" id="supp_` + questionCount + `">
+                    <label for="supp_` + questionCount + `">보조설명(교사기록) 추가</label>
+                    <input type="text" class="supplement-input" placeholder="보조설명 열 이름 (예: 문제변형)">
+                </div>
+            `;
             container.appendChild(div);
         }
 
@@ -243,29 +190,27 @@
 
             var assignmentData = {
                 name: document.getElementById('assignmentName').value.trim(),
-                startDate: document.getElementById('startDate').value,
-                endDate: document.getElementById('endDate').value,
                 description: document.getElementById('description').value,
-                questions: [],
-                // ★★★ 시험 모드 정보 추가 ★★★
-                separateSolution: document.getElementById('separateSolution').checked,
-                allowModification: document.getElementById('allowModification').checked,
-                examMode: document.getElementById('examMode').checked,
-                maxViolations: parseInt(document.getElementById('maxViolations').value) || 3,
-                forceFullscreen: document.getElementById('forceFullscreen').checked
+                targetClass: document.getElementById('targetClass').value.trim() || '전체',
+                questions: []
             };
 
-            var questionInputs = document.querySelectorAll('#questions-container input[type="text"]');
-            questionInputs.forEach(function (input) {
-                var qText = input.value.trim();
+            var questionItems = document.querySelectorAll('.question-item');
+            questionItems.forEach(function (item) {
+                var qText = item.querySelector('.question-text').value.trim();
+                var hasSupplement = item.querySelector('.supplement-check').checked;
+                var sText = item.querySelector('.supplement-input').value.trim();
+                
                 if (qText) {
-                    assignmentData.questions.push(qText);
+                    assignmentData.questions.push({
+                        text: qText,
+                        supplement: hasSupplement && sText ? sText : null
+                    });
                 }
             });
 
-            // 유효성 검사
             if (!assignmentData.name) {
-                alert('과제명을 입력해주세요.');
+                alert('평가명을 입력해주세요.');
                 return;
             }
             if (assignmentData.questions.length === 0) {

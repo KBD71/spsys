@@ -1,11 +1,10 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ko">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>과제제출 시스템</title>
-    <!-- <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script> -->
     <script>
         window.MathJax = {
             tex: {
@@ -22,7 +21,7 @@
     <script>
         // ==========================================
         // [설정] 학교 이름 (이곳에서 수정하세요)
-        window.SCHOOL_NAME = '문현고 1학년';
+        window.SCHOOL_NAME = '언남고';
         // ==========================================
     </script>
     <style>
@@ -538,8 +537,8 @@
         </header>
         <main>
             <form id="loginForm">
-                <div class="form-group"><label for="studentId">학번 (5자리)</label><input type="text" id="studentId"
-                        placeholder="예: 10101" maxlength="5" required></div>
+                <div class="form-group"><label for="studentId">학번</label><input type="text" id="studentId"
+                        placeholder="예: G20101" required></div>
                 <div class="form-group"><label for="password">비밀번호</label><input type="password" id="password"
                         placeholder="비밀번호를 입력하세요" required></div>
                 <button type="submit" class="btn btn-primary">로그인</button>
@@ -567,18 +566,6 @@
                 <h2> 과제 목록</h2>
                 <div id="assignmentsList">
                     <div class="loading-message">과제 목록을 불러오는 중...</div>
-                </div>
-            </section>
-            <section>
-                <h2> 내 기록 (교사 코멘트)</h2>
-                <div id="myRecordsList">
-                    <div class="loading-message">기록을 불러오는 중...</div>
-                </div>
-            </section>
-            <section>
-                <h2> 알림</h2>
-                <div id="myNotificationsList">
-                    <div class="loading-message">알림을 불러오는 중...</div>
                 </div>
             </section>
         </main>
@@ -622,16 +609,6 @@
         </div>
     </div>
 
-    <div id="recordsModal" class="modal hidden">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3 id="recordsModalTitle">기록 보기</h3>
-            </div>
-            <div class="modal-body" id="recordsModalBody"></div>
-            <div class="modal-footer"><button type="button" onclick="hideRecordsModal()"
-                    class="btn btn-secondary">닫기</button></div>
-        </div>
-    </div>
 
     <div id="mathModal" class="modal hidden">
         <div class="modal-content">
@@ -659,15 +636,6 @@
         let savedCursorPosition = { start: 0, end: 0 };
         let previewTimeout = null;
 
-        // 시험 모드 관련 변수
-        let examModeActive = false;
-        let examModeViolations = 0;
-        let examModeMaxViolations = 3;
-        let examModeWarningShown = false;
-        let examModeListenersActive = false;
-        let examModeAssignmentId = null;
-        let examModeAssignmentName = null;
-        let examModeForceFullscreen = false;
 
         document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('loginForm').addEventListener('submit', handleLogin);
@@ -692,8 +660,8 @@
             event.preventDefault();
             const studentId = document.getElementById('studentId').value.trim();
             const password = document.getElementById('password').value.trim();
-            if (!/^[0-9]{5}$/.test(studentId)) {
-                showMessage('loginMessage', '학번은 5자리 숫자여야 합니다.', 'error'); return;
+            if (!studentId || studentId.length < 3) {
+                showMessage('loginMessage', '학번을 올바르게 입력해주세요.', 'error'); return;
             }
             const loginBtn = event.target.querySelector('button[type="submit"]');
             loginBtn.disabled = true; loginBtn.textContent = '로그인 중...';
@@ -733,7 +701,7 @@
             hideMessage('passwordChangeMessage');
         }
 
-        function loadAllData() { loadAssignments(); loadMyRecords(); }
+        function loadAllData() { loadAssignments(); }
         async function loadAssignments() {
             const listEl = document.getElementById('assignmentsList');
             listEl.innerHTML = '<div class="loading-message">과제 목록을 불러오는 중...</div>';
@@ -816,33 +784,12 @@
                     return;
                 }
 
-                // 시험 모드 설정
-                if (result.examMode) {
-                    examModeMaxViolations = result.maxViolations || 3;
-                    examModeForceFullscreen = result.forceFullscreen || false;
-                    examModeAssignmentId = assignmentId;
-                    examModeAssignmentName = assignmentName;
 
-                    const startExam = confirm(`이 과제는 '시험 모드'가 적용됩니다.\n\n - 화면 이탈 시 경고가 발생하며, ${examModeMaxViolations}회 위반 시 자동 제출됩니다.\n - 복사/붙여넣기가 금지됩니다.\n\n시작하시겠습니까?`);
-
-                    if (startExam) {
-                        enableExamMode();
-                    } else {
-                        hideSubmitModal();
-                        return;
-                    }
-                }
 
                 questionsContainer.innerHTML = '';
                 console.log('[DEBUG] API Result:', result);
                 console.log('[DEBUG] Assignment Info:', result.assignment);
                 console.log('[DEBUG] Description:', result.assignment?.description);
-
-                console.log('Exam Mode:', result.examMode);
-                console.log('Separate Solution:', result.separateSolution);
-                console.log('Has Split Columns:', result.hasSplitColumns);
-                // ★★★ 핵심 변경점: 시험모드와 무관하게 '풀이분리' 설정과 실제 컬럼 존재 여부만 확인 ★★★
-                const useSplitFields = result.separateSolution && result.hasSplitColumns;
 
                 // 기존 내용 초기화
                 questionsContainer.innerHTML = '';
@@ -853,7 +800,6 @@
                     descDiv.className = 'info-card';
                     descDiv.style.marginBottom = '20px';
                     descDiv.style.borderLeft = '4px solid #3b82f6';
-                    // 줄바꿈 처리
                     const descHtml = escapeHTML(result.assignment.description).replace(/\n/g, '<br>');
                     descDiv.innerHTML = `<h4 style="margin-top:0; color:#1e40af;">📌 과제 설명</h4><p style="margin-bottom:0; line-height:1.6;">${descHtml}</p>`;
                     questionsContainer.appendChild(descDiv);
@@ -863,41 +809,25 @@
                     const questionDiv = document.createElement('div');
                     questionDiv.className = 'question-card';
 
-                    let inputHtml = '';
-                    if (useSplitFields) {
-                        // 분리된 필드 (풀이/정답)
-                        const savedSolution = loadDraft(assignmentId, currentStudentId, q.column + '_풀이') || q.solution || '';
-                        const savedAnswer = loadDraft(assignmentId, currentStudentId, q.column + '_답') || q.answer || '';
-
-                        inputHtml = `
-                            <div class="split-fields-container">
-                                <div class="field-group">
-                                    <label class="field-label">풀이 과정</label>
-                                    <div class="input-wrapper">
-                                        <textarea name="${q.column}_풀이" id="solution_${index}" class="edit-mode large-input" placeholder="풀이 과정을 입력하세요...">${savedSolution}</textarea>
-                                        <div id="preview_solution_${index}" class="math-preview-mode large-preview empty">답변을 입력하려면 여기를 클릭하세요...</div>
-                                        <button type="button" class="btn-math-editor" onclick="openMathEditor('solution_${index}')">Math Editor</button>
-                                    </div>
-                                </div>
-                                <div class="field-group">
-                                    <label class="field-label">정답</label>
-                                    <div class="input-wrapper">
-                                        <textarea name="${q.column}_답" id="answer_${index}" class="edit-mode short-input" placeholder="정답을 입력하세요...">${savedAnswer}</textarea>
-                                        <div id="preview_answer_${index}" class="math-preview-mode short-preview empty">답변을 입력하려면 여기를 클릭하세요...</div>
-                                        <button type="button" class="btn-math-editor" onclick="openMathEditor('answer_${index}')">Math Editor</button>
-                                    </div>
-                                </div>
-                            </div>`;
-                    } else {
-                        // 단일 필드
-                        const savedValue = loadDraft(assignmentId, currentStudentId, q.column) || q.answer || '';
-                        inputHtml = `
-                            <div class="input-wrapper">
-                                <textarea name="${q.column}" id="answer_${index}" class="edit-mode large-input" placeholder="답변을 입력하세요...">${savedValue}</textarea>
-                                <div id="preview_answer_${index}" class="math-preview-mode large-preview empty">답변을 입력하려면 여기를 클릭하세요...</div>
-                                <button type="button" class="btn-math-editor" onclick="openMathEditor('answer_${index}')">Math Editor</button>
-                            </div>`;
+                    // 교사 기록(보조설명)이 있으면 표시
+                    let teacherRecordHtml = '';
+                    if (q.teacherRecordName && q.teacherRecord) {
+                        teacherRecordHtml = `
+                            <div class="teacher-feedback-card" style="margin-bottom: 15px; padding: 15px; background: #f0fdfa; border-left: 4px solid #0d9488; border-radius: 4px;">
+                                <h5 style="margin-top: 0; color: #0f766e; font-size: 14px; margin-bottom: 8px;">🧑‍🏫 ${escapeHTML(q.teacherRecordName)}</h5>
+                                <div style="color: #115e59; font-size: 14px;">${escapeHTML(q.teacherRecord).replace(/\n/g, '<br>')}</div>
+                            </div>
+                        `;
                     }
+
+                    // 단일 필드 (답변)
+                    const savedValue = loadDraft(assignmentId, currentStudentId, q.column) || q.answer || '';
+                    const inputHtml = `
+                        <div class="input-wrapper">
+                            <textarea name="${q.column}" id="answer_${index}" class="edit-mode large-input" placeholder="답변을 입력하세요...">${savedValue}</textarea>
+                            <div id="preview_answer_${index}" class="math-preview-mode large-preview empty">답변을 입력하려면 여기를 클릭하세요...</div>
+                            <button type="button" class="btn-math-editor" onclick="openMathEditor('answer_${index}')">Math Editor</button>
+                        </div>`;
 
                     questionDiv.innerHTML = `
                         <div class="question-header">
@@ -910,45 +840,20 @@
                             </div>
                         </div>
                         <div class="question-content">${q.question}</div>
+                        ${teacherRecordHtml}
                         ${inputHtml}
                     `;
                     questionsContainer.appendChild(questionDiv);
 
                     // 이벤트 리스너 추가
-                    if (useSplitFields) {
-                        const solTa = document.getElementById(`solution_${index}`);
-                        const solPrev = document.getElementById(`preview_solution_${index}`);
-                        solTa.addEventListener('blur', () => {
-                            saveDraft(assignmentId, currentStudentId, q.column + '_풀이', solTa.value);
-                            switchToPreviewMode(`solution_${index}`, `preview_solution_${index}`);
-                        });
-                        solPrev.addEventListener('click', () => switchToEditMode(`solution_${index}`, `preview_solution_${index}`));
-
-                        const ansTa = document.getElementById(`answer_${index}`);
-                        const ansPrev = document.getElementById(`preview_answer_${index}`);
-                        ansTa.addEventListener('blur', () => {
-                            saveDraft(assignmentId, currentStudentId, q.column + '_답', ansTa.value);
-                            switchToPreviewMode(`answer_${index}`, `preview_answer_${index}`);
-                        });
-                        ansPrev.addEventListener('click', () => switchToEditMode(`answer_${index}`, `preview_answer_${index}`));
-
-                        if (solTa.value.trim()) switchToPreviewMode(`solution_${index}`, `preview_solution_${index}`);
-                        if (ansTa.value.trim()) switchToPreviewMode(`answer_${index}`, `preview_answer_${index}`);
-                    } else {
-                        const textarea = document.getElementById(`answer_${index}`);
-                        const preview = document.getElementById(`preview_answer_${index}`);
-                        textarea.addEventListener('blur', () => {
-                            saveDraft(assignmentId, currentStudentId, q.column, textarea.value);
-                            switchToPreviewMode(`answer_${index}`, `preview_answer_${index}`);
-                        });
-                        preview.addEventListener('click', () => switchToEditMode(`answer_${index}`, `preview_answer_${index}`));
-                        if (textarea.value.trim()) switchToPreviewMode(`answer_${index}`, `preview_answer_${index}`);
-                    }
-
-                    if (result.examMode) {
-                        const textareas = questionDiv.querySelectorAll('textarea');
-                        textareas.forEach(ta => preventCopyPaste(ta));
-                    }
+                    const textarea = document.getElementById(`answer_${index}`);
+                    const preview = document.getElementById(`preview_answer_${index}`);
+                    textarea.addEventListener('blur', () => {
+                        saveDraft(assignmentId, currentStudentId, q.column, textarea.value);
+                        switchToPreviewMode(`answer_${index}`, `preview_answer_${index}`);
+                    });
+                    preview.addEventListener('click', () => switchToEditMode(`answer_${index}`, `preview_answer_${index}`));
+                    if (textarea.value.trim()) switchToPreviewMode(`answer_${index}`, `preview_answer_${index}`);
                 });
 
                 typesetMath(questionsContainer);
@@ -979,36 +884,7 @@
             }
         }
 
-        function groupRecords(records) {
-            return records.reduce((acc, record) => {
-                if (!acc[record.sheetName]) acc[record.sheetName] = [];
-                acc[record.sheetName].push(record); return acc;
-            }, {});
-        }
 
-        function displayRecordGroups(element, groupedRecords, type) {
-            const groups = Object.entries(groupedRecords);
-            if (groups.length === 0) {
-                const message = type === 'comment' ? "공개된 교사 코멘트가 없습니다." : "새로운 알림이 없습니다.";
-                element.innerHTML = `<div class="empty-message">${message}</div>`; return;
-            }
-            element.innerHTML = groups.map(([sheetName, records]) => {
-                return `<div class="assignment-card" data-sheet-name="${escapeHTML(sheetName)}" data-record-type="${type}">
-                    <h4>${escapeHTML(sheetName)}</h4>
-                    <div class="assignment-meta"><span>총 ${records.length}개의 항목 보기</span></div>
-                </div>`;
-            }).join('');
-
-            element.querySelectorAll('.assignment-card').forEach((card, index) => {
-                card.addEventListener('click', () => {
-                    showRecordsModal({
-                        sheetName: groups[index][0],
-                        records: groups[index][1],
-                        type: card.dataset.recordType
-                    });
-                });
-            });
-        }
 
         function typesetMath(element) {
             setTimeout(() => {
@@ -1018,53 +894,7 @@
             }, 0);
         }
 
-        function showRecordsModal(group) {
-            const modal = document.getElementById('recordsModal');
-            const titleEl = document.getElementById('recordsModalTitle');
-            const bodyEl = document.getElementById('recordsModalBody');
-            const title = group.type === 'comment' ? `${group.sheetName} (교사 코멘트)` : `${group.sheetName} (알림)`;
-            titleEl.textContent = title;
 
-            let bodyHtml = group.records.map((record, index) => {
-                const isComprehensive = record.label.includes('종합의견');
-                const labelClass = isComprehensive ? 'data-label highlight-label' : 'data-label';
-
-                return `<div class="record-card ${record.read ? 'read' : ''}">
-                    <div class="data-row">
-                        <div class="${labelClass}">${escapeHTML(record.label)}:</div>
-                        <div class="data-value">${escapeHTML(record.value)}</div>
-                    </div>
-                </div>`;
-            }).join('');
-
-            const needsSuggestion = group.records.some(r => r.hasSuggestion);
-
-            if (needsSuggestion) {
-                const existingSuggestion = group.records.find(r => r.suggestion)?.suggestion || '';
-                const suggestionId = `modal-suggestion-${group.sheetName}`;
-
-                bodyHtml += `<div class="suggestion-box">
-        <strong>${group.sheetName} 건의사항:</strong>
-        <div>
-            <textarea id="${suggestionId}" class="suggestion-input" rows="3"
-                placeholder="이 과제에 대한 건의사항을 입력하세요...">${existingSuggestion}</textarea>
-            <button class="btn btn-primary" style="width:auto; padding: 8px 16px; margin-top: 8px;"
-                data-sheet-name="${group.sheetName}" data-suggestion-id="${suggestionId}">저장</button>
-        </div>
-    </div>`;
-            }
-
-            bodyEl.innerHTML = bodyHtml;
-
-            bodyEl.querySelectorAll('button[data-suggestion-id]').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    saveSuggestion(btn.dataset.sheetName, btn.dataset.suggestionId);
-                });
-            });
-
-            modal.classList.remove('hidden');
-            typesetMath(bodyEl);
-        }
 
         function switchToPreviewMode(textareaId, previewId) {
             const textarea = document.getElementById(textareaId);
@@ -1097,18 +927,6 @@
         }
 
         function hideSubmitModal() {
-            if (examModeActive) {
-                examModeListenersActive = false;
-                const shouldClose = confirm('시험 모드가 활성화되어 있습니다. 정말로 종료하시겠습니까?\n\n주의: 제출하지 않고 종료하면 답안이 저장되지 않을 수 있습니다.');
-
-                if (!shouldClose) {
-                    setTimeout(() => {
-                        examModeListenersActive = true;
-                    }, 500);
-                    return;
-                }
-                disableExamMode();
-            }
             document.getElementById('submitModal').classList.add('hidden');
         }
 
@@ -1127,88 +945,38 @@
             saveBtn.textContent = '저장 중...';
             statusEl.classList.remove('show');
 
-            const wasListenersActive = examModeListenersActive;
-            if (examModeActive) examModeListenersActive = false;
-
             try {
-                const solutionTa = document.getElementById(`solution_${index}`);
-                const answerTa = document.getElementById(`answer_${index}`);
+                const textarea = document.getElementById(`answer_${index}`);
+                const answer = textarea.value;
 
-                // Split Mode
-                if (solutionTa && answerTa) {
-                    const solution = solutionTa.value;
-                    const answer = answerTa.value;
+                const response = await fetch(`${API_BASE}/submit-assignment`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        studentId: currentStudentId,
+                        assignmentId: assignmentId,
+                        questionColumn: questionColumn,
+                        answer: answer,
+                        mode: 'single'
+                    })
+                });
 
-                    // Save Solution
-                    const res1 = await fetch(`${API_BASE}/submit-assignment`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            studentId: currentStudentId,
-                            assignmentId: assignmentId,
-                            questionColumn: questionColumn + '_풀이',
-                            answer: solution,
-                            mode: 'single'
-                        })
-                    });
-
-                    // Save Answer
-                    const res2 = await fetch(`${API_BASE}/submit-assignment`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            studentId: currentStudentId,
-                            assignmentId: assignmentId,
-                            questionColumn: questionColumn + '_답',
-                            answer: answer,
-                            mode: 'single'
-                        })
-                    });
-
-                    const result1 = await res1.json();
-                    const result2 = await res2.json();
-
-                    if (result1.success && result2.success) {
-                        showSaveSuccess(saveBtn, statusEl, originalText, wasListenersActive);
-                    } else {
-                        throw new Error(result1.message || result2.message);
-                    }
-                }
-                // Single Mode
-                else {
-                    const textarea = document.getElementById(`answer_${index}`);
-                    const answer = textarea.value;
-
-                    const response = await fetch(`${API_BASE}/submit-assignment`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            studentId: currentStudentId,
-                            assignmentId: assignmentId,
-                            questionColumn: questionColumn,
-                            answer: answer,
-                            mode: 'single'
-                        })
-                    });
-
-                    const result = await response.json();
-                    if (result.success) {
-                        showSaveSuccess(saveBtn, statusEl, originalText, wasListenersActive);
-                    } else {
-                        throw new Error(result.message);
-                    }
+                const result = await response.json();
+                if (result.success) {
+                    showSaveSuccess(saveBtn, statusEl, originalText);
+                } else {
+                    throw new Error(result.message);
                 }
             } catch (error) {
                 console.error('질문 저장 실패:', error);
                 alert(`저장 실패: ${error.message}`);
-                if (examModeActive && wasListenersActive) setTimeout(() => { examModeListenersActive = true; }, 300);
             } finally {
                 saveBtn.disabled = false;
                 if (saveBtn.textContent === '저장 중...') saveBtn.textContent = originalText;
             }
         }
 
-        function showSaveSuccess(saveBtn, statusEl, originalText, wasListenersActive) {
+        function showSaveSuccess(saveBtn, statusEl, originalText) {
             saveBtn.classList.add('saved');
             saveBtn.textContent = ' 저장완료';
             statusEl.classList.add('show');
@@ -1216,18 +984,10 @@
             setTimeout(() => {
                 saveBtn.classList.remove('saved');
                 saveBtn.textContent = originalText;
-                if (examModeActive && wasListenersActive) {
-                    setTimeout(() => { examModeListenersActive = true; }, 300);
-                }
             }, 2000);
         }
 
         async function submitAssignment() {
-            const wasListenersActive = examModeListenersActive;
-            if (examModeActive) {
-                examModeListenersActive = false;
-            }
-
             const form = document.getElementById('assignmentSubmitForm');
             const assignmentId = form.dataset.assignmentId;
             const answers = {};
@@ -1247,69 +1007,18 @@
                 const result = await response.json();
                 if (result.success) {
                     clearDraft(assignmentId, currentStudentId, questions);
-                    if (examModeActive) {
-                        disableExamMode();
-                        examModeListenersActive = false;
-                        alert('과제가 성공적으로 제출되었습니다.\n시험 모드가 해제되었습니다.');
-                    } else {
-                        alert('과제가 성공적으로 제출되었습니다.');
-                    }
+                    alert('과제가 성공적으로 제출되었습니다.');
                     hideSubmitModal();
                     loadAssignments();
                 } else {
-                    if (examModeActive) {
-                        examModeListenersActive = false;
-                    }
                     alert(`제출 실패: ${result.message}`);
-                    if (examModeActive && wasListenersActive) {
-                        setTimeout(() => {
-                            examModeListenersActive = true;
-                        }, 300);
-                    }
                 }
             } catch (error) {
-                if (examModeActive) {
-                    examModeListenersActive = false;
-                }
                 alert('제출 중 오류가 발생했습니다.');
-                if (examModeActive && wasListenersActive) {
-                    setTimeout(() => {
-                        examModeListenersActive = true;
-                    }, 300);
-                }
             } finally { submitBtn.disabled = false; submitBtn.textContent = '제출하기'; }
         }
 
-        function saveSuggestion(sheetName, textareaId) {
-            const textarea = document.getElementById(textareaId);
-            if (!textarea) {
-                console.error('textarea를 찾을 수 없습니다:', textareaId);
-                return;
-            }
-            const suggestion = textarea.value;
-            const saveBtn = textarea.nextElementSibling;
-            if (!saveBtn) {
-                console.error('저장 버튼을 찾을 수 없습니다.');
-                return;
-            }
-            const originalText = saveBtn.textContent;
-            saveBtn.disabled = true; saveBtn.textContent = '저장 중...';
-            fetch(`${API_BASE}/my-records`, {
-                method: 'POST', headers: { 'Content-Type': 'application/json' }, body:
-                    JSON.stringify({ studentId: currentStudentId, sheetName, suggestion })
-            })
-                .then(res => res.json()).then(result => {
-                    if (result.success) {
-                        saveBtn.style.backgroundColor = '#22c55e'; saveBtn.textContent = '저장됨';
-                        setTimeout(() => {
-                            saveBtn.style.backgroundColor = ''; saveBtn.textContent = originalText; saveBtn.disabled = false;
-                        }, 3000);
-                    } else { alert('저장 실패: ' + result.message); saveBtn.disabled = false; saveBtn.textContent = originalText; }
-                }).catch(error => {
-                    console.error('건의사항 저장 실패:', error); alert('건의사항 저장 중 오류가 발생했습니다.'); saveBtn.disabled = false;
-                    saveBtn.textContent = originalText;
-                });
-        }
+
 
         async function handlePasswordChange(event) {
             event.preventDefault();
@@ -1503,296 +1212,9 @@
             closeMathEditor();
         }
 
-        // 복사/붙여넣기 방지 함수
-        function preventCopyPaste(element) {
-            // 붙여넣기 방지
-            element.addEventListener('paste', function (e) {
-                e.preventDefault();
-                showMessage('submitMessage', '붙여넣기가 비활성화되어 있습니다. 직접 입력해주세요.', 'error');
-                setTimeout(() => hideMessage('submitMessage'), 3000);
-                return false;
-            });
 
-            // 복사 방지
-            element.addEventListener('copy', function (e) {
-                e.preventDefault();
-                return false;
-            });
 
-            // 잘라내기 방지
-            element.addEventListener('cut', function (e) {
-                e.preventDefault();
-                return false;
-            });
 
-            // 우클릭 메뉴 방지
-            element.addEventListener('contextmenu', function (e) {
-                e.preventDefault();
-                return false;
-            });
-
-            // 드래그 앤 드롭 방지
-            element.addEventListener('drop', function (e) {
-                e.preventDefault();
-                return false;
-            });
-        }
-
-        // 시험 모드 활성화
-        function enableExamMode() {
-            examModeActive = true;
-            examModeViolations = 0;
-            examModeWarningShown = false;
-            examModeListenersActive = true;
-
-            // 시험 모드 표시
-            updateExamModeIndicator();
-
-            // 취소 버튼 비활성화
-            const cancelBtn = document.getElementById('cancelSubmitBtn');
-            if (cancelBtn) {
-                cancelBtn.disabled = true;
-                cancelBtn.style.opacity = '0.5';
-                cancelBtn.style.cursor = 'not-allowed';
-            }
-
-            // 강제 전체화면이 설정된 경우에만 전체화면 요청
-            if (examModeForceFullscreen) {
-                enterFullscreen();
-            }
-
-            // 이벤트 리스너 등록
-            document.addEventListener('visibilitychange', handleVisibilityChange);
-            window.addEventListener('blur', handleWindowBlur);
-            window.addEventListener('beforeunload', handleBeforeUnload);
-            document.addEventListener('fullscreenchange', handleFullscreenChange);
-
-            // 뒤로가기 방지
-            history.pushState(null, null, location.href);
-            window.addEventListener('popstate', preventBackNavigation);
-
-            // 키보드 막기 (F12, Alt+Tab 등)
-            document.addEventListener('keydown', handleKeyDown);
-
-            // 우클릭 막기
-            document.addEventListener('contextmenu', handleContextMenu);
-
-            // 복사/붙여넣기 막기
-            document.addEventListener('copy', handleCopyPaste);
-            document.addEventListener('paste', handleCopyPaste);
-            document.addEventListener('cut', handleCopyPaste);
-
-            // 포커스 강제
-            document.addEventListener('click', enforceFocus);
-
-            showMessage('submitMessage', '시험 모드가 시작되었습니다. 화면을 이탈하면 경고가 발생합니다.', 'info');
-        }
-
-        function updateExamModeIndicator() {
-            let indicator = document.getElementById('examModeIndicator');
-            if (!indicator) {
-                indicator = document.createElement('div');
-                indicator.id = 'examModeIndicator';
-                indicator.style.cssText = 'position: fixed; top: 10px; right: 10px; background: #ef4444; color: white; padding: 8px 16px; border-radius: 20px; z-index: 9999; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.2); animation: pulse 2s infinite;';
-                document.body.appendChild(indicator);
-
-                // Pulse animation
-                const style = document.createElement('style');
-                style.textContent = `
-                @keyframes pulse {
-                0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
-                70% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
-                100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
-                }
-                `;
-                document.head.appendChild(style);
-            }
-            indicator.textContent = `시험 모드 작동 중 (위반: ${examModeViolations}/${examModeMaxViolations})`;
-        }
-
-        function disableExamMode() {
-            examModeActive = false;
-            examModeListenersActive = false;
-
-            const indicator = document.getElementById('examModeIndicator');
-            if (indicator) indicator.remove();
-
-            const cancelBtn = document.getElementById('cancelSubmitBtn');
-            if (cancelBtn) {
-                cancelBtn.disabled = false;
-                cancelBtn.style.opacity = '1';
-                cancelBtn.style.cursor = 'pointer';
-            }
-
-            if (document.fullscreenElement) {
-                exitFullscreen();
-            }
-
-            document.removeEventListener('visibilitychange', handleVisibilityChange);
-            window.removeEventListener('blur', handleWindowBlur);
-            window.removeEventListener('beforeunload', handleBeforeUnload);
-            document.removeEventListener('fullscreenchange', handleFullscreenChange);
-            window.removeEventListener('popstate', preventBackNavigation);
-            document.removeEventListener('keydown', handleKeyDown);
-            document.removeEventListener('contextmenu', handleContextMenu);
-            document.removeEventListener('copy', handleCopyPaste);
-            document.removeEventListener('paste', handleCopyPaste);
-            document.removeEventListener('cut', handleCopyPaste);
-            document.removeEventListener('click', enforceFocus);
-        }
-
-        function enterFullscreen() {
-            const elem = document.documentElement;
-            if (elem.requestFullscreen) {
-                elem.requestFullscreen().catch(err => console.log('전체화면 전환 실패:', err));
-            } else if (elem.mozRequestFullScreen) { /* Firefox */
-                elem.mozRequestFullScreen().catch(err => console.log('전체화면 전환 실패:', err));
-            } else if (elem.webkitRequestFullscreen) { /* Chrome, Safari & Opera */
-                elem.webkitRequestFullscreen().catch(err => console.log('전체화면 전환 실패:', err));
-            } else if (elem.msRequestFullscreen) { /* IE/Edge */
-                elem.msRequestFullscreen().catch(err => console.log('전체화면 전환 실패:', err));
-            }
-        }
-
-        function exitFullscreen() {
-            if (document.exitFullscreen) {
-                document.exitFullscreen();
-            } else if (document.mozCancelFullScreen) {
-                document.mozCancelFullScreen();
-            } else if (document.webkitExitFullscreen) {
-                document.webkitExitFullscreen();
-            } else if (document.msExitFullscreen) {
-                document.msExitFullscreen();
-            }
-        }
-
-        function hideRecordsModal() {
-            document.getElementById('recordsModal').classList.add('hidden');
-        }
-
-        function handleVisibilityChange() {
-            if (!examModeActive || !examModeListenersActive) return;
-
-            if (document.hidden) {
-                showExamWarning('화면을 이탈했습니다!');
-            }
-        }
-
-        function handleWindowBlur() {
-            if (!examModeActive || !examModeListenersActive) return;
-
-            // blur 이벤트는 너무 민감할 수 있으므로 약간의 지연을 둠
-            setTimeout(() => {
-                if (document.activeElement === document.body || document.activeElement === null) {
-                    // showExamWarning('화면을 이탈했습니다!'); // blur는 오탐이 많아서 일단 주석 처리하거나 신중하게 사용
-                }
-            }, 100);
-        }
-
-        function handleBeforeUnload(e) {
-            if (!examModeActive) return;
-            e.preventDefault();
-            e.returnValue = '';
-        }
-
-        function handleFullscreenChange() {
-            if (!examModeActive || !examModeListenersActive || !examModeForceFullscreen) return;
-
-            if (!document.fullscreenElement) {
-                showExamWarning('전체화면을 유지해야 합니다!');
-                // 다시 전체화면 시도 (사용자 상호작용 필요할 수 있음)
-                setTimeout(() => {
-                    if (confirm('시험 모드에서는 전체화면이 필수입니다. 전체화면으로 복귀하시겠습니까?')) {
-                        enterFullscreen();
-                    }
-                }, 100);
-            }
-        }
-
-        function preventBackNavigation(event) {
-            if (!examModeActive) return;
-            history.pushState(null, null, location.href);
-            showExamWarning('시험 중에는 뒤로 갈 수 없습니다.');
-        }
-
-        function showExamWarning(reason) {
-            if (!examModeActive) return;
-
-            examModeViolations++;
-            updateExamModeIndicator();
-
-            const msg = `[경고 ${examModeViolations}/${examModeMaxViolations}]\n\n${examModeMaxViolations}회 위반 시 시험이 자동 종료되고 제출됩니다.`;
-            alert(msg);
-
-            logExamEvent(reason);
-
-            if (examModeViolations >= examModeMaxViolations) {
-                autoSubmitExam();
-            }
-        }
-
-        function returnToExam() {
-            // 포커스 복귀 등
-            window.focus();
-        }
-
-        function handleKeyDown(e) {
-            if (!examModeActive || !examModeListenersActive) return;
-
-            // F12, Alt+Tab(감지 어려움), PrintScreen, Ctrl+C/V 등
-            if (
-                e.key === 'F12' ||
-                (e.ctrlKey && (e.key === 'c' || e.key === 'v' || e.key === 'x' || e.key === 'p')) ||
-                e.key === 'PrintScreen' ||
-                e.altKey
-            ) {
-                e.preventDefault();
-                // showExamWarning('키보드 단축키 사용이 감지되었습니다.'); // 너무 잦은 경고 방지
-            }
-        }
-
-        function handleContextMenu(e) {
-            if (!examModeActive || !examModeListenersActive) return;
-            e.preventDefault();
-        }
-
-        function handleCopyPaste(e) {
-            if (!examModeActive || !examModeListenersActive) return;
-            e.preventDefault();
-            showMessage('submitMessage', '시험 중에는 복사/붙여넣기가 금지됩니다.', 'error');
-        }
-
-        function enforceFocus(e) {
-            // 클릭 시 포커스 유지
-        }
-
-        async function autoSubmitExam() {
-            if (!examModeActive) return;
-
-            alert(`위반 횟수 초과(${examModeMaxViolations}회)로 인해 시험이 자동으로 제출됩니다.`);
-
-            // 리스너 비활성화하여 추가 경고 방지
-            examModeListenersActive = false;
-
-            await submitAssignment();
-        }
-
-        async function logExamEvent(type) {
-            try {
-                await fetch(`${API_BASE}/log-exam-event`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        studentId: currentStudentId,
-                        assignmentId: examModeAssignmentId,
-                        type: type,
-                        timestamp: new Date().toISOString()
-                    })
-                });
-            } catch (e) {
-                console.error('로그 전송 실패', e);
-            }
-        }
     </script>
 </body>
 

@@ -57,7 +57,7 @@ module.exports = async (req, res) => {
     const assignmentRowData = assignmentData.find((row, idx) => idx > 0 && row[assignmentIdCol] === assignmentId);
     if (!assignmentRowData) return res.status(404).json({ success: false, message: '과제를 찾을 수 없습니다.' });
 
-    const targetSheet = assignmentRowData[assignmentHeaderMap['대상시트']];
+    const targetSheet = assignmentRowData[assignmentHeaderMap['과제명']]; // 대상시트 열 삭제됨: 과제명을 시트명으로 사용
 
     // 3. 대상 시트 정보 읽기 및 데이터 준비 (헤더 기반)
     const targetSheetResponse = await sheets.spreadsheets.values.get({ spreadsheetId, range: `${targetSheet}!A:Z` });
